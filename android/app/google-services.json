@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "655954397704",
+    "project_id": "my-expences-proj",
+    "storage_bucket": "my-expences-proj.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:655954397704:android:d4b3d4318cb44800e2dfbd",
+        "android_client_info": {
+          "package_name": "com.example.expence_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACk_VvOey_FdhAoGaobYi9U_h4wJC9Xf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
