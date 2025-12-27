@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import 'expense_model.dart';
+
 class ExpenseProvider extends ChangeNotifier {
   // 🔹 Controllers
   final TextEditingController titleController = TextEditingController();
@@ -39,7 +41,8 @@ class ExpenseProvider extends ChangeNotifier {
 
   // 🔹 Add Expense
   Future<void> addExpense() async {
-    if (FirebaseAuth.instance.currentUser == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
     final title = titleController.text.trim();
     final amount = double.tryParse(amountController.text.trim());
@@ -48,57 +51,106 @@ class ExpenseProvider extends ChangeNotifier {
     if (title.isEmpty || amount == null || amount <= 0) return;
 
     try {
-      // ✅ Create reference to the date document
-      final dateDocRef = _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .doc(dateId);
+      final userRef = _firestore.collection('users').doc(uid);
+      final dateRef = userRef.collection('expenses').doc(dateId);
 
-      // ✅ Ensure the date document exists first
-      await dateDocRef.set({
-        'date': dateId,
-      }, SetOptions(merge: true));
+      // 🔥 Batch write = no reads, faster than transaction
+      final batch = _firestore.batch();
 
-      // ✅ Then add the expense item to subcollection
-      await dateDocRef.collection('items').add({
-        'title': title,
-        'amount': amount,
-        'description': desc,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // 1️⃣ Update date total (NO READ)
+      batch.set(
+        dateRef,
+        {
+          'date': dateId,
+          'total': FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      // 2️⃣ Add expense item
+      batch.set(
+        dateRef.collection('items').doc(),
+        {
+          'title': title,
+          'amount': amount,
+          'description': desc,
+          'createdAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      // 3️⃣ Update grand total
+      batch.set(
+        userRef,
+        {
+          'grandTotal': FieldValue.increment(amount),
+        },
+        SetOptions(merge: true),
+      );
+
+      // 🚀 Commit once
+      await batch.commit();
 
       titleController.clear();
       amountController.clear();
       descriptionController.clear();
 
       if (kDebugMode) {
-        print("✅ Expense added successfully for date: $dateId");
+        print("⚡ Expense added instantly for $dateId");
       }
     } catch (e) {
       debugPrint("❌ Add expense failed: $e");
     }
   }
 
+
+
   // 🔹 Delete Expense
-  Future<void> deleteExpense(String docId) async {
+  Future<void> deleteExpense({
+    required String docId,
+    required double amount,
+  }) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .doc(dateId)
-          .collection('items')
-          .doc(docId)
-          .delete();
+      final userRef = _firestore.collection('users').doc(uid);
+      final dateRef = userRef.collection('expenses').doc(dateId);
+
+      // ⚡ Batch = no reads, single commit
+      final batch = _firestore.batch();
+
+      // 1️⃣ Delete expense item
+      batch.delete(
+        dateRef.collection('items').doc(docId),
+      );
+
+      // 2️⃣ Decrement date total
+      batch.update(
+        dateRef,
+        {
+          'total': FieldValue.increment(-amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      // 3️⃣ Decrement grand total
+      batch.update(
+        userRef,
+        {
+          'grandTotal': FieldValue.increment(-amount),
+        },
+      );
+
+      // 🚀 Commit once
+      await batch.commit();
 
       if (kDebugMode) {
-        print("✅ Expense deleted: $docId");
+        print("⚡ Expense deleted instantly: $docId");
       }
     } catch (e) {
       debugPrint("❌ Delete expense failed: $e");
     }
   }
+
+
 
   // 🔹 Expense Stream
   Stream<QuerySnapshot> expenseStream() {
@@ -132,7 +184,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 🔹 All expense dates
-  Future<List<String>> getAllExpenseDates() async {
+  Future<List<ExpenseDay>> getAllExpenseDays() async {
     try {
       final snapshot = await _firestore
           .collection('users')
@@ -140,34 +192,32 @@ class ExpenseProvider extends ChangeNotifier {
           .collection('expenses')
           .get();
 
-      if (kDebugMode) {
-        print("📅 Found ${snapshot.docs.length} expense dates");
-      }
-
-      return snapshot.docs.map((d) => d.id).toList();
+      return snapshot.docs.map((doc) {
+        return ExpenseDay(
+          dateId: doc.id,
+          total: (doc.data()['total'] ?? 0).toDouble(),
+        );
+      }).toList();
     } catch (e) {
       if (kDebugMode) {
-        print("❌ Error getting expense dates: $e");
+        print("❌ Error getting expense days: $e");
       }
       return [];
     }
   }
 
+
   // 🔹 Total for date
   Future<double> getTotalForDate(String dateId) async {
     try {
-      final snapshot = await _firestore
+      final doc = await _firestore
           .collection('users')
           .doc(uid)
           .collection('expenses')
           .doc(dateId)
-          .collection('items')
           .get();
 
-      double total = 0;
-      for (var d in snapshot.docs) {
-        total += (d['amount'] as num).toDouble();
-      }
+      final total = (doc.data()?['total'] ?? 0).toDouble();
 
       if (kDebugMode) {
         print("💰 Total for $dateId: $total");
@@ -176,11 +226,12 @@ class ExpenseProvider extends ChangeNotifier {
       return total;
     } catch (e) {
       if (kDebugMode) {
-        print("❌ Error getting total: $e");
+        print("❌ Error getting total for $dateId: $e");
       }
       return 0;
     }
   }
+
 
   // 🔹 Group by month
   Map<String, List<String>> groupDatesByMonth(List<String> dates) {
@@ -201,4 +252,69 @@ class ExpenseProvider extends ChangeNotifier {
     descriptionController.dispose();
     super.dispose();
   }
+
+  Future<void> migrateOldExpenses() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(uid);
+
+    try {
+      final expenseDatesSnap =
+      await userRef.collection('expenses').get();
+
+      double grandTotal = 0;
+
+      for (final dateDoc in expenseDatesSnap.docs) {
+        final dateId = dateDoc.id;
+        final dateRef = userRef.collection('expenses').doc(dateId);
+
+        // 🔹 Skip if already migrated
+        if (dateDoc.data().containsKey('total')) {
+          grandTotal += (dateDoc['total'] ?? 0).toDouble();
+          if (kDebugMode) {
+            print("⏭️ Skipping $dateId (already migrated)");
+          }
+          continue;
+        }
+
+        // 🔹 Read items and calculate total
+        final itemsSnap =
+        await dateRef.collection('items').get();
+
+        double dayTotal = 0;
+        for (final item in itemsSnap.docs) {
+          dayTotal += (item['amount'] as num).toDouble();
+        }
+
+        // 🔹 Write total to date document
+        await dateRef.set({
+          'date': dateId,
+          'total': dayTotal,
+          'migrated': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        grandTotal += dayTotal;
+
+        if (kDebugMode) {
+          print("✅ Migrated $dateId → ₹$dayTotal");
+        }
+      }
+
+      // 🔹 Save grand total
+      await userRef.set({
+        'grandTotal': grandTotal,
+        'migrationCompleted': true,
+        'migrationAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (kDebugMode) {
+        print("🎉 Migration completed. Grand Total = ₹$grandTotal");
+      }
+    } catch (e) {
+      debugPrint("❌ Migration failed: $e");
+    }
+  }
+
 }

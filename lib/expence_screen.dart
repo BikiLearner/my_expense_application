@@ -324,6 +324,7 @@ class ExpenseScreen extends StatelessWidget {
                                   provider,
                                   d.id,
                                   title,
+                                  amount
                                 ),
                               ),
                             ],
@@ -479,6 +480,7 @@ class ExpenseScreen extends StatelessWidget {
       ExpenseProvider provider,
       String docId,
       String title,
+      double amo,
       ) {
     showDialog(
       context: context,
@@ -511,7 +513,7 @@ class ExpenseScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              provider.deleteExpense(docId);
+              provider.deleteExpense(docId: docId,amount: amo);
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
