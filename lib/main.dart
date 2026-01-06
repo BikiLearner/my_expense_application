@@ -1,9 +1,10 @@
+import 'package:expence_app/providers/export_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'auth_provider.dart';
+import 'providers/auth_provider.dart';
 import 'auth_wraper.dart';
-import 'expence_provider.dart';
+import 'providers/expence_provider.dart';
 import 'expence_screen.dart';
 import 'firebase_options.dart';
 
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => ExportProvider()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,

@@ -1,69 +1,72 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'detail_screen.dart';
-import 'expence_provider.dart';
+import 'providers/expence_provider.dart';
 import 'expense_model.dart';
+import 'history_screens/anaylitcs_scree.dart';
+import 'history_screens/grand_total_banner.dart';
+import 'history_screens/history_app_bar.dart';
+import 'history_screens/monthly_expense_list.dart';
+import 'history_screens/search_expance_screen.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  int _refreshKey = 0;
+
+  void _refresh() {
+    setState(() {
+      _refreshKey++;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final provider = context.read<ExpenseProvider>();
+    final provider = context.watch<ExpenseProvider>();
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.history, color: Color(0xFF64FFDA)),
-            SizedBox(width: 12),
-            Text(
-              "Expense History",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      /// 🔴 ONLY THIS FutureBuilder CHANGED (DATA SOURCE)
+      appBar: HistoryAppBar(),
       body: FutureBuilder<List<ExpenseDay>>(
+        key: ValueKey(_refreshKey),
         future: provider.getAllExpenseDays(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, expenseSnapshot) {
+          if (expenseSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64FFDA),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
             );
           }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!expenseSnapshot.hasData || expenseSnapshot.data!.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 80, color: Colors.grey[700]),
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 80,
+                    color: Colors.grey[600],
+                  ),
                   const SizedBox(height: 16),
                   Text(
-                    'No history found',
+                    "No expenses yet",
                     style: TextStyle(
-                      color: Colors.grey[500],
+                      color: Colors.grey[400],
                       fontSize: 18,
-                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Start tracking your expenses\nto see insights here",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -71,258 +74,166 @@ class HistoryScreen extends StatelessWidget {
             );
           }
 
-          final days = snapshot.data!;
+          final days = expenseSnapshot.data!;
           days.sort((a, b) => b.dateId.compareTo(a.dateId));
 
-          /// 🔴 SAME GROUPING LOGIC, JUST DIFFERENT INPUT
-          final Map<String, List<ExpenseDay>> grouped = {};
-          for (final d in days) {
-            final monthKey = d.dateId.substring(0, 7);
-            grouped.putIfAbsent(monthKey, () => []).add(d);
-          }
+          final grouped = _groupByMonth(days);
+          final yearExpense = provider.getYearExpense(days);
 
-          /// 🔴 GRAND TOTAL – NO FIRESTORE CALL
-          final grandTotal =
-          days.fold(0.0, (sum, d) => sum + d.total);
+          return FutureBuilder<double>(
+            future: provider.getYearIncomeFromFirestore(
+              provider.selectedYear,
+            ),
+            builder: (context, incomeSnapshot) {
+              final yearIncome = incomeSnapshot.data ?? 0.0;
+              final yearDays = days
+                  .where((d) => d.dateId.startsWith(provider.selectedYear))
+                  .length;
 
-          return Column(
-            children: [
-              /// ✅ GRAND TOTAL BANNER (UNCHANGED UI)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              return Column(
+                children: [
+                  GrandTotalBanner(
+                    grandTotal: yearExpense,
+                    yearExpense: yearExpense,
+                    yearIncome: yearIncome,
+                    totalDays: yearDays,
+                    onRefresh: _refresh,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Total All Time',
-                      style: TextStyle(
-                        color: Colors.grey[300],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '₹${grandTotal.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${days.length} days',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              /// ✅ MONTH-WISE LIST (UNCHANGED UI)
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: grouped.entries.map((entry) {
-                    final monthKey = entry.key;
-                    final monthDays = entry.value;
+                  // 🔥 NEW: Quick Stats Cards
+                  _buildQuickStatsRow(
+                    context,
+                    days,
+                    yearExpense,
+                    yearDays,
+                  ),
 
-                    final monthLabel = DateFormat('MMMM yyyy')
-                        .format(DateTime.parse("$monthKey-01"));
-
-                    final monthTotal = monthDays.fold(
-                      0.0,
-                          (sum, d) => sum + d.total,
-                    );
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF2C2C2C),
-                          width: 1,
-                        ),
-                      ),
-                      child: ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 8,
-                        ),
-                        leading: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color:
-                            const Color(0xFF64FFDA).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.calendar_month,
-                            color: Color(0xFF64FFDA),
-                          ),
-                        ),
-                        title: Text(
-                          monthLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${monthDays.length} days',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                        trailing: Text(
-                          '₹${monthTotal.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Color(0xFF64FFDA),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        children: monthDays.map((day) {
-                          final date = DateTime.parse(day.dateId);
-                          final isToday =
-                              DateFormat('yyyy-MM-dd').format(DateTime.now()) ==
-                                  day.dateId;
-
-                          return InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => DateDetailScreen(
-                                    dateId: day.dateId,
-                                    date: date,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF252525),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isToday
-                                      ? const Color(0xFF64FFDA)
-                                      : const Color(0xFF3C3C3C),
-                                  width: isToday ? 2 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: isToday
-                                          ? const Color(0xFF64FFDA)
-                                          .withOpacity(0.2)
-                                          : const Color(0xFF3C3C3C),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          DateFormat('dd').format(date),
-                                          style: TextStyle(
-                                            color: isToday
-                                                ? const Color(0xFF64FFDA)
-                                                : Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Text(
-                                          DateFormat('MMM')
-                                              .format(date)
-                                              .toUpperCase(),
-                                          style: TextStyle(
-                                            color: isToday
-                                                ? const Color(0xFF64FFDA)
-                                                : Colors.grey[500],
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          DateFormat('EEEE').format(date),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          DateFormat('dd MMMM yyyy')
-                                              .format(date),
-                                          style: TextStyle(
-                                              color: Colors.grey[500]),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    '₹${day.total.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF64FFDA),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+                  Expanded(
+                    child: MonthlyExpenseList(grouped: grouped),
+                  ),
+                ],
+              );
+            },
           );
         },
+      ),
+    );
+  }
+
+  // 🔥 NEW: Quick Stats Row
+  Widget _buildQuickStatsRow(
+      BuildContext context,
+      List<ExpenseDay> days,
+      double yearExpense,
+      int yearDays,
+      ) {
+    final provider = context.read<ExpenseProvider>();
+    final yearDays2 = days.where((d) => d.dateId.startsWith(provider.selectedYear)).toList();
+
+    // Calculate average per day
+    final avgPerDay = yearDays > 0 ? yearExpense / yearDays : 0;
+
+    // Calculate highest spending day
+    double highestDay = 0;
+    if (yearDays2.isNotEmpty) {
+      highestDay = yearDays2.map((d) => d.total).reduce((a, b) => a > b ? a : b);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: _QuickStatCard(
+              icon: Icons.trending_up,
+              label: "Avg/Day",
+              value: "₹${avgPerDay.toStringAsFixed(0)}",
+              color: Colors.blueAccent,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _QuickStatCard(
+              icon: Icons.arrow_upward,
+              label: "Highest",
+              value: "₹${highestDay.toStringAsFixed(0)}",
+              color: Colors.orangeAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, List<ExpenseDay>> _groupByMonth(List<ExpenseDay> days) {
+    final Map<String, List<ExpenseDay>> map = {};
+    for (final d in days) {
+      final key = d.dateId.substring(0, 7);
+      map.putIfAbsent(key, () => []).add(d);
+    }
+    return map;
+  }
+}
+
+class _QuickStatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _QuickStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -40,6 +40,18 @@ dependencies:
   provider: ^6.1.5+1
   intl: ^0.20.2
 
+  # 🔥 For PDF Generation
+  pdf: ^3.11.3
+
+  # 🔥 For Excel Generation
+  excel: ^4.0.6
+
+  # 🔥 For File Sharing
+  share_plus: ^12.0.1
+
+  # 🔥 For File Path
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

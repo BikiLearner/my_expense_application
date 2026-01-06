@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import 'expence_provider.dart';
+import 'providers/expence_provider.dart';
 import 'history_screen.dart';
 
 class ExpenseScreen extends StatelessWidget {

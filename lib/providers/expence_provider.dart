@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-import 'expense_model.dart';
+import '../expense_model.dart';
+import '../models/income_entry.dart';
 
 class ExpenseProvider extends ChangeNotifier {
   // 🔹 Controllers
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  String get currentMonth =>
+      DateFormat('yyyy-MM').format(DateTime.now());
+
+  String get currentYear =>
+      DateFormat('yyyy').format(DateTime.now());
 
   // 🔹 Auth UID (SAFE)
   String get uid => FirebaseAuth.instance.currentUser!.uid;
@@ -20,6 +26,9 @@ class ExpenseProvider extends ChangeNotifier {
   DateTime get selectedDate => _selectedDate;
 
   // 🔹 Firestore
+
+  String _selectedYear = DateTime.now().year.toString();
+  String get selectedYear => _selectedYear;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String get dateId => DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -39,6 +48,23 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  void setYear(String year) {
+    _selectedYear = year;
+    notifyListeners();
+  }
+
+  /// 🔹 Expense total for year
+  double getYearExpense(List<ExpenseDay> days) {
+    return days
+        .where((d) => d.dateId.startsWith(_selectedYear))
+        .fold(0.0, (s, d) => s + d.total);
+  }
+
+  double getYearIncome(List<IncomeEntry> incomes) {
+    return incomes
+        .where((i) => i.year == _selectedYear)
+        .fold(0.0, (s, i) => s + i.amount);
+  }
   // 🔹 Add Expense
   Future<void> addExpense() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -104,7 +130,169 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
 
+  Future<void> addIncome({
+    required double amount,
+    required String source,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || amount <= 0) return;
 
+    try {
+      final userRef = _firestore.collection('users').doc(uid);
+      final monthRef = userRef.collection('incomes').doc(currentMonth);
+
+      final batch = _firestore.batch();
+
+      // 1️⃣ Add income item
+      batch.set(
+        monthRef.collection('items').doc(),
+        {
+          'amount': amount,
+          'source': source,
+          'createdAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      // 2️⃣ Update monthly total
+      batch.set(
+        monthRef,
+        {
+          'month': currentMonth,
+          'total': FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      await batch.commit();
+
+      if (kDebugMode) {
+        print("💰 Income added: ₹$amount");
+      }
+    } catch (e) {
+      debugPrint("❌ Add income failed: $e");
+    }
+  }
+
+  Future<void> deleteIncome({
+    required String monthId,   // yyyy-MM
+    required String itemId,    // income item doc id
+    required double amount,    // item amount
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final userRef = _firestore.collection('users').doc(uid);
+      final monthRef = userRef.collection('incomes').doc(monthId);
+      final itemRef = monthRef.collection('items').doc(itemId);
+
+      final batch = _firestore.batch();
+
+      // 1️⃣ Delete income item
+      batch.delete(itemRef);
+
+      // 2️⃣ Decrement monthly total
+      batch.update(
+        monthRef,
+        {
+          'total': FieldValue.increment(-amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      await batch.commit();
+
+      if (kDebugMode) {
+        print("🗑️ Income deleted: ₹$amount from $monthId");
+      }
+    } catch (e) {
+      debugPrint("❌ Delete income failed: $e");
+    }
+  }
+
+  Future<double> getYearIncomeFromFirestore(String year) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('incomes')
+          .get();
+
+      double total = 0;
+
+      for (final doc in snapshot.docs) {
+        if (doc.id.startsWith(year)) {
+          total += (doc.data()['total'] ?? 0).toDouble();
+        }
+      }
+
+      return total;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // 🔥 ADD THIS METHOD TO YOUR ExpenseProvider CLASS
+
+// 🔹 Get all expenses at once (for search/analytics)
+// This method fetches everything in one go, reducing Firebase reads
+  Future<List<Map<String, dynamic>>> getAllExpensesForSearch() async {
+    try {
+      final List<Map<String, dynamic>> allExpenses = [];
+
+      // Get all expense dates
+      final datesSnapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('expenses')
+          .get();
+
+      // Fetch items for all dates
+      for (var dateDoc in datesSnapshot.docs) {
+        final dateId = dateDoc.id;
+
+        final itemsSnapshot = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('expenses')
+            .doc(dateId)
+            .collection('items')
+            .get();
+
+        for (var item in itemsSnapshot.docs) {
+          final data = item.data();
+          allExpenses.add({
+            'id': item.id,
+            'dateId': dateId,
+            'title': data['title'] ?? '',
+            'amount': (data['amount'] ?? 0).toDouble(),
+            'description': data['description'] ?? '',
+            'createdAt': data['createdAt'],
+          });
+        }
+      }
+
+      // Sort by date (newest first)
+      allExpenses.sort((a, b) {
+        final aDate = a['createdAt'] as Timestamp?;
+        final bDate = b['createdAt'] as Timestamp?;
+        if (aDate == null || bDate == null) return 0;
+        return bDate.compareTo(aDate);
+      });
+
+      if (kDebugMode) {
+        print("📊 Fetched ${allExpenses.length} expenses for search");
+      }
+
+      return allExpenses;
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Error fetching all expenses: $e");
+      }
+      return [];
+    }
+  }
   // 🔹 Delete Expense
   Future<void> deleteExpense({
     required String docId,
