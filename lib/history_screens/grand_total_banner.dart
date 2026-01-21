@@ -12,7 +12,13 @@ class GrandTotalBanner extends StatelessWidget {
   final double yearExpense;
   final double yearIncome;
   final int totalDays;
+  final double monthTotal;
+  final double saving;
+  final double luxury;
+  final double needed;
+
   final VoidCallback onRefresh;
+
 
   const GrandTotalBanner({
     super.key,
@@ -20,7 +26,7 @@ class GrandTotalBanner extends StatelessWidget {
     required this.yearExpense,
     required this.yearIncome,
     required this.totalDays,
-    required this.onRefresh,
+    required this.onRefresh, required this.monthTotal, required this.saving, required this.luxury, required this.needed,
   });
 
   @override
@@ -234,7 +240,7 @@ class GrandTotalBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "${provider.selectedYear} Total Expense",
+                    "${provider.selectedYear} • Yearly Expense",
                     style: TextStyle(
                       color: Colors.grey[300],
                       fontSize: 14,
@@ -253,6 +259,16 @@ class GrandTotalBanner extends StatelessWidget {
                   letterSpacing: -1,
                 ),
               ),
+              const SizedBox(height: 6),
+              Text(
+                "This Month: ₹${monthTotal.toStringAsFixed(0)}",
+                style: TextStyle(
+                  color: const Color(0xFF64FFDA),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
             ],
           ),
           const SizedBox(height: 16),
@@ -296,6 +312,49 @@ class GrandTotalBanner extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _StatItem(
+                  icon: Icons.savings_outlined,
+                  label: "Saving",
+                  value:"₹${saving.toStringAsFixed(0)}" ,
+                  color: Colors.greenAccent,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                _StatItem(
+                  icon: Icons.auto_awesome_outlined,
+                  label: "Luxury",
+                  value: "₹${luxury.toStringAsFixed(0)}",
+                  color: Colors.pinkAccent,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                _StatItem(
+                  icon: Icons.shopping_cart_outlined,
+                  label: "Needed",
+                  value: "₹${needed.toStringAsFixed(0)}",
+                  color: Colors.orangeAccent,
+                ),
+              ],
+            ),
+          ),
+
         ],
       ),
     );
@@ -577,6 +636,53 @@ class GrandTotalBanner extends StatelessWidget {
     );
   }
 }
+class _TypeStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final double value;
+  final Color color;
+
+  const _TypeStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "₹${value.toStringAsFixed(0)}",
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 
 class _StatItem extends StatelessWidget {
   final IconData icon;

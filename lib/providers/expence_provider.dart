@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import '../enums/expense_type.dart';
 import '../expense_model.dart';
 import '../models/income_entry.dart';
+import '../models/month_stats.dart';
+import '../models/year_stats.dart';
 
 class ExpenseProvider extends ChangeNotifier {
   // 🔹 Controllers
@@ -14,6 +17,9 @@ class ExpenseProvider extends ChangeNotifier {
   final TextEditingController descriptionController = TextEditingController();
   String get currentMonth =>
       DateFormat('yyyy-MM').format(DateTime.now());
+  ExpenseType _selectedType = ExpenseType.luxury;
+  ExpenseType get selectedType => _selectedType;
+
 
   String get currentYear =>
       DateFormat('yyyy').format(DateTime.now());
@@ -48,6 +54,24 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  List<String> cachedCategories = [];
+
+  ExpenseProvider() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (FirebaseAuth.instance.currentUser != null) {
+      await fetchCategories();
+    }
+  }
+
+
+  void setExpenseType(ExpenseType type) {
+    _selectedType = type;
+    notifyListeners();
+  }
+
   void setYear(String year) {
     _selectedYear = year;
     notifyListeners();
@@ -79,9 +103,14 @@ class ExpenseProvider extends ChangeNotifier {
     try {
       final userRef = _firestore.collection('users').doc(uid);
       final dateRef = userRef.collection('expenses').doc(dateId);
+      final year = DateFormat('yyyy').format(_selectedDate);
+      final month = DateFormat('yyyy-MM').format(_selectedDate);
 
       // 🔥 Batch write = no reads, faster than transaction
       final batch = _firestore.batch();
+      final yearRef = userRef.collection('year_stats').doc(year);
+      final monthRef =
+      yearRef.collection('months').doc(month);
 
       // 1️⃣ Update date total (NO READ)
       batch.set(
@@ -101,6 +130,7 @@ class ExpenseProvider extends ChangeNotifier {
           'title': title,
           'amount': amount,
           'description': desc,
+          'type': _selectedType.name,
           'createdAt': FieldValue.serverTimestamp(),
         },
       );
@@ -114,12 +144,32 @@ class ExpenseProvider extends ChangeNotifier {
         SetOptions(merge: true),
       );
 
+      // ✅ Year grand total
+      batch.set(
+        yearRef,
+        {
+          'grandTotal': FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+// ✅ Month type totals + month total
+      batch.set(
+        monthRef,
+        {
+          'month': month,
+          _selectedType.name: FieldValue.increment(amount),
+          'grandTotal': FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
       // 🚀 Commit once
       await batch.commit();
 
-      titleController.clear();
-      amountController.clear();
-      descriptionController.clear();
+      clearForm();
 
       if (kDebugMode) {
         print("⚡ Expense added instantly for $dateId");
@@ -127,6 +177,125 @@ class ExpenseProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("❌ Add expense failed: $e");
     }
+  }
+
+  Future<void> fetchCategories() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('categories')
+          .orderBy('createdAt')
+          .get();
+
+      cachedCategories = snapshot.docs
+          .map((doc) => (doc.data()['title'] as String).trim())
+          .where((t) => t.isNotEmpty)
+          .toSet() // 🔥 remove duplicates
+          .toList();
+
+      if (kDebugMode) {
+        print("📂 Categories loaded: $cachedCategories");
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint("❌ Failed to fetch categories: $e");
+    }
+  }
+
+
+  Future<void> editExpense({
+    required String docId,
+    required double oldAmount,
+    required ExpenseType oldType,
+    required DateTime oldDate,
+  }) async {
+    final title = titleController.text.trim();
+    final newAmount = double.tryParse(amountController.text.trim());
+    final desc = descriptionController.text.trim();
+
+    if (title.isEmpty || newAmount == null || newAmount <= 0) return;
+
+    final newType = _selectedType;
+    final diff = newAmount - oldAmount;
+
+    final year = DateFormat('yyyy').format(oldDate);
+    final month = DateFormat('yyyy-MM').format(oldDate);
+    final oldDateId = DateFormat('yyyy-MM-dd').format(oldDate);
+
+    try {
+      final userRef = _firestore.collection('users').doc(uid);
+      final dateRef = userRef.collection('expenses').doc(oldDateId);
+      final itemRef = dateRef.collection('items').doc(docId);
+
+      final yearRef = userRef.collection('year_stats').doc(year);
+      final monthRef = yearRef.collection('months').doc(month);
+
+      final batch = _firestore.batch();
+
+      // 1️⃣ Update expense item
+      batch.update(itemRef, {
+        'title': title,
+        'amount': newAmount,
+        'description': desc,
+        'type': newType.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2️⃣ Update day total + user grand total
+      if (diff != 0) {
+        batch.update(dateRef, {
+          'total': FieldValue.increment(diff),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        batch.update(userRef, {
+          'grandTotal': FieldValue.increment(diff),
+        });
+
+        batch.update(yearRef, {
+          'grandTotal': FieldValue.increment(diff),
+        });
+      }
+
+      // 3️⃣ Update month stats
+      if (oldType == newType) {
+        if (diff != 0) {
+          batch.update(monthRef, {
+            newType.name: FieldValue.increment(diff),
+            'grandTotal': FieldValue.increment(diff),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      } else {
+        batch.update(monthRef, {
+          oldType.name: FieldValue.increment(-oldAmount),
+          newType.name: FieldValue.increment(newAmount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      clearForm();
+
+      if (kDebugMode) {
+        print("✏️ Expense updated successfully: $docId");
+      }
+    } catch (e) {
+      debugPrint("❌ Edit expense failed: $e");
+    }
+  }
+
+
+
+  void clearForm() {
+    titleController.clear();
+    amountController.clear();
+    descriptionController.clear();
+    // _selectedType = ExpenseType.needed;
+    notifyListeners();
   }
 
 
@@ -173,6 +342,8 @@ class ExpenseProvider extends ChangeNotifier {
       debugPrint("❌ Add income failed: $e");
     }
   }
+
+
 
   Future<void> deleteIncome({
     required String monthId,   // yyyy-MM
@@ -297,11 +468,19 @@ class ExpenseProvider extends ChangeNotifier {
   Future<void> deleteExpense({
     required String docId,
     required double amount,
+    required ExpenseType type,
+    required DateTime date,
   }) async {
     try {
       final userRef = _firestore.collection('users').doc(uid);
-      final dateRef = userRef.collection('expenses').doc(dateId);
+      final deleteDateId = DateFormat('yyyy-MM-dd').format(date);
+      final dateRef =
+      userRef.collection('expenses').doc(deleteDateId);
+      final year = DateFormat('yyyy').format(date);
+      final month = DateFormat('yyyy-MM').format(date);
 
+      final yearRef = userRef.collection('year_stats').doc(year);
+      final monthRef = yearRef.collection('months').doc(month);
       // ⚡ Batch = no reads, single commit
       final batch = _firestore.batch();
 
@@ -326,7 +505,14 @@ class ExpenseProvider extends ChangeNotifier {
           'grandTotal': FieldValue.increment(-amount),
         },
       );
+      batch.update(yearRef, {
+        'grandTotal': FieldValue.increment(-amount),
+      });
 
+      batch.update(monthRef, {
+        type.name: FieldValue.increment(-amount),
+        'grandTotal': FieldValue.increment(-amount),
+      });
       // 🚀 Commit once
       await batch.commit();
 
@@ -394,6 +580,81 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  Future<YearStats?> getYearStats() async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('year_stats')
+          .doc(selectedYear)
+          .get();
+
+      if (!doc.exists) return null;
+
+      return YearStats.fromFirestore(
+        doc.id,
+        doc.data()!,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Failed to fetch year stats: $e");
+      }
+      return null;
+    }
+  }
+
+  Future<List<MonthStats>> getMonthStatsForSelectedYear() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('year_stats')
+          .doc(selectedYear)
+          .collection('months')
+          .orderBy('month')
+          .get();
+
+      return snapshot.docs
+          .map((doc) => MonthStats.fromFirestore(
+        doc.id,
+        doc.data(),
+      ))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Failed to fetch month stats: $e");
+      }
+      return [];
+    }
+  }
+
+
+  Future<MonthStats?> getMonthStatsByMonth(String month) async {
+    // month format: yyyy-MM
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('year_stats')
+          .doc(selectedYear)
+          .collection('months')
+          .doc(month)
+          .get();
+
+      if (!doc.exists) return null;
+
+      return MonthStats.fromFirestore(
+        doc.id,
+        doc.data()!,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Failed to fetch month stats ($month): $e");
+      }
+      return null;
+    }
+  }
+
 
   // 🔹 Total for date
   Future<double> getTotalForDate(String dateId) async {
@@ -439,6 +700,197 @@ class ExpenseProvider extends ChangeNotifier {
     amountController.dispose();
     descriptionController.dispose();
     super.dispose();
+  }
+
+
+  Future<void> migrateExpensesToYearMonthStats() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(uid);
+
+    try {
+      final userDoc = await userRef.get();
+      if (userDoc.data()?['migrationCompleted'] == true) {
+        if (kDebugMode) {
+          print("⏭️ Migration already completed");
+        }
+        return;
+      }
+
+      final expenseDatesSnap =
+      await userRef.collection('expenses').get();
+
+      final Map<String, Map<String, Map<String, double>>> stats = {};
+      double grandTotal = 0;
+
+      final batch = _firestore.batch(); // 🔥 moved up (needed for updates)
+
+      for (final dateDoc in expenseDatesSnap.docs) {
+        final dateRef =
+        userRef.collection('expenses').doc(dateDoc.id);
+
+        final itemsSnap = await dateRef.collection('items').get();
+
+        for (final item in itemsSnap.docs) {
+          final data = item.data();
+
+          final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+          final createdAt =
+          (data['createdAt'] as Timestamp?)?.toDate();
+
+          if (createdAt == null || amount <= 0) continue;
+
+          const type = 'luxury'; // 🔥 FORCE LUXURY
+
+          final year = DateFormat('yyyy').format(createdAt);
+          final month = DateFormat('yyyy-MM').format(createdAt);
+
+          stats.putIfAbsent(year, () => {});
+          stats[year]!.putIfAbsent(month, () => {
+            'saving': 0,
+            'needed': 0,
+            'luxury': 0,
+            'grandTotal': 0,
+          });
+
+          stats[year]![month]![type] =
+              (stats[year]![month]![type] ?? 0) + amount;
+          stats[year]![month]!['grandTotal'] =
+              (stats[year]![month]!['grandTotal'] ?? 0) + amount;
+
+          grandTotal += amount;
+
+          // 🔥 Normalize old item
+          batch.update(item.reference, {
+            'type': 'luxury',
+          });
+        }
+      }
+
+      // 🔹 Write year & month stats
+      stats.forEach((year, months) {
+        final yearRef = userRef.collection('year_stats').doc(year);
+
+        double yearTotal = 0;
+        months.forEach((_, values) {
+          yearTotal += values['grandTotal'] ?? 0;
+        });
+
+        batch.set(
+          yearRef,
+          {
+            'grandTotal': yearTotal,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        months.forEach((month, values) {
+          batch.set(
+            yearRef.collection('months').doc(month),
+            {
+              'month': month,
+              ...values,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        });
+      });
+
+      // 🔹 Mark migration done
+      batch.set(
+        userRef,
+        {
+          'grandTotal': grandTotal,
+          'migrationCompleted': true,
+          'migrationAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      await batch.commit();
+      AlertDialog(
+        content: Dialog(
+
+        ),
+      );
+
+      if (kDebugMode) {
+        print("🎉 Migration completed — ALL expenses set to LUXURY");
+      }
+    } catch (e) {
+      debugPrint("❌ Migration failed: $e");
+    }
+  }
+
+
+  void showMigrationCompletedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.greenAccent.withOpacity(0.15),
+              ),
+              child: const Icon(
+                Icons.check_circle_outline,
+                size: 48,
+                color: Colors.greenAccent,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Migration Completed",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "All previous expenses have been successfully migrated and marked as Luxury.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF64FFDA),
+                  foregroundColor: const Color(0xFF121212),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Done",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> migrateOldExpenses() async {
@@ -503,6 +955,79 @@ class ExpenseProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("❌ Migration failed: $e");
     }
+  }
+
+
+  Future<void> showAddCategoryDialog(BuildContext context) async {
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Add Category',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'e.g. Food, Travel, Rent',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+            filled: true,
+            fillColor: const Color(0xFF2C2C2C),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey[500]),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF64FFDA),
+              foregroundColor: const Color(0xFF121212),
+            ),
+            onPressed: () async {
+              final title = controller.text.trim();
+              if (title.isEmpty) return;
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(uid)
+                    .collection('categories')
+                    .add({
+                  'title': title,
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+
+                if (kDebugMode) {
+                  print('✅ Category added: $title');
+                }
+
+                Navigator.pop(ctx);
+              } catch (e) {
+                debugPrint('❌ Failed to add category: $e');
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
 }

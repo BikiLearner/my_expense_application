@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'models/month_stats.dart';
+import 'models/year_stats.dart';
 import 'providers/expence_provider.dart';
 import 'expense_model.dart';
 import 'history_screens/anaylitcs_scree.dart';
@@ -21,8 +23,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _refresh() {
     setState(() {
-      _refreshKey++;
-    });
+        _refreshKey++;
+      });
   }
 
   @override
@@ -78,17 +80,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
           days.sort((a, b) => b.dateId.compareTo(a.dateId));
 
           final grouped = _groupByMonth(days);
-          final yearExpense = provider.getYearExpense(days);
 
-          return FutureBuilder<double>(
-            future: provider.getYearIncomeFromFirestore(
-              provider.selectedYear,
-            ),
-            builder: (context, incomeSnapshot) {
-              final yearIncome = incomeSnapshot.data ?? 0.0;
+          return FutureBuilder(
+            future: Future.wait([
+                provider.getYearStats(),
+                provider.getMonthStatsByMonth(
+                  DateTime.now().toString().substring(0, 7), // yyyy-MM (current month)
+                ),
+                provider.getYearIncomeFromFirestore(provider.selectedYear),
+              ]),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
+                );
+              }
+
+              final yearStats = snapshot.data![0] as YearStats?;
+              final monthStats = snapshot.data![1] as MonthStats?;
+              final yearIncome = snapshot.data![2] as double;
+
+              final yearExpense = yearStats?.grandTotal ?? 0.0;
+
               final yearDays = days
-                  .where((d) => d.dateId.startsWith(provider.selectedYear))
-                  .length;
+                .where((d) => d.dateId.startsWith(provider.selectedYear))
+                .length;
 
               return Column(
                 children: [
@@ -97,10 +113,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     yearExpense: yearExpense,
                     yearIncome: yearIncome,
                     totalDays: yearDays,
+
+                    // 🔥 NEW (FROM MONTH STATS)
+                    monthTotal: monthStats?.grandTotal ?? 0,
+                    saving: monthStats?.saving ?? 0,
+                    luxury: monthStats?.luxury ?? 0,
+                    needed: monthStats?.needed ?? 0,
+
                     onRefresh: _refresh,
                   ),
 
-                  // 🔥 NEW: Quick Stats Cards
                   _buildQuickStatsRow(
                     context,
                     days,
@@ -115,6 +137,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               );
             },
           );
+
         },
       ),
     );
@@ -122,11 +145,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // 🔥 NEW: Quick Stats Row
   Widget _buildQuickStatsRow(
-      BuildContext context,
-      List<ExpenseDay> days,
-      double yearExpense,
-      int yearDays,
-      ) {
+    BuildContext context,
+    List<ExpenseDay> days,
+    double yearExpense,
+    int yearDays,
+  ) {
     final provider = context.read<ExpenseProvider>();
     final yearDays2 = days.where((d) => d.dateId.startsWith(provider.selectedYear)).toList();
 
