@@ -1,29 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import 'enums/expense_type.dart';
+import 'enums/transaction_type_enum.dart';
+import 'models/expense_items.dart';
 import 'providers/expence_provider.dart';
 import 'history_screen.dart';
-
-class ExpenseScreen extends StatelessWidget
-{
+class ExpenseScreen extends StatelessWidget {
   const ExpenseScreen({super.key});
 
   @override
-  Widget build(BuildContext context) 
-  {
+  Widget build(BuildContext context) {
     final selectedDate = context.select<ExpenseProvider, DateTime>(
-      (p) => p.selectedDate
+          (p) => p.selectedDate
     );
 
     // Responsive breakpoints
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 1200;
-    final isTablet = screenWidth > 600 && screenWidth <= 1200;
-    final isMobile = screenWidth <= 600;
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -58,39 +53,40 @@ class ExpenseScreen extends StatelessWidget
           IconButton(
             icon: const Icon(Icons.calendar_today, color: Color(0xFF64FFDA)),
             tooltip: 'Select Date',
-            onPressed: () =>
-            context.read<ExpenseProvider>().selectDate(context)
+            onPressed: () => _selectDate(context)
           ),
-
           IconButton(
             icon: const Icon(Icons.add, color: Color(0xFF64FFDA)),
-            tooltip: 'Add Title',
-            onPressed: ()  {
+            tooltip: 'Add Category',
+            onPressed: () {
               context.read<ExpenseProvider>().showAddCategoryDialog(context);
-
-              // await context.read<ExpenseProvider>().migrateExpensesToYearMonthStats();
-              //
-              // if (context.mounted) {
-              //   context.read<ExpenseProvider>(). showMigrationCompletedDialog(context);
-              // }
-              //
-              // if (kDebugMode) {
-              //   print("🎉 Migration completed — ALL expenses set to LUXURY");
-              // }
             }
           ),
           const SizedBox(width: 8)
         ]
       ),
-      body: isDesktop
-        ? _buildDesktopLayout(context)
-        : _buildMobileLayout(context)
+      body: isDesktop ? _buildDesktopLayout(context) : _buildMobileLayout(context)
     );
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final provider = context.read<ExpenseProvider>();
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: provider.selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now()
+    );
+
+    if (picked != null && picked != provider.selectedDate) {
+      provider.setSelectedDate(picked);
+    }
+  }
+
+
   // 📱 Mobile & Tablet Layout (Stacked)
-  Widget _buildMobileLayout(BuildContext context) 
-  {
+  Widget _buildMobileLayout(BuildContext context) {
     return Column(
       children: [
         // Expense List
@@ -102,8 +98,7 @@ class ExpenseScreen extends StatelessWidget
   }
 
   // 🖥️ Desktop Layout (Side by Side)
-  Widget _buildDesktopLayout(BuildContext context) 
-  {
+  Widget _buildDesktopLayout(BuildContext context) {
     return Row(
       children: [
         // Left: Expense List
@@ -127,56 +122,28 @@ class ExpenseScreen extends StatelessWidget
   }
 
   // 📋 Expense List Widget
-  Widget _buildExpenseList(BuildContext context) 
-  {
-    return Consumer<ExpenseProvider>(
-      builder: (_, provider, __) {
-        return StreamBuilder(
-          stream: provider.expenseStream(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) 
-            {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF64FFDA)
-                )
-              );
-            }
+  Widget _buildExpenseList(BuildContext context) {
+    return Selector<ExpenseProvider, bool>(
+      selector: (_, p) => p.isLoading,
+      builder: (_, isLoading, __) {
+        if (isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF64FFDA)
+            )
+          );
+        }
 
-            if (snapshot.hasError) 
-            {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                      size: 64, color: Colors.redAccent),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading expenses',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 16)
-                    )
-                  ]
-                )
-              );
-            }
-
-            if (!snapshot.hasData) 
-            {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            print(snapshot.data!.docs);
-            final docs = snapshot.data!.docs;
-
-            if (docs.isEmpty) 
-            {
+        return Selector<ExpenseProvider, List<ExpenseItem>>(
+          selector: (_, p) => p.cachedExpenses,
+          builder: (_, expenses, __) {
+            if (expenses.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.receipt_long_outlined,
-                      size: 80, color: Colors.grey[700]),
+                        size: 80, color: Colors.grey[700]),
                     const SizedBox(height: 16),
                     Text(
                       'No expenses yet',
@@ -189,279 +156,297 @@ class ExpenseScreen extends StatelessWidget
                     const SizedBox(height: 8),
                     Text(
                       'Add your first expense below',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14)
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14
+                      )
                     )
                   ]
                 )
               );
             }
 
-            // Calculate total
-            double total = 0;
-            for (var doc in docs)
-            {
-              total += (doc['amount'] as num).toDouble();
-            }
-
-            return Column(
-              children: [
-                // Total Banner
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4)
-                      )
-                    ]
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Total Expenses',
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400
-                            )
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '₹${total.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold
-                            )
+            return Selector<ExpenseProvider, double>(
+              selector: (_, p) => p.totalExpense,
+              builder: (_, total, __) {
+                return Column(
+                  children: [
+                    // Total Banner
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4)
                           )
                         ]
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12)
-                        ),
-                        child: Text(
-                          '${docs.length} items',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600
-                          )
-                        )
-                      )
-                    ]
-                  )
-                ),
-
-                // Expense List
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: docs.length,
-                    itemBuilder: (_, i) {
-                      final d = docs[i];
-                      final title = d['title'] ?? 'Untitled';
-                      final description = d['description'] ?? '';
-                      final amount = (d['amount'] as num).toDouble();
-                      final expenseType = parseExpenseType(d['type']);
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFF2C2C2C),
-                            width: 1
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2)
-                            )
-                          ]
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8
-                          ),
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: expenseType.color.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10)
-                            ),
-                            child: Icon(
-                              expenseType.icon,
-                              color: expenseType.color,
-                              size: 24
-                            )
-                          ),
-
-                          title: Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600
-                            )
-                          ),
-                          subtitle: description.isNotEmpty
-                            ? Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                description,
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 14
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis
-                              )
-                            )
-                            : null,
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '₹${amount.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Color(0xFF64FFDA),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold
+                                'Total Expenses',
+                                style: TextStyle(
+                                  color: Colors.grey[300],
+                                  fontSize: 14
                                 )
                               ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                color: Colors.redAccent,
-                                tooltip: 'Delete',
-                                onPressed: () => _showDeleteConfirmation(
-                                  context,
-                                  provider,
-                                  d.id,
-                                  title,
-                                  amount,
-                                  expenseType,
-                                  (d['createdAt'] as Timestamp).toDate(),
-                                ),
-
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                color: Colors.orangeAccent,
-                                tooltip: 'Edit',
-                                onPressed: () {
-                                  final createdAt = (d['createdAt'] as Timestamp).toDate();
-
-                                  _openEditExpense(
-                                    context,
-                                    provider,
-                                    d.id,
-                                    title,
-                                    description,
-                                    amount,
-                                    d['type'],
-                                    createdAt,
-                                  );
-
-                                }
+                              const SizedBox(height: 4),
+                              Text(
+                                '₹${total.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold
+                                )
                               )
-
                             ]
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12)
+                            ),
+                            child: Text(
+                              '${expenses.length} items',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600
+                              )
+                            )
                           )
-                        )
-                      );
-                    }
-                  )
-                )
-              ]
+                        ]
+                      )
+                    ),
+
+                    // Expense List
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: expenses.length,
+                        itemBuilder: (_, i) {
+                          final expense = expenses[i];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E1E1E),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF2C2C2C)
+                              )
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: expense.type.color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10)
+                                ),
+                                child: Icon(
+                                  expense.type.icon,
+                                  color: expense.type.color
+                                )
+                              ),
+                              title: Text(
+                                expense.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600
+                                )
+                              ),
+                              subtitle: expense.description.isNotEmpty
+                                  ? Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  expense.description,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.grey[500]
+                                  )
+                                )
+                              )
+                                  : null,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '₹${expense.amount.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF64FFDA),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold
+                                    )
+                                  ),
+                                  IconButton(
+                                    icon:
+                                    const Icon(Icons.edit_outlined),
+                                    color: Colors.orangeAccent,
+                                    onPressed: () =>
+                                        _openEditExpense(context, expense)
+                                  ),
+                                  IconButton(
+                                    icon:
+                                    const Icon(Icons.delete_outline),
+                                    color: Colors.redAccent,
+                                    onPressed: () =>
+                                        _showDeleteConfirmation(
+                                            context, expense)
+                                  )
+                                ]
+                              )
+                            )
+                          );
+                        }
+                      )
+                    )
+                  ]
+                );
+              }
             );
           }
         );
       }
     );
   }
-  void _openEditExpense(
-    BuildContext context,
-    ExpenseProvider provider,
-    String docId,
-    String title,
-    String description,
-    double amount,
-    String type,
-    DateTime createdDate,
-  ) {
-    provider.titleController.text = title;
-    provider.amountController.text = amount.toString();
-    provider.descriptionController.text = description;
 
-    final oldType = ExpenseType.values.firstWhere(
-      (e) => e.name == type,
-      orElse: () => ExpenseType.needed,
-    );
 
-    provider.setExpenseType(oldType);
+  void _openEditExpense(BuildContext context, ExpenseItem expense) {
+    final provider = context.read<ExpenseProvider>();
+
+    // Pre-fill form
+    provider.titleController.text = expense.title;
+    provider.amountController.text = expense.amount.toString();
+    provider.descriptionController.text = expense.description;
+    provider.setExpenseType(expense.type);
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16)
         ),
         title: const Text(
           'Edit Expense',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white)
         ),
         content: SizedBox(
           width: 400,
-          child: _buildInputForm(context, isDesktop: true),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildEditFormFields(context)
+              ]
+            )
+          )
         ),
         actions: [
           TextButton(
             onPressed: () {
               provider.clearForm();
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey[500])
+            )
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF64FFDA),
+              foregroundColor: const Color(0xFF121212)
+            ),
             onPressed: () async {
               await provider.editExpense(
-                docId: docId,
-                oldAmount: amount,
-                oldType: oldType,
-                oldDate: createdDate,
+                docId: expense.id,
+                oldAmount: expense.amount,
+                oldType: expense.type,
+                oldDate: expense.createdAt
               );
-              Navigator.pop(context);
+
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext);
+              }
             },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
+            child: const Text(
+              'Update Expense',
+              style: TextStyle(fontWeight: FontWeight.bold)
+            )
+          )
+        ]
+      )
+    );
+  }
+
+  Widget _buildEditFormFields(BuildContext context) {
+    final provider = context.read<ExpenseProvider>();
+
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  const Text(
+                    'Payment Method',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  _TransactionTypeChips(),
+                  const SizedBox(height: 16),
+                  _buildTitleAutoComplete(context, provider.titleController),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: provider.amountController,
+                    label: 'Amount',
+                    icon: Icons.currency_rupee,
+                    hint: 'e.g., 500',
+                    keyboardType: TextInputType.number
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildTextField(
+                    controller: provider.descriptionController,
+                    label: 'Description (Optional)',
+                    icon: Icons.notes,
+                    hint: 'Add details...',
+                    maxLines: 3
+                  )
+                ]
+              )
+            ),
+            const SizedBox(width: 12),
+            _ExpenseTypeSelector()
+          ]
+        )
+      ]
     );
   }
 
   // ✏️ Input Form Widget
-  Widget _buildInputForm(BuildContext context, {required bool isDesktop}) 
-  {
+  Widget _buildInputForm(BuildContext context, {required bool isDesktop}) {
     final provider = context.read<ExpenseProvider>();
 
     return Container(
@@ -498,11 +483,8 @@ class ExpenseScreen extends StatelessWidget
                   Expanded(
                     child: Column(
                       children: [
-                        _buildTitleAutoComplete(
-                          context,
-                          provider.titleController,
-                        ),
 
+                        _buildTitleAutoComplete(context, provider.titleController),
                         const SizedBox(height: 16),
                         _buildTextField(
                           controller: provider.amountController,
@@ -518,18 +500,18 @@ class ExpenseScreen extends StatelessWidget
                           icon: Icons.notes,
                           hint: 'Add details...',
                           maxLines: 3
-                        )
+                        ),
+                        const SizedBox(height: 16),
+                        _TransactionTypeChips(),
+
                       ]
                     )
                   ),
-
                   const SizedBox(width: 12),
-
                   // 🔹 Right: Expense Type Selector
                   _ExpenseTypeSelector()
                 ]
               ),
-
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -575,8 +557,7 @@ class ExpenseScreen extends StatelessWidget
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1
-  }) 
-  {
+  }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -612,106 +593,137 @@ class ExpenseScreen extends StatelessWidget
 
   Widget _buildTitleAutoComplete(
       BuildContext context,
-      TextEditingController controller,
+      TextEditingController controller
       ) {
-    final provider = context.read<ExpenseProvider>();
+    // Force rebuild when text changes
+   
+    return Selector<ExpenseProvider, int>(
+        selector: (_, p) => p.autoCompleteKey,
+        builder: (context, autoKey, _) {
+          return Selector<ExpenseProvider, List<String>>(
+              selector: (_, p) => p.cachedCategories,
+              builder: (context, cachedCategories, __) {
+        return Autocomplete<String>(
+          key: ValueKey(autoKey),
+          initialValue: TextEditingValue(text: controller.text),
 
-    return Autocomplete<String>(
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) {
-          return const Iterable<String>.empty();
-        }
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
 
-        // 🔹 Replace with your real category source if needed
-        final suggestions = provider.cachedCategories;
+            return cachedCategories.where(
+                  (option) => option
+                  .toLowerCase()
+                  .contains(textEditingValue.text.toLowerCase())
+            );
+          },
 
-        return suggestions.where(
-              (option) => option
-              .toLowerCase()
-              .contains(textEditingValue.text.toLowerCase()),
-        );
-      },
-      onSelected: (selection) {
-        controller.text = selection;
-      },
-      fieldViewBuilder: (
-          context,
-          textController,
-          focusNode,
-          onFieldSubmitted,
-          ) {
-        textController.text = controller.text;
+          fieldViewBuilder: (
+              context,
+              textController,
+              focusNode,
+              onFieldSubmitted
+              ) {
+            // Sync with main controller
+            textController.text = controller.text;
+            textController.selection = TextSelection.fromPosition(
+              TextPosition(offset: textController.text.length)
+            );
 
-        return TextField(
-          controller: textController,
-          focusNode: focusNode,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-          decoration: InputDecoration(
-            labelText: 'Title',
-            hintText: 'e.g., Groceries, Fuel',
-            labelStyle: TextStyle(color: Colors.grey[500]),
-            hintStyle: TextStyle(color: Colors.grey[700]),
-            prefixIcon: const Icon(Icons.title, color: Color(0xFF64FFDA)),
-            filled: true,
-            fillColor: const Color(0xFF2C2C2C),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-              const BorderSide(color: Color(0xFF3C3C3C), width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-              const BorderSide(color: Color(0xFF64FFDA), width: 2),
-            ),
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-        );
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            color: const Color(0xFF2C2C2C),
-            borderRadius: BorderRadius.circular(12),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              shrinkWrap: true,
-              itemCount: options.length,
-              itemBuilder: (_, index) {
-                final option = options.elementAt(index);
-                return ListTile(
-                  title: Text(
-                    option,
-                    style: const TextStyle(color: Colors.white),
+            textController.addListener(() {
+              if (controller.text != textController.text) {
+                controller.text = textController.text;
+              }
+            });
+
+            return TextField(
+              controller: textController,
+              focusNode: focusNode,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              decoration: InputDecoration(
+                labelText: 'Title',
+                hintText: 'e.g., Groceries, Fuel',
+                labelStyle: TextStyle(color: Colors.grey[500]),
+                hintStyle: TextStyle(color: Colors.grey[700]),
+                prefixIcon:
+                const Icon(Icons.title, color: Color(0xFF64FFDA)),
+                filled: true,
+                fillColor: const Color(0xFF2C2C2C),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF3C3C3C),
+                    width: 1
+                  )
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF64FFDA),
+                    width: 2
+                  )
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16
+                )
+              )
+            );
+          },
+
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                color: const Color(0xFF2C2C2C),
+                borderRadius: BorderRadius.circular(12),
+                elevation: 8,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxHeight: 200,
+                    maxWidth: 300
                   ),
-                  onTap: () => onSelected(option),
-                );
-              },
-            ),
-          ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (_, index) {
+                      final option = options.elementAt(index);
+                      return InkWell(
+                        onTap: () => onSelected(option),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12
+                          ),
+                          child: Text(
+                            option,
+                            style: const TextStyle(color: Colors.white)
+                          )
+                        )
+                      );
+                    }
+                  )
+                )
+              )
+            );
+          }
         );
-      },
+      }
     );
+});
   }
 
-  // ❌ Delete Confirmation Dialog
-  void _showDeleteConfirmation(
-    BuildContext context,
-    ExpenseProvider provider,
-    String docId,
-    String title,
-    double amo,
-    ExpenseType type,
-    DateTime date,
-  )
 
-  {
+  // ❌ Delete Confirmation Dialog
+  void _showDeleteConfirmation(BuildContext context, ExpenseItem expense) {
+    final provider = context.read<ExpenseProvider>();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -730,7 +742,7 @@ class ExpenseScreen extends StatelessWidget
           ]
         ),
         content: Text(
-          'Are you sure you want to delete "$title"?',
+          'Are you sure you want to delete "${expense.title}"?',
           style: TextStyle(color: Colors.grey[400])
         ),
         actions: [
@@ -744,10 +756,10 @@ class ExpenseScreen extends StatelessWidget
           ElevatedButton(
             onPressed: () {
               provider.deleteExpense(
-                docId: docId,
-                amount: amo,
-                type: type,
-                date: date,
+                docId: expense.id,
+                amount: expense.amount,
+                type: expense.type,
+                dateId: expense.dateId
               );
 
               Navigator.pop(ctx);
@@ -767,11 +779,9 @@ class ExpenseScreen extends StatelessWidget
   }
 }
 
-class _ExpenseTypeSelector extends StatelessWidget
-{
+class _ExpenseTypeSelector extends StatelessWidget {
   @override
-  Widget build(BuildContext context) 
-  {
+  Widget build(BuildContext context) {
     return Selector<ExpenseProvider, ExpenseType>(
       selector: (_, provider) => provider.selectedType,
       builder: (context, selectedType, _) {
@@ -783,7 +793,6 @@ class _ExpenseTypeSelector extends StatelessWidget
             ),
             const SizedBox(height: 12),
             _TypeButton(
-
               type: ExpenseType.needed,
               selected: selectedType == ExpenseType.needed
             ),
@@ -798,9 +807,50 @@ class _ExpenseTypeSelector extends StatelessWidget
     );
   }
 }
+class _TransactionTypeChips extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Selector<ExpenseProvider, TransactionTypeEnum>(
+      selector: (_, p) => p.selectedTransaction,
+      builder: (_, selected, __) {
+        return Wrap(
+          spacing: 8,
+          children: TransactionTypeEnum.values.map((type) {
+            final isSelected = selected == type;
 
-class _TypeButton extends StatelessWidget
-{
+            return ChoiceChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    type.icon,
+                    size: 18,
+                    color: isSelected ? Colors.black : Colors.white70,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(type.label),
+                ],
+              ),
+              selected: isSelected,
+              selectedColor: const Color(0xFF64FFDA),
+              backgroundColor: const Color(0xFF2C2C2C),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+              onSelected: (_) {
+                context.read<ExpenseProvider>().setTransactionType(type);
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+
+class _TypeButton extends StatelessWidget {
   final ExpenseType type;
   final bool selected;
 
@@ -810,8 +860,7 @@ class _TypeButton extends StatelessWidget
   });
 
   @override
-  Widget build(BuildContext context) 
-  {
+  Widget build(BuildContext context) {
     final provider = context.read<ExpenseProvider>();
 
     return GestureDetector(
@@ -820,9 +869,7 @@ class _TypeButton extends StatelessWidget
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected
-            ? type.color.withOpacity(0.2)
-            : const Color(0xFF2C2C2C),
+          color: selected ? type.color.withOpacity(0.2) : const Color(0xFF2C2C2C),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? type.color : const Color(0xFF3C3C3C),
@@ -851,4 +898,3 @@ class _TypeButton extends StatelessWidget
     );
   }
 }
-

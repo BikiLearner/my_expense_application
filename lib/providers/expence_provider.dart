@@ -1,3 +1,8 @@
+// 🔧 CORRECTED: Changed dateId getter to currentDateId for clarity
+// This prevents confusion between current selected date and expense dates
+
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +10,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import '../enums/expense_type.dart';
+import '../enums/transaction_type_enum.dart';
 import '../expense_model.dart';
+import '../models/expense_items.dart';
 import '../models/income_entry.dart';
 import '../models/month_stats.dart';
 import '../models/year_stats.dart';
@@ -15,44 +22,74 @@ class ExpenseProvider extends ChangeNotifier {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  String get currentMonth =>
-      DateFormat('yyyy-MM').format(DateTime.now());
+
+  String get currentMonth => DateFormat('yyyy-MM').format(DateTime.now());
+
   ExpenseType _selectedType = ExpenseType.luxury;
   ExpenseType get selectedType => _selectedType;
 
+  int _autoCompleteKey = 0;
+  int get autoCompleteKey => _autoCompleteKey;
 
-  String get currentYear =>
-      DateFormat('yyyy').format(DateTime.now());
+  String get currentYear => DateFormat('yyyy').format(DateTime.now());
 
   // 🔹 Auth UID (SAFE)
   String get uid => FirebaseAuth.instance.currentUser!.uid;
+  TransactionTypeEnum _selectedTransaction =
+      TransactionTypeEnum.cash; // ✅ default
+
+  TransactionTypeEnum get selectedTransaction => _selectedTransaction;
 
   // 🔹 Selected Date
   DateTime _selectedDate = DateTime.now();
   DateTime get selectedDate => _selectedDate;
 
   // 🔹 Firestore
-
   String _selectedYear = DateTime.now().year.toString();
   String get selectedYear => _selectedYear;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String get dateId => DateFormat('yyyy-MM-dd').format(_selectedDate);
+  // 🔧 FIXED: Renamed to currentDateId for clarity
+  String get currentDateId => DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+
+  List<ExpenseItem> _cachedExpenses = [];
+  List<ExpenseItem> get cachedExpenses => _cachedExpenses;
+
+  // Current selected date
+
+
+
+
+  // Stream subscription
+  StreamSubscription<QuerySnapshot>? _expenseSubscription;
+
+  // Loading state
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+
+  // 🔧 NEW: Helper method to get date ID from any DateTime
+  String getDateId(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+  void setTransactionType(TransactionTypeEnum type) {
+    _selectedTransaction = type;
+    notifyListeners();
+  }
+
+
 
   // 🔹 Select Date
-  Future<void> selectDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-
-    if (picked != null && picked != _selectedDate) {
-      _selectedDate = picked;
+  void setSelectedDate(DateTime date) {
+    if (_selectedDate != date) {
+      _selectedDate = date;
+      _cachedExpenses = [];
+      _subscribeToExpenses();
       notifyListeners();
     }
   }
+
 
   List<String> cachedCategories = [];
 
@@ -64,8 +101,8 @@ class ExpenseProvider extends ChangeNotifier {
     if (FirebaseAuth.instance.currentUser != null) {
       await fetchCategories();
     }
+    _initStream();
   }
-
 
   void setExpenseType(ExpenseType type) {
     _selectedType = type;
@@ -89,6 +126,7 @@ class ExpenseProvider extends ChangeNotifier {
         .where((i) => i.year == _selectedYear)
         .fold(0.0, (s, i) => s + i.amount);
   }
+
   // 🔹 Add Expense
   Future<void> addExpense() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -102,25 +140,26 @@ class ExpenseProvider extends ChangeNotifier {
 
     try {
       final userRef = _firestore.collection('users').doc(uid);
-      final dateRef = userRef.collection('expenses').doc(dateId);
-      final year = DateFormat('yyyy').format(_selectedDate);
-      final month = DateFormat('yyyy-MM').format(_selectedDate);
+      // 🔧 FIXED: Use currentDateId instead of dateId
+      final dateRef = userRef.collection('expenses').doc(currentDateId);
+      final year = currentDateId.substring(0, 4);
+      final month = currentDateId.substring(0, 7);
 
-      // 🔥 Batch write = no reads, faster than transaction
+
       final batch = _firestore.batch();
       final yearRef = userRef.collection('year_stats').doc(year);
-      final monthRef =
-      yearRef.collection('months').doc(month);
+      final monthRef = yearRef.collection('months').doc(month);
 
-      // 1️⃣ Update date total (NO READ)
+      // 1️⃣ Update date total
       batch.set(
         dateRef,
         {
-          'date': dateId,
+          'date': currentDateId,
           'total': FieldValue.increment(amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
       // 2️⃣ Add expense item
@@ -131,48 +170,60 @@ class ExpenseProvider extends ChangeNotifier {
           'amount': amount,
           'description': desc,
           'type': _selectedType.name,
-          'createdAt': FieldValue.serverTimestamp(),
-        },
+          'transactionType': _selectedTransaction.name,
+          'createdAt': Timestamp.fromDate(
+            DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+              DateTime.now().hour,
+              DateTime.now().minute
+            )
+          )
+        
+}
       );
 
       // 3️⃣ Update grand total
       batch.set(
         userRef,
         {
-          'grandTotal': FieldValue.increment(amount),
-        },
-        SetOptions(merge: true),
+          'grandTotal': FieldValue.increment(amount)
+        
+},
+        SetOptions(merge: true)
       );
 
-      // ✅ Year grand total
+      // 4️⃣ Year grand total
       batch.set(
         yearRef,
         {
           'grandTotal': FieldValue.increment(amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
-// ✅ Month type totals + month total
+      // 5️⃣ Month type totals + month total
       batch.set(
         monthRef,
         {
           'month': month,
           _selectedType.name: FieldValue.increment(amount),
           'grandTotal': FieldValue.increment(amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
-      // 🚀 Commit once
       await batch.commit();
 
       clearForm();
 
       if (kDebugMode) {
-        print("⚡ Expense added instantly for $dateId");
+        print("⚡ Expense added instantly for $currentDateId");
       }
     } catch (e) {
       debugPrint("❌ Add expense failed: $e");
@@ -191,7 +242,7 @@ class ExpenseProvider extends ChangeNotifier {
       cachedCategories = snapshot.docs
           .map((doc) => (doc.data()['title'] as String).trim())
           .where((t) => t.isNotEmpty)
-          .toSet() // 🔥 remove duplicates
+          .toSet()
           .toList();
 
       if (kDebugMode) {
@@ -204,12 +255,11 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
   Future<void> editExpense({
     required String docId,
     required double oldAmount,
     required ExpenseType oldType,
-    required DateTime oldDate,
+    required DateTime oldDate
   }) async {
     final title = titleController.text.trim();
     final newAmount = double.tryParse(amountController.text.trim());
@@ -218,11 +268,13 @@ class ExpenseProvider extends ChangeNotifier {
     if (title.isEmpty || newAmount == null || newAmount <= 0) return;
 
     final newType = _selectedType;
+    final newTransactionType = _selectedTransaction;
     final diff = newAmount - oldAmount;
 
     final year = DateFormat('yyyy').format(oldDate);
     final month = DateFormat('yyyy-MM').format(oldDate);
-    final oldDateId = DateFormat('yyyy-MM-dd').format(oldDate);
+    // 🔧 FIXED: Use getDateId helper method
+    final oldDateId = getDateId(oldDate);
 
     try {
       final userRef = _firestore.collection('users').doc(uid);
@@ -240,40 +292,67 @@ class ExpenseProvider extends ChangeNotifier {
         'amount': newAmount,
         'description': desc,
         'type': newType.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+        'transactionType': newTransactionType.name,
+        'updatedAt': FieldValue.serverTimestamp()
+      
+});
 
       // 2️⃣ Update day total + user grand total
       if (diff != 0) {
-        batch.update(dateRef, {
-          'total': FieldValue.increment(diff),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        batch.set(
+          dateRef,
+          {
+            'total': FieldValue.increment(diff),
+            'updatedAt': FieldValue.serverTimestamp()
+          
+},
+          SetOptions(merge: true)
+        );
 
-        batch.update(userRef, {
-          'grandTotal': FieldValue.increment(diff),
-        });
+        batch.set(
+          userRef,
+          {
+            'grandTotal': FieldValue.increment(diff)
+          
+},
+          SetOptions(merge: true)
+        );
 
-        batch.update(yearRef, {
-          'grandTotal': FieldValue.increment(diff),
-        });
+        batch.set(
+          yearRef,
+          {
+            'grandTotal': FieldValue.increment(diff)
+          
+},
+          SetOptions(merge: true)
+        );
       }
 
       // 3️⃣ Update month stats
       if (oldType == newType) {
         if (diff != 0) {
-          batch.update(monthRef, {
-            newType.name: FieldValue.increment(diff),
-            'grandTotal': FieldValue.increment(diff),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+          batch.set(
+            monthRef,
+            {
+              newType.name: FieldValue.increment(diff),
+              'grandTotal': FieldValue.increment(diff),
+              'updatedAt': FieldValue.serverTimestamp()
+            
+},
+            SetOptions(merge: true)
+          );
         }
       } else {
-        batch.update(monthRef, {
-          oldType.name: FieldValue.increment(-oldAmount),
-          newType.name: FieldValue.increment(newAmount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        batch.set(
+          monthRef,
+          {
+            oldType.name: FieldValue.increment(-oldAmount),
+            newType.name: FieldValue.increment(newAmount),
+            'updatedAt': FieldValue.serverTimestamp()
+          
+},
+          SetOptions(merge: true)
+        );
       }
 
       await batch.commit();
@@ -288,20 +367,19 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
-
   void clearForm() {
     titleController.clear();
     amountController.clear();
     descriptionController.clear();
-    // _selectedType = ExpenseType.needed;
+    _autoCompleteKey++; // Force rebuild
+    _selectedType = ExpenseType.luxury; // Reset to default
+    _selectedTransaction = TransactionTypeEnum.cash;
     notifyListeners();
   }
 
-
   Future<void> addIncome({
     required double amount,
-    required String source,
+    required String source
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || amount <= 0) return;
@@ -318,8 +396,9 @@ class ExpenseProvider extends ChangeNotifier {
         {
           'amount': amount,
           'source': source,
-          'createdAt': FieldValue.serverTimestamp(),
-        },
+          'createdAt': FieldValue.serverTimestamp()
+        
+}
       );
 
       // 2️⃣ Update monthly total
@@ -328,9 +407,10 @@ class ExpenseProvider extends ChangeNotifier {
         {
           'month': currentMonth,
           'total': FieldValue.increment(amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
       await batch.commit();
@@ -343,12 +423,10 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
-
   Future<void> deleteIncome({
-    required String monthId,   // yyyy-MM
-    required String itemId,    // income item doc id
-    required double amount,    // item amount
+    required String monthId,
+    required String itemId,
+    required double amount
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -364,12 +442,14 @@ class ExpenseProvider extends ChangeNotifier {
       batch.delete(itemRef);
 
       // 2️⃣ Decrement monthly total
-      batch.update(
+      batch.set(
         monthRef,
         {
           'total': FieldValue.increment(-amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
       await batch.commit();
@@ -404,22 +484,95 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-  // 🔥 ADD THIS METHOD TO YOUR ExpenseProvider CLASS
+  void _initStream() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      if (kDebugMode) {
+        print("❌ No authenticated user");
+      }
+      return;
+    }
 
-// 🔹 Get all expenses at once (for search/analytics)
-// This method fetches everything in one go, reducing Firebase reads
+    _subscribeToExpenses();
+  }
+
+  void _subscribeToExpenses() {
+    // Cancel previous subscription
+    _expenseSubscription?.cancel();
+
+    _isLoading = true;
+    notifyListeners();
+
+    if (kDebugMode) {
+      print("🔍 Subscribing to expenses for:");
+      print("   User: $uid");
+      print("   Date: $currentDateId");
+    }
+
+    _expenseSubscription = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('expenses')
+        .doc(currentDateId)
+        .collection('items')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (snapshot) {
+        _cachedExpenses = snapshot.docs
+            .map((doc) => ExpenseItem.fromFirestore(doc.id, doc.data(),currentDateId))
+            .toList();
+
+        _isLoading = false;
+
+        if (kDebugMode) {
+          print("✅ Loaded ${_cachedExpenses.length} expenses for $currentDateId");
+        }
+
+        notifyListeners();
+      },
+      onError: (error) {
+        if (kDebugMode) {
+          print("❌ Stream error: $error");
+        }
+        _isLoading = false;
+        notifyListeners();
+      }
+    );
+  }
+
+  // Update selected date and refresh stream
+
+
+  // Calculate total from cached data
+  double get totalExpense {
+    return _cachedExpenses.fold(0.0, (sum, item) => sum + item.amount);
+  }
+
+  // Get expense by ID from cache
+  ExpenseItem? getExpenseById(String id) {
+    try {
+      return _cachedExpenses.firstWhere((item) => item.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Manually refresh (for edge cases)
+  Future<void> refresh() async {
+    _subscribeToExpenses();
+  }
+
+
   Future<List<Map<String, dynamic>>> getAllExpensesForSearch() async {
     try {
       final List<Map<String, dynamic>> allExpenses = [];
 
-      // Get all expense dates
       final datesSnapshot = await _firestore
           .collection('users')
           .doc(uid)
           .collection('expenses')
           .get();
 
-      // Fetch items for all dates
       for (var dateDoc in datesSnapshot.docs) {
         final dateId = dateDoc.id;
 
@@ -439,12 +592,12 @@ class ExpenseProvider extends ChangeNotifier {
             'title': data['title'] ?? '',
             'amount': (data['amount'] ?? 0).toDouble(),
             'description': data['description'] ?? '',
-            'createdAt': data['createdAt'],
-          });
+            'createdAt': data['createdAt']
+          
+});
         }
       }
 
-      // Sort by date (newest first)
       allExpenses.sort((a, b) {
         final aDate = a['createdAt'] as Timestamp?;
         final bDate = b['createdAt'] as Timestamp?;
@@ -464,67 +617,85 @@ class ExpenseProvider extends ChangeNotifier {
       return [];
     }
   }
-  // 🔹 Delete Expense
+
+  // 🔹 Delete Expense - ✅ ALREADY CORRECT!
+  // This method was already using the expense's actual date correctly
   Future<void> deleteExpense({
     required String docId,
     required double amount,
     required ExpenseType type,
-    required DateTime date,
+    required String dateId // ✅ Uses expense's actual date
   }) async {
     try {
       final userRef = _firestore.collection('users').doc(uid);
-      final deleteDateId = DateFormat('yyyy-MM-dd').format(date);
-      final dateRef =
-      userRef.collection('expenses').doc(deleteDateId);
-      final year = DateFormat('yyyy').format(date);
-      final month = DateFormat('yyyy-MM').format(date);
+      // 🔧 FIXED: Use getDateId helper with the expense's actual date
+      final dateRef = userRef.collection('expenses').doc(dateId);
+
+
+      final year = dateId.substring(0, 4);
+      final month = dateId.substring(0, 7);
 
       final yearRef = userRef.collection('year_stats').doc(year);
       final monthRef = yearRef.collection('months').doc(month);
-      // ⚡ Batch = no reads, single commit
+
       final batch = _firestore.batch();
 
       // 1️⃣ Delete expense item
       batch.delete(
-        dateRef.collection('items').doc(docId),
+        dateRef.collection('items').doc(docId)
       );
 
       // 2️⃣ Decrement date total
-      batch.update(
+      batch.set(
         dateRef,
         {
           'total': FieldValue.increment(-amount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
+          'updatedAt': FieldValue.serverTimestamp()
+        
+},
+        SetOptions(merge: true)
       );
 
       // 3️⃣ Decrement grand total
-      batch.update(
+      batch.set(
         userRef,
         {
-          'grandTotal': FieldValue.increment(-amount),
-        },
+          'grandTotal': FieldValue.increment(-amount)
+        
+},
+        SetOptions(merge: true)
       );
-      batch.update(yearRef, {
-        'grandTotal': FieldValue.increment(-amount),
-      });
 
-      batch.update(monthRef, {
-        type.name: FieldValue.increment(-amount),
-        'grandTotal': FieldValue.increment(-amount),
-      });
-      // 🚀 Commit once
+      // 4️⃣ Decrement year total
+      batch.set(
+        yearRef,
+        {
+          'grandTotal': FieldValue.increment(-amount)
+        
+},
+        SetOptions(merge: true)
+      );
+
+      // 5️⃣ Decrement month stats
+      batch.set(
+        monthRef,
+        {
+          type.name: FieldValue.increment(-amount),
+          'grandTotal': FieldValue.increment(-amount)
+        
+},
+        SetOptions(merge: true)
+      );
+
       await batch.commit();
 
       if (kDebugMode) {
-        print("⚡ Expense deleted instantly: $docId");
+        print("⚡ Expense deleted from $dateId: $docId");
       }
     } catch (e) {
       debugPrint("❌ Delete expense failed: $e");
     }
   }
-
-
 
   // 🔹 Expense Stream
   Stream<QuerySnapshot> expenseStream() {
@@ -538,15 +709,16 @@ class ExpenseProvider extends ChangeNotifier {
     if (kDebugMode) {
       print("🔍 Fetching expenses for:");
       print("   User: $uid");
-      print("   Date: $dateId");
-      print("   Path: users/$uid/expenses/$dateId/items");
+      print("   Date: $currentDateId");
+      print("   Path: users/$uid/expenses/$currentDateId/items");
     }
 
+    // 🔧 FIXED: Use currentDateId
     return _firestore
         .collection('users')
         .doc(uid)
         .collection('expenses')
-        .doc(dateId)
+        .doc(currentDateId)
         .collection('items')
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -557,7 +729,6 @@ class ExpenseProvider extends ChangeNotifier {
     });
   }
 
-  // 🔹 All expense dates
   Future<List<ExpenseDay>> getAllExpenseDays() async {
     try {
       final snapshot = await _firestore
@@ -569,7 +740,7 @@ class ExpenseProvider extends ChangeNotifier {
       return snapshot.docs.map((doc) {
         return ExpenseDay(
           dateId: doc.id,
-          total: (doc.data()['total'] ?? 0).toDouble(),
+          total: (doc.data()['total'] ?? 0).toDouble()
         );
       }).toList();
     } catch (e) {
@@ -593,7 +764,7 @@ class ExpenseProvider extends ChangeNotifier {
 
       return YearStats.fromFirestore(
         doc.id,
-        doc.data()!,
+        doc.data()!
       );
     } catch (e) {
       if (kDebugMode) {
@@ -617,7 +788,7 @@ class ExpenseProvider extends ChangeNotifier {
       return snapshot.docs
           .map((doc) => MonthStats.fromFirestore(
         doc.id,
-        doc.data(),
+        doc.data()
       ))
           .toList();
     } catch (e) {
@@ -628,9 +799,7 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
   Future<MonthStats?> getMonthStatsByMonth(String month) async {
-    // month format: yyyy-MM
     try {
       final doc = await _firestore
           .collection('users')
@@ -645,7 +814,7 @@ class ExpenseProvider extends ChangeNotifier {
 
       return MonthStats.fromFirestore(
         doc.id,
-        doc.data()!,
+        doc.data()!
       );
     } catch (e) {
       if (kDebugMode) {
@@ -655,8 +824,6 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
-  // 🔹 Total for date
   Future<double> getTotalForDate(String dateId) async {
     try {
       final doc = await _firestore
@@ -681,282 +848,68 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-
-  // 🔹 Group by month
   Map<String, List<String>> groupDatesByMonth(List<String> dates) {
     final Map<String, List<String>> grouped = {};
 
     for (final date in dates) {
-      final monthKey = date.substring(0, 7); // yyyy-MM
+      final monthKey = date.substring(0, 7);
       grouped.putIfAbsent(monthKey, () => []).add(date);
     }
 
     return grouped;
   }
 
+  Future<Map<String, List<ExpenseDay>>> getExpensesGroupedByMonthForType(
+      ExpenseType type,
+      ) async {
+    final Map<String, List<ExpenseDay>> grouped = {};
+
+    final datesSnapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('expenses')
+        .get();
+
+    for (final dateDoc in datesSnapshot.docs) {
+      final dateId = dateDoc.id;
+      final monthKey = dateId.substring(0, 7);
+
+      final itemsSnapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('expenses')
+          .doc(dateId)
+          .collection('items')
+          .where('type', isEqualTo: type.name)
+          .get();
+
+      if (itemsSnapshot.docs.isEmpty) continue;
+
+      final total = itemsSnapshot.docs.fold<double>(
+        0,
+            (s, d) => s + (d.data()['amount'] as num).toDouble(),
+      );
+
+      final day = ExpenseDay(
+        dateId: dateId,
+        total: total,
+      );
+
+      grouped.putIfAbsent(monthKey, () => []).add(day);
+    }
+
+    return grouped;
+  }
+
+
   @override
   void dispose() {
     titleController.dispose();
     amountController.dispose();
     descriptionController.dispose();
+    _expenseSubscription?.cancel();
     super.dispose();
   }
-
-
-  Future<void> migrateExpensesToYearMonthStats() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userRef = _firestore.collection('users').doc(uid);
-
-    try {
-      final userDoc = await userRef.get();
-      if (userDoc.data()?['migrationCompleted'] == true) {
-        if (kDebugMode) {
-          print("⏭️ Migration already completed");
-        }
-        return;
-      }
-
-      final expenseDatesSnap =
-      await userRef.collection('expenses').get();
-
-      final Map<String, Map<String, Map<String, double>>> stats = {};
-      double grandTotal = 0;
-
-      final batch = _firestore.batch(); // 🔥 moved up (needed for updates)
-
-      for (final dateDoc in expenseDatesSnap.docs) {
-        final dateRef =
-        userRef.collection('expenses').doc(dateDoc.id);
-
-        final itemsSnap = await dateRef.collection('items').get();
-
-        for (final item in itemsSnap.docs) {
-          final data = item.data();
-
-          final amount = (data['amount'] as num?)?.toDouble() ?? 0;
-          final createdAt =
-          (data['createdAt'] as Timestamp?)?.toDate();
-
-          if (createdAt == null || amount <= 0) continue;
-
-          const type = 'luxury'; // 🔥 FORCE LUXURY
-
-          final year = DateFormat('yyyy').format(createdAt);
-          final month = DateFormat('yyyy-MM').format(createdAt);
-
-          stats.putIfAbsent(year, () => {});
-          stats[year]!.putIfAbsent(month, () => {
-            'saving': 0,
-            'needed': 0,
-            'luxury': 0,
-            'grandTotal': 0,
-          });
-
-          stats[year]![month]![type] =
-              (stats[year]![month]![type] ?? 0) + amount;
-          stats[year]![month]!['grandTotal'] =
-              (stats[year]![month]!['grandTotal'] ?? 0) + amount;
-
-          grandTotal += amount;
-
-          // 🔥 Normalize old item
-          batch.update(item.reference, {
-            'type': 'luxury',
-          });
-        }
-      }
-
-      // 🔹 Write year & month stats
-      stats.forEach((year, months) {
-        final yearRef = userRef.collection('year_stats').doc(year);
-
-        double yearTotal = 0;
-        months.forEach((_, values) {
-          yearTotal += values['grandTotal'] ?? 0;
-        });
-
-        batch.set(
-          yearRef,
-          {
-            'grandTotal': yearTotal,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
-
-        months.forEach((month, values) {
-          batch.set(
-            yearRef.collection('months').doc(month),
-            {
-              'month': month,
-              ...values,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
-        });
-      });
-
-      // 🔹 Mark migration done
-      batch.set(
-        userRef,
-        {
-          'grandTotal': grandTotal,
-          'migrationCompleted': true,
-          'migrationAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      await batch.commit();
-      AlertDialog(
-        content: Dialog(
-
-        ),
-      );
-
-      if (kDebugMode) {
-        print("🎉 Migration completed — ALL expenses set to LUXURY");
-      }
-    } catch (e) {
-      debugPrint("❌ Migration failed: $e");
-    }
-  }
-
-
-  void showMigrationCompletedDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.greenAccent.withOpacity(0.15),
-              ),
-              child: const Icon(
-                Icons.check_circle_outline,
-                size: 48,
-                color: Colors.greenAccent,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Migration Completed",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "All previous expenses have been successfully migrated and marked as Luxury.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF64FFDA),
-                  foregroundColor: const Color(0xFF121212),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "Done",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> migrateOldExpenses() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userRef = _firestore.collection('users').doc(uid);
-
-    try {
-      final expenseDatesSnap =
-      await userRef.collection('expenses').get();
-
-      double grandTotal = 0;
-
-      for (final dateDoc in expenseDatesSnap.docs) {
-        final dateId = dateDoc.id;
-        final dateRef = userRef.collection('expenses').doc(dateId);
-
-        // 🔹 Skip if already migrated
-        if (dateDoc.data().containsKey('total')) {
-          grandTotal += (dateDoc['total'] ?? 0).toDouble();
-          if (kDebugMode) {
-            print("⏭️ Skipping $dateId (already migrated)");
-          }
-          continue;
-        }
-
-        // 🔹 Read items and calculate total
-        final itemsSnap =
-        await dateRef.collection('items').get();
-
-        double dayTotal = 0;
-        for (final item in itemsSnap.docs) {
-          dayTotal += (item['amount'] as num).toDouble();
-        }
-
-        // 🔹 Write total to date document
-        await dateRef.set({
-          'date': dateId,
-          'total': dayTotal,
-          'migrated': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        grandTotal += dayTotal;
-
-        if (kDebugMode) {
-          print("✅ Migrated $dateId → ₹$dayTotal");
-        }
-      }
-
-      // 🔹 Save grand total
-      await userRef.set({
-        'grandTotal': grandTotal,
-        'migrationCompleted': true,
-        'migrationAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      if (kDebugMode) {
-        print("🎉 Migration completed. Grand Total = ₹$grandTotal");
-      }
-    } catch (e) {
-      debugPrint("❌ Migration failed: $e");
-    }
-  }
-
 
   Future<void> showAddCategoryDialog(BuildContext context) async {
     final TextEditingController controller = TextEditingController();
@@ -966,11 +919,11 @@ class ExpenseProvider extends ChangeNotifier {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16)
         ),
         title: const Text(
           'Add Category',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white)
         ),
         content: TextField(
           controller: controller,
@@ -983,22 +936,22 @@ class ExpenseProvider extends ChangeNotifier {
             fillColor: const Color(0xFF2C2C2C),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
+              borderSide: BorderSide.none
+            )
+          )
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
+              style: TextStyle(color: Colors.grey[500])
+            )
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF64FFDA),
-              foregroundColor: const Color(0xFF121212),
+              foregroundColor: const Color(0xFF121212)
             ),
             onPressed: () async {
               final title = controller.text.trim();
@@ -1011,23 +964,27 @@ class ExpenseProvider extends ChangeNotifier {
                     .collection('categories')
                     .add({
                   'title': title,
-                  'createdAt': FieldValue.serverTimestamp(),
-                });
+                  'createdAt': FieldValue.serverTimestamp()
+                
+});
+
+                await fetchCategories();
 
                 if (kDebugMode) {
                   print('✅ Category added: $title');
                 }
 
-                Navigator.pop(ctx);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                }
               } catch (e) {
                 debugPrint('❌ Failed to add category: $e');
               }
             },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+            child: const Text('Add')
+          )
+        ]
+      )
     );
   }
-
 }

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../providers/expence_provider.dart';
 
 import '../providers/export_provider.dart';
+import '../repair tools/setting_page.dart';
 import 'anaylitcs_scree.dart';
 import 'search_expance_screen.dart';
 
@@ -67,6 +68,18 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 builder: (_) => ExpenseAnalyticsScreen(
                   year: provider.selectedYear,
                 ),
+              ),
+            );
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          tooltip: "Settings page",
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ExpenseMaintenancePage()
               ),
             );
           },
