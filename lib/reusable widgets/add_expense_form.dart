@@ -1,5 +1,7 @@
+import 'package:expence_app/enums/indian_number_formatter.dart';
 import 'package:expence_app/reusable%20widgets/transaction_type_chips.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expence_provider.dart';
@@ -41,41 +43,58 @@ class AddExpenseForm extends StatelessWidget {
             ),
             const SizedBox(height: 24),
           ],
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    TitleAutoCompleteField(
-                      controller: provider.titleController,
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      controller: provider.amountController,
-                      label: 'Amount',
-                      hint: 'Enter amount',
-                      icon: Icons.currency_rupee,
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      controller: provider.descriptionController,
-                      label: 'Description (Optional)',
-                      hint: 'Add details...',
-                      icon: Icons.notes,
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    TransactionTypeChips(),
-                  ],
+
+          /// 🔥 HEIGHT-SYNCED ROW
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                /// LEFT SIDE
+                Expanded(
+                  child: Column(
+                    children: [
+                      TitleAutoCompleteField(
+                        controller: provider.titleController,
+                      ),
+                      const SizedBox(height: 16),
+
+                      /// 💰 AMOUNT FIELD (INDIAN FORMAT – VISUAL ONLY)
+                      AppTextField(
+                        controller: provider.amountController,
+                        label: 'Amount',
+                        hint: 'Enter amount',
+                        icon: Icons.currency_rupee,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          IndianNumberFormatter(),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: provider.descriptionController,
+                        label: 'Description (Optional)',
+                        hint: 'Add details...',
+                        icon: Icons.notes,
+                      ),
+                      const SizedBox(height: 16),
+                      const TransactionTypeChips(),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              ExpenseTypeSelector(),
-            ],
+
+                const SizedBox(width: 12),
+
+                /// RIGHT SIDE
+                const ExpenseTypeSelector(),
+              ],
+            ),
           ),
+
           const SizedBox(height: 24),
+
+          /// 🔹 ADD BUTTON
           SizedBox(
             width: double.infinity,
             height: 52,

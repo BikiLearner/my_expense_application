@@ -6,11 +6,10 @@ import 'models/month_stats.dart';
 import 'models/year_stats.dart';
 import 'providers/expence_provider.dart';
 import 'expense_model.dart';
-import 'history_screens/anaylitcs_scree.dart';
+
 import 'history_screens/grand_total_banner.dart';
 import 'history_screens/history_app_bar.dart';
-import 'history_screens/monthly_expense_list.dart';
-import 'history_screens/search_expance_screen.dart';
+
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -237,7 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Expanded(
             child: _QuickStatCard(
               icon: Icons.trending_up,
-              label: "Avg/Day",
+              label: "Avg",
               value: "₹${avgPerDay.toStringAsFixed(0)}",
               color: Colors.blueAccent
             )

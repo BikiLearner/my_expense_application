@@ -43,7 +43,7 @@ class DayCard extends StatelessWidget {
           Column(
             children: items.map((d) {
               return ExpenseItemTile(
-                expenseItem: d
+                expenseItem: d, toShow: true,
               );
             }).toList()
           )

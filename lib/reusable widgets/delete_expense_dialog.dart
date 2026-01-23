@@ -50,7 +50,7 @@ class DeleteExpenseDialog extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.redAccent,
           ),
-          child: const Text('Delete'),
+          child: const Text('Delete', style: TextStyle(color:Colors.white,),),
         ),
       ],
     );

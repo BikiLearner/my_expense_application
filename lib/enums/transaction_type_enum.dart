@@ -17,9 +17,9 @@ extension TransactionTypeX on TransactionTypeEnum {
   IconData get icon {
     switch (this) {
       case TransactionTypeEnum.cash:
-        return Icons.money;
+        return Icons.attach_money_sharp;
       case TransactionTypeEnum.credit:
-        return Icons.credit_card;
+        return Icons.credit_card_rounded;
     }
   }
 }

@@ -8,8 +8,9 @@ import 'edit_expense_dialog.dart';
 
 class ExpenseItemTile extends StatelessWidget {
   final ExpenseItem expenseItem;
+  final bool toShow;
 
-  const ExpenseItemTile({super.key, required this.expenseItem});
+  const ExpenseItemTile({super.key, required this.expenseItem, required this.toShow});
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,7 @@ class ExpenseItemTile extends StatelessWidget {
                     color: Colors.white
                   )
                 ),
-                if ((expenseItem.description ?? '').toString().isNotEmpty)
+                if ((expenseItem.description ?? '').toString().isNotEmpty && toShow)
                   Text(
                       expenseItem.description,
                     style: const TextStyle(
@@ -60,7 +61,8 @@ class ExpenseItemTile extends StatelessWidget {
                       color: Color(0xFF9AA0A6)
                     )
                   ),
-                Text(
+                if(toShow)
+                  Text(
                   txn.toUpperCase(),
                   style: const TextStyle(
                     fontSize: 11,

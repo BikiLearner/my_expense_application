@@ -159,7 +159,9 @@ class ExpenseProvider extends ChangeNotifier {
     if (user == null) return;
 
     final title = titleController.text.trim();
-    final amount = double.tryParse(amountController.text.trim());
+    final amount = double.tryParse(
+      amountController.text.replaceAll(',', '').trim(),
+    );
     final desc = descriptionController.text.trim();
 
     if (title.isEmpty || amount == null || amount <= 0) return;
@@ -986,80 +988,172 @@ class ExpenseProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> showAddCategoryDialog(BuildContext context) async {
-    final TextEditingController controller = TextEditingController();
+Future<void> showAddCategoryDialog(BuildContext context) async {
+  final TextEditingController controller = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)
-        ),
-        title: const Text(
-          'Add Category',
-          style: TextStyle(color: Colors.white)
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'e.g. Food, Travel, Rent',
-            hintStyle: TextStyle(color: Colors.grey[600]),
-            filled: true,
-            fillColor: const Color(0xFF2C2C2C),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none
-            )
-          )
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey[500])
-            )
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF64FFDA),
-              foregroundColor: const Color(0xFF121212)
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text(
+        'Add Category',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: StatefulBuilder(
+        builder: (context, setState) {
+          return SizedBox(
+            width: double.maxFinite,
+            height: 320,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Food, Travel, Rent',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    filled: true,
+                    fillColor: const Color(0xFF2C2C2C),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                if (cachedCategories.isNotEmpty) ...[
+                  const Text(
+                    'Existing Categories',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: cachedCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = cachedCategories[index];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2C),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  category,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                onPressed: () async {
+                                  await deleteCategory(category);
+                                  setState(() {});
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
             ),
-            onPressed: () async {
-              final title = controller.text.trim();
-              if (title.isEmpty) return;
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF64FFDA),
+            foregroundColor: const Color(0xFF121212),
+          ),
+          onPressed: () async {
+            final title = controller.text.trim();
+            if (title.isEmpty) return;
 
-              try {
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(uid)
-                    .collection('categories')
-                    .add({
-                  'title': title,
-                  'createdAt': FieldValue.serverTimestamp()
-                
-});
+            try {
+              await _firestore
+                  .collection('users')
+                  .doc(uid)
+                  .collection('categories')
+                  .add({
+                'title': title,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
 
-                await fetchCategories();
+              await fetchCategories();
 
-                if (kDebugMode) {
-                  print('✅ Category added: $title');
-                }
-
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-              } catch (e) {
-                debugPrint('❌ Failed to add category: $e');
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
               }
-            },
-            child: const Text('Add')
-          )
-        ]
-      )
-    );
+            } catch (e) {
+              debugPrint('❌ Failed to add category: $e');
+            }
+          },
+          child: const Text('Add'),
+        ),
+      ],
+    ),
+  );
+}
+
+
+
+Future<void> deleteCategory(String categoryTitle) async {
+  try {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('categories')
+        .where('title', isEqualTo: categoryTitle)
+        .get();
+
+    final batch = _firestore.batch();
+
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+
+    await fetchCategories(); // refresh cache
+
+    if (kDebugMode) {
+      print('🗑️ Category deleted: $categoryTitle');
+    }
+  } catch (e) {
+    debugPrint('❌ Failed to delete category: $e');
   }
+}
 }

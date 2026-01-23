@@ -47,7 +47,7 @@ class ExpenseScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.history, color: Color(0xFF64FFDA)),
+            icon: const Icon(Icons.generating_tokens_sharp, color: Color(0xFF64FFDA)),
             tooltip: 'History',
             onPressed: () {
               Navigator.push(
@@ -213,7 +213,7 @@ class ExpenseScreen extends StatelessWidget {
                                 '₹${total.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 32,
+                                  fontSize: 28,
                                   fontWeight: FontWeight.bold
                                 )
                               )
@@ -246,7 +246,7 @@ class ExpenseScreen extends StatelessWidget {
                         itemBuilder: (_, i) {
                           final expense = expenses[i];
 
-                          return ExpenseItemTile(expenseItem: expense,);
+                          return ExpenseItemTile(expenseItem: expense, toShow: false,);
                         }
                       )
                     )
