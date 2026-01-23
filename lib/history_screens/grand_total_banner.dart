@@ -342,7 +342,7 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Saving",
                   value:"₹${saving.toStringAsFixed(0)}" ,
                   extraWidget: _QuickStatCard(
-                    icon: Icons.trending_up, label: 'Avg', value: (saving/totalDays).toStringAsFixed(0), color: Colors.greenAccent,
+                    icon: Icons.trending_up, label: 'Avg = ', value: (saving/totalDays).toStringAsFixed(0), color: Colors.greenAccent,
 
                   ),
                   color: Colors.greenAccent, onTap: () { 
@@ -359,7 +359,7 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Luxury",
                   value: "₹${luxury.toStringAsFixed(0)}",
                     extraWidget: _QuickStatCard(
-                      icon: Icons.trending_up, label: 'Avg', value: (luxury/totalDays).toStringAsFixed(0), color: Colors.pinkAccent,
+                      icon: Icons.trending_up, label: 'Avg = ', value: (luxury/totalDays).toStringAsFixed(0), color: Colors.pinkAccent,
 
                     ),
                   color: Colors.pinkAccent, onTap: () {
@@ -376,7 +376,7 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Needed",
                   value: "₹${needed.toStringAsFixed(0)}",
                     extraWidget: _QuickStatCard(
-                      icon: Icons.trending_up, label: 'Avg', value: (needed/totalDays).toStringAsFixed(0), color: Colors.orangeAccent,
+                      icon: Icons.trending_up, label: 'Avg = ', value: (needed/totalDays).toStringAsFixed(0), color: Colors.orangeAccent,
 
                     ),
                   color: Colors.orangeAccent, onTap: () {

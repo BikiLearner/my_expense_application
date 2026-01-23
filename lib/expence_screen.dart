@@ -213,7 +213,7 @@ class ExpenseScreen extends StatelessWidget {
                                 '₹${total.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 28,
+                                  fontSize: 25,
                                   fontWeight: FontWeight.bold
                                 )
                               )
@@ -226,10 +226,10 @@ class ExpenseScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12)
                             ),
                             child: Text(
-                              '${expenses.length} items',
+                              '${expenses.length} Transactions',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600
                               )
                             )

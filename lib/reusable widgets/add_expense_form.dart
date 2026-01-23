@@ -56,7 +56,7 @@ class AddExpenseForm extends StatelessWidget {
                       TitleAutoCompleteField(
                         controller: provider.titleController,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
 
                       /// 💰 AMOUNT FIELD (INDIAN FORMAT – VISUAL ONLY)
                       AppTextField(
@@ -71,14 +71,14 @@ class AddExpenseForm extends StatelessWidget {
                         ],
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       AppTextField(
                         controller: provider.descriptionController,
                         label: 'Description (Optional)',
                         hint: 'Add details...',
                         icon: Icons.notes,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       const TransactionTypeChips(),
                     ],
                   ),
@@ -92,7 +92,7 @@ class AddExpenseForm extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 15),
 
           /// 🔹 ADD BUTTON
           SizedBox(
@@ -120,6 +120,7 @@ class AddExpenseForm extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(height: 10,)
         ],
       ),
     );
