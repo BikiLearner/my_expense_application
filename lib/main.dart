@@ -1,4 +1,5 @@
 import 'package:expence_app/providers/export_provider.dart';
+import 'package:expence_app/providers/month_expense_provider.dart';
 import 'package:expence_app/providers/setting_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
         ChangeNotifierProvider(create: (_) => ExportProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,

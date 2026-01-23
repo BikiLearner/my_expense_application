@@ -47,6 +47,9 @@ class ExpenseProvider extends ChangeNotifier {
   // 🔹 Firestore
   String _selectedYear = DateTime.now().year.toString();
   String get selectedYear => _selectedYear;
+
+  int _selectedMonth = DateTime.now().month;
+  int get selectedMonth => _selectedMonth;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 🔧 FIXED: Renamed to currentDateId for clarity
@@ -59,6 +62,25 @@ class ExpenseProvider extends ChangeNotifier {
   // Current selected date
 
 
+  String monthFromInt(int month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    if (month < 1 || month > 12) return 'Invalid month';
+    return months[month - 1];
+  }
 
 
   // Stream subscription
@@ -111,6 +133,10 @@ class ExpenseProvider extends ChangeNotifier {
 
   void setYear(String year) {
     _selectedYear = year;
+    notifyListeners();
+  }
+  void setMonth(int month) {
+    _selectedMonth = month;
     notifyListeners();
   }
 
@@ -750,6 +776,55 @@ class ExpenseProvider extends ChangeNotifier {
       return [];
     }
   }
+
+
+  Future<Map<String, List<ExpenseItem>>> fetchMonthExpenses(
+      String monthKey, // yyyy-MM format (e.g., '2025-01')
+      ) async {
+    final Map<String, List<ExpenseItem>> grouped = {};
+
+    try {
+      // Get all expense dates for this month
+      final expensesSnapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('expenses')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: '$monthKey-01')
+          .where(FieldPath.documentId, isLessThan: '$monthKey-32') // Covers all days
+          .get();
+
+      // Fetch items for each date
+      for (final dateDoc in expensesSnapshot.docs) {
+        final dateId = dateDoc.id;
+
+        final itemsSnapshot = await dateDoc.reference.collection('items').get();
+
+        if (itemsSnapshot.docs.isEmpty) continue;
+
+        final items = itemsSnapshot.docs.map((itemDoc) {
+          return ExpenseItem.fromFirestore(
+            itemDoc.id,
+            itemDoc.data(),
+            dateId,
+          );
+        }).toList();
+
+        grouped[dateId] = items;
+      }
+
+      if (kDebugMode) {
+        print("📊 Fetched expenses for $monthKey: ${grouped.length} dates");
+      }
+
+      return grouped;
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Error fetching month expenses: $e");
+      }
+      return {};
+    }
+  }
+
 
   Future<YearStats?> getYearStats() async {
     try {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'history_screens/month_list_page.dart';
 import 'models/month_stats.dart';
 import 'models/year_stats.dart';
 import 'providers/expence_provider.dart';
@@ -40,7 +41,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         builder: (context, expenseSnapshot) {
           if (expenseSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA))
             );
           }
 
@@ -52,15 +53,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Icon(
                     Icons.receipt_long_outlined,
                     size: 80,
-                    color: Colors.grey[600],
+                    color: Colors.grey[600]
                   ),
                   const SizedBox(height: 16),
                   Text(
                     "No expenses yet",
                     style: TextStyle(
                       color: Colors.grey[400],
-                      fontSize: 18,
-                    ),
+                      fontSize: 18
+                    )
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -68,11 +69,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+                      fontSize: 14
+                    )
+                  )
+                ]
+              )
             );
           }
 
@@ -85,14 +86,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
             future: Future.wait([
                 provider.getYearStats(),
                 provider.getMonthStatsByMonth(
-                  DateTime.now().toString().substring(0, 7), // yyyy-MM (current month)
+                  DateTime.now().toString().substring(0, 7) // yyyy-MM (current month)
                 ),
-                provider.getYearIncomeFromFirestore(provider.selectedYear),
+                provider.getYearIncomeFromFirestore(provider.selectedYear)
               ]),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
+                  child: CircularProgressIndicator(color: Color(0xFF64FFDA))
                 );
               }
 
@@ -106,40 +107,107 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 .where((d) => d.dateId.startsWith(provider.selectedYear))
                 .length;
 
-              return Column(
-                children: [
-                  GrandTotalBanner(
-                    grandTotal: yearExpense,
-                    yearExpense: yearExpense,
-                    yearIncome: yearIncome,
-                    totalDays: yearDays,
-
-                    // 🔥 NEW (FROM MONTH STATS)
-                    monthTotal: monthStats?.grandTotal ?? 0,
-                    saving: monthStats?.saving ?? 0,
-                    luxury: monthStats?.luxury ?? 0,
-                    needed: monthStats?.needed ?? 0,
-
-                    onRefresh: _refresh,
-                  ),
-
-                  _buildQuickStatsRow(
-                    context,
-                    days,
-                    yearExpense,
-                    yearDays,
-                  ),
-
-                  Expanded(
-                    child: MonthlyExpenseList(grouped: grouped),
-                  ),
-                ],
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    GrandTotalBanner(
+                      grandTotal: yearExpense,
+                      yearExpense: yearExpense,
+                      yearIncome: yearIncome,
+                      totalDays: yearDays,
+                
+                      // 🔥 NEW (FROM MONTH STATS)
+                      monthTotal: monthStats?.grandTotal ?? 0,
+                      saving: monthStats?.saving ?? 0,
+                      luxury: monthStats?.luxury ?? 0,
+                      needed: monthStats?.needed ?? 0,
+                
+                      onRefresh: _refresh
+                    ),
+                
+                    _buildQuickStatsRow(
+                      context,
+                      days,
+                      yearExpense,
+                      yearDays
+                    ),
+                
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Material(
+                          color: Colors.transparent, // important for ripple
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context)=>MonthlyExpensePageHolidingList(grouped: grouped)));
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2)
+                                  )
+                                ]
+                              ),
+                              child: Row(
+                                children: [
+                                  // Leading icon
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(10)
+                                    ),
+                                    child: const Icon(
+                                      Icons.calendar_month,
+                                      color: Colors.white,
+                                      size: 20
+                                    )
+                                  ),
+                
+                                  const SizedBox(width: 12),
+                
+                                  const Expanded(
+                                    child: Text(
+                                      'Go to monthly expenses',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500
+                                      )
+                                    )
+                                  ),
+                
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white70,
+                                    size: 16
+                                  )
+                                ]
+                              )
+                            )
+                          )
+                        )
+                      ),
+                    )
+                    
+                  ]
+                ),
               );
-            },
+            }
           );
 
-        },
-      ),
+        }
+      )
     );
   }
 
@@ -148,7 +216,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     BuildContext context,
     List<ExpenseDay> days,
     double yearExpense,
-    int yearDays,
+    int yearDays
   ) {
     final provider = context.read<ExpenseProvider>();
     final yearDays2 = days.where((d) => d.dateId.startsWith(provider.selectedYear)).toList();
@@ -171,8 +239,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               icon: Icons.trending_up,
               label: "Avg/Day",
               value: "₹${avgPerDay.toStringAsFixed(0)}",
-              color: Colors.blueAccent,
-            ),
+              color: Colors.blueAccent
+            )
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -180,11 +248,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               icon: Icons.arrow_upward,
               label: "Highest",
               value: "₹${highestDay.toStringAsFixed(0)}",
-              color: Colors.orangeAccent,
-            ),
-          ),
-        ],
-      ),
+              color: Colors.orangeAccent
+            )
+          )
+        ]
+      )
     );
   }
 
@@ -208,7 +276,7 @@ class _QuickStatCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
+    required this.color
   });
 
   @override
@@ -219,8 +287,8 @@ class _QuickStatCard extends StatelessWidget {
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withOpacity(0.3),
-        ),
+          color: color.withOpacity(0.3)
+        )
       ),
       child: Row(
         children: [
@@ -228,9 +296,9 @@ class _QuickStatCard extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8)
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 20)
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -241,8 +309,8 @@ class _QuickStatCard extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
+                    fontSize: 12
+                  )
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -250,14 +318,14 @@ class _QuickStatCard extends StatelessWidget {
                   style: TextStyle(
                     color: color,
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                    fontWeight: FontWeight.bold
+                  )
+                )
+              ]
+            )
+          )
+        ]
+      )
     );
   }
 }

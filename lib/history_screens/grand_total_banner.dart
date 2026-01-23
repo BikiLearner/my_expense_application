@@ -242,7 +242,7 @@ class GrandTotalBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "${provider.selectedYear} • Yearly Expense",
+                    "${provider.monthFromInt(provider.selectedMonth)} • Expense",
                     style: TextStyle(
                       color: Colors.grey[300],
                       fontSize: 14,
@@ -253,7 +253,7 @@ class GrandTotalBanner extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "₹${grandTotal.toStringAsFixed(0)}",
+                "₹${monthTotal.toStringAsFixed(0)}",
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 40,
@@ -263,13 +263,22 @@ class GrandTotalBanner extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                "This Month: ₹${monthTotal.toStringAsFixed(0)}",
+                "${provider.selectedYear} expenses : ₹${grandTotal.toStringAsFixed(0)}",
                 style: TextStyle(
                   color: const Color(0xFF64FFDA),
                   fontSize: 16,
                   fontWeight: FontWeight.w600
                 )
-              )
+              ),
+              const SizedBox(height: 6),
+              // Text(
+              //     "This Month total income : ₹${grandTotal.toStringAsFixed(0)}",
+              //     style: TextStyle(
+              //         color: const Color(0xFF64FFDA),
+              //         fontSize: 16,
+              //         fontWeight: FontWeight.w600
+              //     )
+              // )
 
             ]
           ),
@@ -332,6 +341,10 @@ class GrandTotalBanner extends StatelessWidget {
                   icon: Icons.savings_outlined,
                   label: "Saving",
                   value:"₹${saving.toStringAsFixed(0)}" ,
+                  extraWidget: _QuickStatCard(
+                    icon: Icons.trending_up, label: 'Avg/Day', value: (saving/totalDays).toStringAsFixed(0), color: Colors.greenAccent,
+
+                  ),
                   color: Colors.greenAccent, onTap: () { 
                     Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.saving)));
                 }
@@ -345,9 +358,13 @@ class GrandTotalBanner extends StatelessWidget {
                   icon: Icons.auto_awesome_outlined,
                   label: "Luxury",
                   value: "₹${luxury.toStringAsFixed(0)}",
+                    extraWidget: _QuickStatCard(
+                      icon: Icons.trending_up, label: 'Avg/Day', value: (luxury/totalDays).toStringAsFixed(0), color: Colors.pinkAccent,
+
+                    ),
                   color: Colors.pinkAccent, onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.luxury)));
-                },
+                }
                 ),
                 Container(
                   width: 1,
@@ -358,9 +375,13 @@ class GrandTotalBanner extends StatelessWidget {
                   icon: Icons.shopping_cart_outlined,
                   label: "Needed",
                   value: "₹${needed.toStringAsFixed(0)}",
+                    extraWidget: _QuickStatCard(
+                      icon: Icons.trending_up, label: 'Avg/Day', value: (needed/totalDays).toStringAsFixed(0), color: Colors.orangeAccent,
+
+                    ),
                   color: Colors.orangeAccent, onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.needed)));
-                },
+                }
                 )
               ]
             )
@@ -370,6 +391,7 @@ class GrandTotalBanner extends StatelessWidget {
       )
     );
   }
+
 
   void _showAddIncomeDialog(BuildContext context) {
     final provider = context.read<ExpenseProvider>();
@@ -701,12 +723,13 @@ class _StatItem extends StatelessWidget {
   final String value;
   final Color color;
   final Function() onTap;
+  final Widget? extraWidget;
 
   const _StatItem({
     required this.icon,
     required this.label,
     required this.value,
-    required this.color, required this.onTap
+    required this.color, required this.onTap, this.extraWidget
   });
 
   @override
@@ -732,7 +755,8 @@ class _StatItem extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.bold
             )
-          )
+          ),
+          if(extraWidget!=null) ...[extraWidget!]
         ]
       )
     );
@@ -789,3 +813,45 @@ class _SummaryRow extends StatelessWidget {
     );
   }
 }
+
+class _QuickStatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _QuickStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$label $value',
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

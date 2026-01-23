@@ -38,54 +38,78 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // 🔥 Export Button
-        IconButton(
-          icon: const Icon(Icons.file_download, color: Colors.white),
-          tooltip: "Export Data",
-          onPressed: () => _showExportDialog(context, provider.selectedYear),
-        ),
-        // 🔥 Search Button
-        IconButton(
-          icon: const Icon(Icons.search, color: Colors.white),
-          tooltip: "Search Expenses",
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const SearchExpensesScreen(),
-              ),
-            );
+        PopupMenuButton<_HistoryMenuAction>(
+          icon: const Icon(Icons.more_vert, color: Colors.white),
+          color: const Color(0xFF2A2A2A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          onSelected: (action) {
+            switch (action) {
+              case _HistoryMenuAction.export:
+                _showExportDialog(context, provider.selectedYear);
+                break;
+
+              case _HistoryMenuAction.search:
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SearchExpensesScreen(),
+                  ),
+                );
+                break;
+
+              case _HistoryMenuAction.analytics:
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ExpenseAnalyticsScreen(
+                      year: provider.selectedYear,
+                    ),
+                  ),
+                );
+                break;
+
+              case _HistoryMenuAction.settings:
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ExpenseMaintenancePage(),
+                  ),
+                );
+                break;
+            }
           },
-        ),
-        // 🔥 Analytics Button
-        IconButton(
-          icon: const Icon(Icons.bar_chart, color: Colors.white),
-          tooltip: "View Analytics",
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ExpenseAnalyticsScreen(
-                  year: provider.selectedYear,
-                ),
-              ),
-            );
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white),
-          tooltip: "Settings page",
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ExpenseMaintenancePage()
-              ),
-            );
-          },
+          itemBuilder: (context) => [
+            _menuItem(
+              value: _HistoryMenuAction.export,
+              icon: Icons.file_download,
+              iconColor: const Color(0xFF64FFDA),
+              label: "Export Data",
+            ),
+            _menuItem(
+              value: _HistoryMenuAction.search,
+              icon: Icons.search,
+              iconColor: Colors.blueAccent,
+              label: "Search Expenses",
+            ),
+            _menuItem(
+              value: _HistoryMenuAction.analytics,
+              icon: Icons.bar_chart,
+              iconColor: Colors.purpleAccent,
+              label: "Analytics",
+            ),
+            _menuItem(
+              value: _HistoryMenuAction.settings,
+              icon: Icons.settings,
+              iconColor: Colors.orangeAccent,
+              label: "Settings",
+            ),
+          ],
         ),
         const SizedBox(width: 8),
       ],
+
     );
   }
 
@@ -410,4 +434,39 @@ class _ExportOptionTile extends StatelessWidget {
       ),
     );
   }
+
+}
+enum _HistoryMenuAction {
+  export,
+  search,
+  analytics,
+  settings,
+}
+
+PopupMenuItem<_HistoryMenuAction> _menuItem({
+  required _HistoryMenuAction value,
+  required IconData icon,
+  required Color iconColor,
+  required String label,
+}) {
+  return PopupMenuItem<_HistoryMenuAction>(
+    value: value,
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white),
+        ),
+      ],
+    ),
+  );
 }
