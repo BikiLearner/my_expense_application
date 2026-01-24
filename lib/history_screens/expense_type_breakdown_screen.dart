@@ -1,151 +1,156 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../enums/expense_type.dart';
+import '../models/expense_items.dart';
 import '../providers/expence_provider.dart';
 import '../expense_model.dart';
+import '../providers/month_expense_provider.dart';
+import '../reusable widgets/day_expense.dart';
 import 'day_expense_tile.dart';
 
 class ExpenseTypeBreakdownScreen extends StatelessWidget {
   final ExpenseType type;
+  final String monthKey; // yyyy-MM
 
   const ExpenseTypeBreakdownScreen({
     super.key,
     required this.type,
+    required this.monthKey,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Ensure correct month is loaded (no rebuild)
+    final provider = context.read<MonthExpensesProvider>();
+    if (provider.currentMonth != monthKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        provider.setMonth(monthKey);
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E1E1E),
+        iconTheme: IconThemeData(
+          color: Colors.white
+        ),
         title: Text(
-          '${type.label} Expenses',
+          '${type.label} • $monthKey',
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      body: FutureBuilder<Map<String, List<ExpenseDay>>>(
-        future: context
-            .read<ExpenseProvider>()
-            .getExpensesGroupedByMonthForType(type),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+      body: Selector<MonthExpensesProvider, bool>(
+        selector: (_, p) => p.isLoading,
+        builder: (context, isLoading, _) {
+          if (isLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
-            );
-          }
-
-          final grouped = snapshot.data!;
-          final total = grouped.values
-              .expand((e) => e)
-              .fold(0.0, (s, d) => s + d.total);
-
-          if (grouped.isEmpty) {
-            return const Center(
-              child: Text(
-                'No expenses found',
-                style: TextStyle(color: Colors.grey),
+              child: CircularProgressIndicator(
+                color: Color(0xFF64FFDA),
               ),
             );
           }
 
-          return Column(
-            children: [
-              // 🔹 Total banner
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      type.color.withOpacity(0.8),
-                      type.color.withOpacity(0.4),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    Text(
-                      '₹${total.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 🔹 Monthly breakdown
-              Expanded(
-                child: ListView(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: grouped.entries
-                      .map(
-                        (e) => _MonthTile(
-                      monthKey: e.key,
-                      days: e.value,
-                    ),
-                  )
-                      .toList(),
-                ),
-              ),
-            ],
-          );
+          return _ExpenseTypeBody(type: type);
         },
       ),
     );
   }
 }
-class _MonthTile extends StatelessWidget {
-  final String monthKey;
-  final List<ExpenseDay> days;
+class _ExpenseTypeBody extends StatelessWidget {
+  final ExpenseType type;
 
-  const _MonthTile({
-    required this.monthKey,
-    required this.days,
-  });
+  const _ExpenseTypeBody({required this.type});
 
   @override
   Widget build(BuildContext context) {
-    final label =
-    DateFormat('MMMM yyyy').format(DateTime.parse('$monthKey-01'));
-    final total = days.fold(0.0, (s, d) => s + d.total);
+    return Selector<MonthExpensesProvider,
+        ({Map<String, List<ExpenseItem>> grouped, double total})>(
+      selector: (_, p) => (
+      grouped: p.getExpensesForType(type),
+      total: p.getMonthTotalForType(type),
+      ),
+      shouldRebuild: (prev, next) =>
+      prev.total != next.total ||
+          !mapEquals(prev.grouped, next.grouped),
+      builder: (context, data, _) {
+        if (data.grouped.isEmpty) {
+          return const Center(
+            child: Text(
+              'No expenses found',
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ExpansionTile(
-        title: Text(
-          label,
-          style: const TextStyle(color: Colors.white),
-        ),
-        trailing: Text(
-          '₹${total.toStringAsFixed(0)}',
-          style: const TextStyle(
-            color: Color(0xFF64FFDA),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        children: days
-            .map(
-              (d) => DayExpenseTile(day: d),
-        )
-            .toList(),
-      ),
+        // Sort dates (latest first)
+        final sortedEntries = data.grouped.entries.toList()
+          ..sort((a, b) => b.key.compareTo(a.key));
+
+        return Column(
+          children: [
+            /// 🔹 Total Banner
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    type.color.withOpacity(0.8),
+                    type.color.withOpacity(0.4),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  Text(
+                    '₹${data.total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            /// 🔹 Day-wise breakdown using DayCard
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                itemCount: sortedEntries.length,
+                itemBuilder: (context, index) {
+                  final entry = sortedEntries[index];
+                  final dateId = entry.key;
+                  final items = entry.value;
+
+                  return DayCard(
+                    dateId: dateId,
+                    items: items,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
+
+
+
+

@@ -3,10 +3,12 @@ import 'dart:ui';
 import 'package:expence_app/enums/expense_type.dart';
 import 'package:expence_app/history_screens/expense_type_breakdown_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expence_provider.dart';
 import 'income_breakdown.dart';
+import 'monthly_expense_page.dart';
 
 
 class GrandTotalBanner extends StatelessWidget {
@@ -36,7 +38,10 @@ class GrandTotalBanner extends StatelessWidget {
     final provider = context.watch<ExpenseProvider>();
     final savings = yearIncome - yearExpense;
     final moneyLeft = yearIncome - yearExpense;
-
+    final monthKey =
+        '${provider.selectedYear}-${provider.selectedMonth.toString().padLeft(2, '0')}';
+    final label =
+    DateFormat('MMMM yyyy').format(DateTime.parse("$monthKey-01"));
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.all(16),
@@ -309,6 +314,7 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Money Left",
                   value: "₹${moneyLeft.toStringAsFixed(0)}",
                   color: moneyLeft >= 0 ? Colors.greenAccent : Colors.redAccent, onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>IncomeBreakdownScreen(year: provider.selectedYear)));
 }
                 ),
                 Container(
@@ -321,6 +327,7 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Days",
                   value: "$totalDays",
                   color: const Color(0xFF64FFDA), onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>MonthlyExpensePage(label: label, monthKey: monthKey,)));
 }
                 )
               ]
@@ -346,7 +353,7 @@ class GrandTotalBanner extends StatelessWidget {
 
                   ),
                   color: Colors.greenAccent, onTap: () { 
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.saving)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.saving, monthKey:monthKey)));
                 }
                 ),
                 Container(
@@ -363,7 +370,7 @@ class GrandTotalBanner extends StatelessWidget {
 
                     ),
                   color: Colors.pinkAccent, onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.luxury)));
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.luxury, monthKey: monthKey,)));
                 }
                 ),
                 Container(
@@ -380,7 +387,7 @@ class GrandTotalBanner extends StatelessWidget {
 
                     ),
                   color: Colors.orangeAccent, onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.needed)));
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ExpenseTypeBreakdownScreen(type: ExpenseType.needed, monthKey: monthKey,)));
                 }
                 )
               ]

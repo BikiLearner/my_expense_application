@@ -1,8 +1,10 @@
+import 'package:expence_app/providers/all_expense_provider.dart';
 import 'package:expence_app/providers/export_provider.dart';
 import 'package:expence_app/providers/month_expense_provider.dart';
 import 'package:expence_app/providers/setting_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers/auth_provider.dart';
 import 'auth_wraper.dart';
@@ -18,11 +20,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   runApp(const MyApp());
 }
 
 
 class MyApp extends StatelessWidget {
+
+
   const MyApp({super.key});
 
   @override
@@ -34,6 +39,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExportProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
+        ChangeNotifierProvider(create: (_) => AllExpensesProvider()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,

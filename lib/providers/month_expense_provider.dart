@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../enums/expense_type.dart';
 import '../models/expense_items.dart';
 
 /// 📊 Month Expenses Provider
@@ -142,6 +143,42 @@ class MonthExpensesProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+  Map<String, List<ExpenseItem>> getExpensesForType(ExpenseType type) {
+    final Map<String, List<ExpenseItem>> result = {};
+
+    for (final entry in _cachedExpenses.entries) {
+      final filtered = entry.value
+          .where((item) => item.type == type)
+          .toList();
+
+      if (filtered.isNotEmpty) {
+        result[entry.key] = filtered;
+      }
+    }
+
+    return result;
+  }
+
+  double getTotalForDateByType(String dateId, ExpenseType type) {
+    final items = _cachedExpenses[dateId] ?? [];
+    return items
+        .where((i) => i.type == type)
+        .fold(0.0, (s, i) => s + i.amount);
+  }
+
+  double getMonthTotalForType(ExpenseType type) {
+    double total = 0;
+
+    for (final items in _cachedExpenses.values) {
+      for (final item in items) {
+        if (item.type == type) {
+          total += item.amount;
+        }
+      }
+    }
+    return total;
+  }
+
 
   /// Subscribe to items for a specific date
   void _subscribeToDateItems(String dateId) {

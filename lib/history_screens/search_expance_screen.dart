@@ -1,9 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/expence_provider.dart';
+import '../providers/all_expense_provider.dart';
+import '../models/expense_items.dart';
+import '../reusable widgets/day_expense.dart';
+// 👆 Ensure this path matches your project structure
 
 class SearchExpensesScreen extends StatefulWidget {
   const SearchExpensesScreen({super.key});
@@ -13,23 +15,41 @@ class SearchExpensesScreen extends StatefulWidget {
 }
 
 class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
+  // Controllers
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _minController = TextEditingController();
   final TextEditingController _maxController = TextEditingController();
 
+  // Search State
   String _searchQuery = '';
   double _minAmount = 0;
-  double _maxAmount = 1000000;
+  double _maxAmount = double.infinity;
+
+  // Filter Toggle
   bool _showFilters = false;
 
-  // 🔥 Cache for expenses - fetched only once
-  List<Map<String, dynamic>>? _allExpenses;
-  bool _isLoading = true;
+  // 🗓 Date Selection State
+  late int _selectedYear;
+  late int _selectedMonth;
 
   @override
   void initState() {
     super.initState();
-    _fetchAllExpensesOnce(); // 🔥 Fetch once when screen opens
+    final now = DateTime.now();
+    _selectedYear = now.year;
+    _selectedMonth = now.month;
+
+    // Load initial data
+    _fetchData();
+  }
+
+  void _fetchData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AllExpensesProvider>().setMonth(
+        year: _selectedYear.toString(),
+        month: _selectedMonth,
+      );
+    });
   }
 
   @override
@@ -40,520 +60,341 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
     super.dispose();
   }
 
-  // 🔥 ONE-TIME FETCH - Called only once
-  Future<void> _fetchAllExpensesOnce() async {
-    final provider = context.read<ExpenseProvider>();
+  // ───────────────────────── LOGIC ─────────────────────────
 
-    try {
-      // Fetch using provider method (you can add this to your provider)
-      final expenses = await provider.getAllExpensesForSearch();
-
-      setState(() {
-        _allExpenses = expenses;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _allExpenses = [];
-        _isLoading = false;
-      });
+  /// Groups expenses by 'yyyy-MM-dd'
+  Map<String, List<ExpenseItem>> _groupExpensesByDate(List<ExpenseItem> items) {
+    final Map<String, List<ExpenseItem>> grouped = {};
+    for (var item in items) {
+      final key = DateFormat('yyyy-MM-dd').format(item.createdAt);
+      if (!grouped.containsKey(key)) {
+        grouped[key] = [];
+      }
+      grouped[key]!.add(item);
     }
+    return grouped;
   }
 
-  // 🔥 LOCAL SEARCH - No Firebase calls
-  List<Map<String, dynamic>> _getFilteredExpenses() {
-    if (_allExpenses == null) return [];
+  // ───────────────────────── UI: APP BAR ─────────────────────────
 
-    return _allExpenses!.where((expense) {
-      final title = (expense['title'] as String).toLowerCase();
-      final description = (expense['description'] as String).toLowerCase();
-      final amount = expense['amount'] as double;
-
-      // Search query filter
-      final matchesSearch = _searchQuery.isEmpty ||
-          title.contains(_searchQuery) ||
-          description.contains(_searchQuery);
-
-      // Amount filter
-      final matchesAmount = amount >= _minAmount && amount <= _maxAmount;
-
-      return matchesSearch && matchesAmount;
-    }).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF0F1115),
+      elevation: 0,
+      leading: const BackButton(color: Colors.white),
+      titleSpacing: 0,
+      title: Container(
+        height: 44,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: "Search expenses...",
-            hintStyle: TextStyle(color: Colors.grey[500]),
-            border: InputBorder.none,
-          ),
-          onChanged: (value) {
-            setState(() {
-              _searchQuery = value.toLowerCase();
-            });
-          },
-        ),
-        actions: [
-          // Clear search button
-          if (_searchQuery.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear, color: Colors.white),
-              onPressed: () {
-                setState(() {
-                  _searchController.clear();
-                  _searchQuery = '';
-                });
-              },
-            ),
-          IconButton(
-            icon: Icon(
-              _showFilters ? Icons.filter_alt : Icons.filter_alt_outlined,
-              color: _showFilters ? const Color(0xFF64FFDA) : Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Filters Panel
-          if (_showFilters) _buildFiltersPanel(),
-
-          // Search Results
-          Expanded(
-            child: _isLoading
-                ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF64FFDA)),
-                  SizedBox(height: 16),
-                  Text(
-                    "Loading expenses...",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            )
-                : _buildSearchResults(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchResults() {
-    if (_allExpenses == null || _allExpenses!.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 80,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "No expenses found",
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 18,
+            const Icon(Icons.search, color: Color(0xFF64FFDA), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                autofocus: false,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'Search title, notes...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.grey),
+                  isDense: true,
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
               ),
             ),
+            if (_searchQuery.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _searchQuery = '';
+                    _searchController.clear();
+                  });
+                },
+                child: const Icon(Icons.close, color: Colors.grey, size: 18),
+              ),
           ],
         ),
-      );
-    }
-
-    final filteredExpenses = _getFilteredExpenses();
-
-    if (filteredExpenses.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 80,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isEmpty
-                  ? "No matches found"
-                  : "No results for '$_searchQuery'",
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Try adjusting your filters",
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Results count and summary
+      ),
+      actions: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          margin: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.white.withOpacity(0.1),
-              ),
+            color: _showFilters ? const Color(0xFF64FFDA).withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: IconButton(
+            icon: Icon(
+              _showFilters ? Icons.filter_alt : Icons.filter_list,
+              color: _showFilters ? const Color(0xFF64FFDA) : Colors.grey,
             ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "${filteredExpenses.length} result${filteredExpenses.length == 1 ? '' : 's'} found",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Total: ₹${_calculateTotal(filteredExpenses).toStringAsFixed(0)}",
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_searchQuery.isNotEmpty || _minAmount > 0 || _maxAmount < 1000000)
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                      _minController.clear();
-                      _maxController.clear();
-                      _searchQuery = '';
-                      _minAmount = 0;
-                      _maxAmount = 1000000;
-                      _showFilters = false;
-                    });
-                  },
-                  icon: const Icon(
-                    Icons.clear_all,
-                    size: 16,
-                    color: Color(0xFF64FFDA),
-                  ),
-                  label: const Text(
-                    "Clear All",
-                    style: TextStyle(color: Color(0xFF64FFDA)),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filteredExpenses.length,
-            itemBuilder: (context, index) {
-              final expense = filteredExpenses[index];
-              return _buildExpenseCard(expense);
-            },
+            onPressed: () => setState(() => _showFilters = !_showFilters),
           ),
         ),
       ],
     );
   }
 
-  double _calculateTotal(List<Map<String, dynamic>> expenses) {
-    return expenses.fold(0.0, (sum, expense) => sum + (expense['amount'] as double));
-  }
+  // ───────────────────────── UI: CONTROL PANEL ─────────────────────────
 
-  Widget _buildFiltersPanel() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+  Widget _buildControlPanel() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      height: _showFilters ? 150 : 0, // Expands when active
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                "Amount Range",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              if (_minAmount > 0 || _maxAmount < 1000000)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _minController.clear();
-                      _maxController.clear();
-                      _minAmount = 0;
-                      _maxAmount = 1000000;
-                    });
-                  },
-                  child: const Text(
-                    "Reset",
-                    style: TextStyle(color: Color(0xFF64FFDA)),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _minController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Min Amount",
-                    labelStyle: TextStyle(color: Colors.grey[500]),
-                    prefixText: "₹",
-                    prefixStyle: const TextStyle(color: Colors.white),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    setState(() {
-                      _minAmount = double.tryParse(value) ?? 0;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextField(
-                  controller: _maxController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Max Amount",
-                    labelStyle: TextStyle(color: Colors.grey[500]),
-                    prefixText: "₹",
-                    prefixStyle: const TextStyle(color: Colors.white),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    setState(() {
-                      _maxAmount = double.tryParse(value) ?? 1000000;
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseCard(Map<String, dynamic> expense) {
-    final title = expense['title'] as String;
-    final amount = expense['amount'] as double;
-    final description = expense['description'] as String;
-    final dateId = expense['dateId'] as String;
-    final timestamp = expense['createdAt'] as Timestamp?;
-
-    String dateStr = '';
-    if (timestamp != null) {
-      dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(timestamp.toDate());
-    } else {
-      try {
-        final date = DateTime.parse(dateId);
-        dateStr = DateFormat('dd MMM yyyy').format(date);
-      } catch (e) {
-        dateStr = dateId;
-      }
-    }
-
-    // Highlight search matches
-    final highlightedTitle = _highlightText(title, _searchQuery);
-    final highlightedDesc = description.isNotEmpty
-        ? _highlightText(description, _searchQuery)
-        : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: highlightedTitle,
+              // 1. Date Selectors
+              Row(
+                children: [
+                  Expanded(child: _buildYearDropdown()),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildMonthDropdown()),
+                ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF64FFDA).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFF64FFDA).withOpacity(0.3),
-                  ),
-                ),
-                child: Text(
-                  "₹${amount.toStringAsFixed(0)}",
-                  style: const TextStyle(
-                    color: Color(0xFF64FFDA),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              const SizedBox(height: 12),
+
+              // 2. Price Range
+              Row(
+                children: [
+                  Expanded(child: _buildPriceInput(_minController, 'Min ₹')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildPriceInput(_maxController, 'Max ₹')),
+                ],
               ),
             ],
           ),
-          if (highlightedDesc != null) ...[
-            const SizedBox(height: 8),
-            highlightedDesc,
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                Icons.calendar_today,
-                size: 14,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(width: 4),
-              Text(
-                dateStr,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // 🔥 Highlight search matches
-  Widget _highlightText(String text, String query) {
-    final isDescription = text.length > 50; // Determine if it's description
+  // --- Dropdowns & Inputs Helpers ---
 
-    if (query.isEmpty) {
-      return Text(
-        text,
-        style: TextStyle(
-          color: isDescription ? Colors.grey[400] : Colors.white,
-          fontSize: isDescription ? 14 : 16,
-          fontWeight: isDescription ? FontWeight.normal : FontWeight.bold,
+  Widget _buildYearDropdown() {
+    final currentYear = DateTime.now().year;
+    final years = List.generate(10, (index) => currentYear - 5 + index); // 5 years back, 5 forward
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1115),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButton<int>(
+        value: _selectedYear,
+        dropdownColor: const Color(0xFF1E1E1E),
+        isExpanded: true,
+        underline: const SizedBox(),
+        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64FFDA), size: 18),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        items: years.map((y) {
+          return DropdownMenuItem(value: y, child: Text(y.toString()));
+        }).toList(),
+        onChanged: (val) {
+          if (val != null) {
+            setState(() => _selectedYear = val);
+            _fetchData();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildMonthDropdown() {
+    final months = DateFormat().dateSymbols.MONTHS; // ["January", "February"...]
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1115),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButton<int>(
+        value: _selectedMonth,
+        dropdownColor: const Color(0xFF1E1E1E),
+        isExpanded: true,
+        underline: const SizedBox(),
+        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64FFDA), size: 18),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        items: List.generate(12, (index) {
+          return DropdownMenuItem(
+            value: index + 1,
+            child: Text(months[index]),
+          );
+        }),
+        onChanged: (val) {
+          if (val != null) {
+            setState(() => _selectedMonth = val);
+            _fetchData();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildPriceInput(TextEditingController controller, String label) {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
+          filled: true,
+          fillColor: const Color(0xFF0F1115),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
         ),
-      );
-    }
+        onChanged: (v) {
+          setState(() {
+            if (label.contains('Min')) {
+              _minAmount = double.tryParse(v) ?? 0;
+            } else {
+              _maxAmount = double.tryParse(v) ?? double.infinity;
+            }
+          });
+        },
+      ),
+    );
+  }
 
-    final lowerText = text.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    final index = lowerText.indexOf(lowerQuery);
+  // ───────────────────────── MAIN BUILD ─────────────────────────
 
-    if (index == -1) {
-      return Text(
-        text,
-        style: TextStyle(
-          color: isDescription ? Colors.grey[400] : Colors.white,
-          fontSize: isDescription ? 14 : 16,
-          fontWeight: isDescription ? FontWeight.normal : FontWeight.bold,
-        ),
-      );
-    }
-
-    return RichText(
-      text: TextSpan(
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1115),
+      appBar: _buildAppBar(),
+      body: Column(
         children: [
-          TextSpan(
-            text: text.substring(0, index),
-            style: TextStyle(
-              color: isDescription ? Colors.grey[400] : Colors.white,
-              fontSize: isDescription ? 14 : 16,
-              fontWeight: isDescription ? FontWeight.normal : FontWeight.bold,
-            ),
-          ),
-          TextSpan(
-            text: text.substring(index, index + query.length),
-            style: TextStyle(
-              color: const Color(0xFF64FFDA),
-              fontSize: isDescription ? 14 : 16,
-              fontWeight: FontWeight.bold,
-              backgroundColor: const Color(0xFF64FFDA).withOpacity(0.2),
-            ),
-          ),
-          TextSpan(
-            text: text.substring(index + query.length),
-            style: TextStyle(
-              color: isDescription ? Colors.grey[400] : Colors.white,
-              fontSize: isDescription ? 14 : 16,
-              fontWeight: isDescription ? FontWeight.normal : FontWeight.bold,
+          // Filter Panel (Expandable)
+          _buildControlPanel(),
+
+          // Main Content
+          Expanded(
+            child: Consumer<AllExpensesProvider>(
+              builder: (_, provider, __) {
+                // 1. Loading State
+                if (provider.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
+                  );
+                }
+
+                // 2. Perform Search
+                final results = provider.search(
+                  query: _searchQuery,
+                  min: _minAmount,
+                  max: _maxAmount,
+                );
+
+                // 3. Group results
+                final grouped = _groupExpensesByDate(results);
+                final sortedDateKeys = grouped.keys.toList()
+                  ..sort((a, b) => b.compareTo(a));
+                final totalSum = results.fold(0.0, (s, e) => s + e.amount);
+
+                // 4. Empty State
+                if (results.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.manage_search, size: 60, color: Colors.grey.withOpacity(0.3)),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty
+                              ? 'No expenses in ${DateFormat().dateSymbols.MONTHS[_selectedMonth-1]} $_selectedYear'
+                              : 'No matches found',
+                          style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    // Summary Strip
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1115),
+                        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${results.length} TRANSACTIONS',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            'TOTAL: ₹${totalSum.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Color(0xFF64FFDA),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Results List
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(top: 10, bottom: 20),
+                        itemCount: sortedDateKeys.length,
+                        itemBuilder: (context, index) {
+                          final dateKey = sortedDateKeys[index];
+                          final dayExpenses = grouped[dateKey]!;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            // 🔥 Using your beautiful DayCard
+                            child: DayCard(
+                              dateId: dateKey,
+                              items: dayExpenses,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
