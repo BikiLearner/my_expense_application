@@ -11,10 +11,7 @@ import '../providers/expence_provider.dart';
 class IncomeBreakdownScreen extends StatelessWidget {
   final String year;
 
-  const IncomeBreakdownScreen({
-    super.key,
-    required this.year,
-  });
+  const IncomeBreakdownScreen({super.key, required this.year});
 
   @override
   Widget build(BuildContext context) {
@@ -61,10 +58,7 @@ class IncomeBreakdownScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     "No income records yet",
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
                   ),
                 ],
               ),
@@ -89,10 +83,7 @@ class IncomeBreakdownScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     "No income for $year",
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
                   ),
                 ],
               ),
@@ -179,10 +170,7 @@ class IncomeBreakdownScreen extends StatelessWidget {
                     final monthTotal =
                         (doc.data() as Map)['total']?.toDouble() ?? 0;
 
-                    return _MonthCard(
-                      monthId: monthId,
-                      total: monthTotal,
-                    );
+                    return _MonthCard(monthId: monthId, total: monthTotal);
                   },
                 ),
               ),
@@ -198,10 +186,7 @@ class _MonthCard extends StatelessWidget {
   final String monthId;
   final double total;
 
-  const _MonthCard({
-    required this.monthId,
-    required this.total,
-  });
+  const _MonthCard({required this.monthId, required this.total});
 
   String _getMonthName(String monthId) {
     try {
@@ -218,9 +203,7 @@ class _MonthCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFF1E1E1E),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         iconColor: const Color(0xFF64FFDA),
@@ -277,8 +260,7 @@ class _MonthCard extends StatelessWidget {
                 .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, itemSnapshot) {
-              if (!itemSnapshot.hasData ||
-                  itemSnapshot.data!.docs.isEmpty) {
+              if (!itemSnapshot.hasData || itemSnapshot.data!.docs.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -406,9 +388,7 @@ Future<void> showDeleteIncomeDialog({
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                ),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

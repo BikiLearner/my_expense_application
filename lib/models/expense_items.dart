@@ -25,10 +25,10 @@ class ExpenseItem {
 
   /// 🔥 Firestore → Model
   factory ExpenseItem.fromFirestore(
-      String id,
-      Map<String, dynamic> data,
-      String dateId,
-      ) {
+    String id,
+    Map<String, dynamic> data,
+    String dateId,
+  ) {
     return ExpenseItem(
       id: id,
       dateId: dateId,
@@ -36,15 +36,14 @@ class ExpenseItem {
       amount: (data['amount'] as num).toDouble(),
       description: data['description'] ?? '',
       type: ExpenseType.values.firstWhere(
-            (e) => e.name == data['type'],
+        (e) => e.name == data['type'],
         orElse: () => ExpenseType.needed,
       ),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       transactionType: TransactionTypeEnum.values.firstWhere(
-            (e) =>
-        e.name ==
-            (data['transactionType'] ??
-                TransactionTypeEnum.cash.name),
+        (e) =>
+            e.name ==
+            (data['transactionType'] ?? TransactionTypeEnum.cash.name),
         orElse: () => TransactionTypeEnum.cash,
       ),
     );
@@ -73,12 +72,12 @@ class ExpenseItem {
       amount: (json['amount'] as num).toDouble(),
       description: json['description'] ?? '',
       type: ExpenseType.values.firstWhere(
-            (e) => e.name == json['type'],
+        (e) => e.name == json['type'],
         orElse: () => ExpenseType.needed,
       ),
       createdAt: DateTime.parse(json['createdAt']),
       transactionType: TransactionTypeEnum.values.firstWhere(
-            (e) => e.name == json['transactionType'],
+        (e) => e.name == json['transactionType'],
         orElse: () => TransactionTypeEnum.cash,
       ),
     );

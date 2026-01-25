@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 
-enum ExpenseType {
-  saving,
-  needed,
-  luxury,
-}
+enum ExpenseType { saving, needed, luxury }
+
 ExpenseType parseExpenseType(dynamic value) {
   if (value is String) {
     return ExpenseType.values.firstWhere(
-          (e) => e.name == value,
+      (e) => e.name == value,
       orElse: () => ExpenseType.luxury, // 🔴 default
     );
   }

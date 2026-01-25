@@ -7,10 +7,7 @@ import '../providers/expence_provider.dart';
 class DeleteExpenseDialog extends StatelessWidget {
   final ExpenseItem expense;
 
-  const DeleteExpenseDialog({
-    super.key,
-    required this.expense,
-  });
+  const DeleteExpenseDialog({super.key, required this.expense});
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +15,7 @@ class DeleteExpenseDialog extends StatelessWidget {
 
     return AlertDialog(
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(
         children: [
           Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
@@ -47,10 +42,8 @@ class DeleteExpenseDialog extends StatelessWidget {
             );
             Navigator.pop(context);
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.redAccent,
-          ),
-          child: const Text('Delete', style: TextStyle(color:Colors.white,),),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          child: const Text('Delete', style: TextStyle(color: Colors.white)),
         ),
       ],
     );

@@ -8,10 +8,7 @@ import 'edit_expense_form.dart';
 class EditExpenseDialog extends StatelessWidget {
   final ExpenseItem expense;
 
-  const EditExpenseDialog({
-    super.key,
-    required this.expense,
-  });
+  const EditExpenseDialog({super.key, required this.expense});
 
   @override
   Widget build(BuildContext context) {
@@ -25,18 +22,11 @@ class EditExpenseDialog extends StatelessWidget {
 
     return AlertDialog(
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      title: const Text(
-        'Edit Expense',
-        style: TextStyle(color: Colors.white),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Edit Expense', style: TextStyle(color: Colors.white)),
       content: const SizedBox(
         width: 400,
-        child: SingleChildScrollView(
-          child: EditExpenseForm(),
-        ),
+        child: SingleChildScrollView(child: EditExpenseForm()),
       ),
       actions: [
         TextButton(

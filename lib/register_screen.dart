@@ -77,10 +77,7 @@ class RegisterScreen extends StatelessWidget {
                 Text(
                   'Start managing your expenses today',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
                 ),
                 const SizedBox(height: 40),
 
@@ -109,10 +106,7 @@ class RegisterScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(
                     'Password should be at least 6 characters',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -120,38 +114,38 @@ class RegisterScreen extends StatelessWidget {
                 // Register Button
                 provider.loading
                     ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF64FFDA),
-                  ),
-                )
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF64FFDA),
+                        ),
+                      )
                     : SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () => provider.register(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF64FFDA),
-                      foregroundColor: const Color(0xFF121212),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.how_to_reg, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: () => provider.register(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF64FFDA),
+                            foregroundColor: const Color(0xFF121212),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.how_to_reg, size: 22),
+                              SizedBox(width: 8),
+                              Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
+                      ),
                 const SizedBox(height: 24),
 
                 // Already have account
@@ -160,10 +154,7 @@ class RegisterScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Already have an account? ',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),

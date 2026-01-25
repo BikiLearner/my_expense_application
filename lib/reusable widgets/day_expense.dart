@@ -9,47 +9,37 @@ class DayCard extends StatelessWidget {
   final String dateId;
   final List<ExpenseItem> items; // yyyy-MM-dd
 
-  const DayCard({
-    super.key,
-    required this.dateId, required this.items
-
-  });
+  const DayCard({super.key, required this.dateId, required this.items});
 
   @override
   Widget build(BuildContext context) {
     final date = DateTime.parse(dateId);
     final dayTotal = items.fold<double>(
       0,
-          (sum, d) => sum + d.amount.toDouble()
+      (sum, d) => sum + d.amount.toDouble(),
     );
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF171A21),
-        borderRadius: BorderRadius.circular(18)
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // HEADER (unchanged)
-          _header(
-            date: date,
-            total: dayTotal
-          ),
+          _header(date: date, total: dayTotal),
 
           const SizedBox(height: 12),
 
           Column(
             children: items.map((d) {
-              return ExpenseItemTile(
-                expenseItem: d, toShow: true,
-              );
-            }).toList()
-          )
-
-        ]
-      )
+              return ExpenseItemTile(expenseItem: d, toShow: true);
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -62,20 +52,19 @@ class DayCard extends StatelessWidget {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.white
-          )
+            color: Colors.white,
+          ),
         ),
         const Spacer(),
         Text(
           "₹${total.toStringAsFixed(0)}",
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.bold
-              ,
-              color: Colors.white
-          )
-        )
-      ]
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 }

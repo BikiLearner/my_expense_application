@@ -48,7 +48,7 @@ class _MonthlyExpensePageState extends State<MonthlyExpensePage> {
           color: Colors.white, // 👈 back button color
         ),
         backgroundColor: const Color(0xFF0F1115),
-        title: Text(widget.label,style: TextStyle(color: Colors.white),),
+        title: Text(widget.label, style: TextStyle(color: Colors.white)),
       ),
 
       // 🔥 Selector-based UI
@@ -57,9 +57,7 @@ class _MonthlyExpensePageState extends State<MonthlyExpensePage> {
         builder: (context, isLoading, _) {
           if (isLoading) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64FFDA),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
             );
           }
 
@@ -81,10 +79,7 @@ class _MonthlyExpensePageState extends State<MonthlyExpensePage> {
                   return Selector<MonthExpensesProvider, List<ExpenseItem>>(
                     selector: (_, p) => p.getExpensesForDate(dateId),
                     builder: (context, items, ___) {
-                      return DayCard(
-                        dateId: dateId,
-                        items: items,
-                      );
+                      return DayCard(dateId: dateId, items: items);
                     },
                   );
                 }).toList(),
@@ -96,4 +91,3 @@ class _MonthlyExpensePageState extends State<MonthlyExpensePage> {
     );
   }
 }
-

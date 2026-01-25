@@ -43,17 +43,11 @@ class AppTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF3C3C3C),
-            width: 1,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF3C3C3C), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF64FFDA),
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF64FFDA), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

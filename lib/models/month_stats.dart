@@ -13,10 +13,7 @@ class MonthStats {
     required this.grandTotal,
   });
 
-  factory MonthStats.fromFirestore(
-      String month,
-      Map<String, dynamic> data,
-      ) {
+  factory MonthStats.fromFirestore(String month, Map<String, dynamic> data) {
     return MonthStats(
       month: month,
       saving: (data['saving'] ?? 0).toDouble(),

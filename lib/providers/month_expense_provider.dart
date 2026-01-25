@@ -143,13 +143,12 @@ class MonthExpensesProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   Map<String, List<ExpenseItem>> getExpensesForType(ExpenseType type) {
     final Map<String, List<ExpenseItem>> result = {};
 
     for (final entry in _cachedExpenses.entries) {
-      final filtered = entry.value
-          .where((item) => item.type == type)
-          .toList();
+      final filtered = entry.value.where((item) => item.type == type).toList();
 
       if (filtered.isNotEmpty) {
         result[entry.key] = filtered;
@@ -161,9 +160,7 @@ class MonthExpensesProvider extends ChangeNotifier {
 
   double getTotalForDateByType(String dateId, ExpenseType type) {
     final items = _cachedExpenses[dateId] ?? [];
-    return items
-        .where((i) => i.type == type)
-        .fold(0.0, (s, i) => s + i.amount);
+    return items.where((i) => i.type == type).fold(0.0, (s, i) => s + i.amount);
   }
 
   double getMonthTotalForType(ExpenseType type) {
@@ -178,7 +175,6 @@ class MonthExpensesProvider extends ChangeNotifier {
     }
     return total;
   }
-
 
   /// Subscribe to items for a specific date
   void _subscribeToDateItems(String dateId) {
@@ -199,34 +195,32 @@ class MonthExpensesProvider extends ChangeNotifier {
         .snapshots()
         .listen(
           (snapshot) {
-        // Update cache for this date
-        if (snapshot.docs.isEmpty) {
-          // Remove date from cache if no items
-          _cachedExpenses.remove(dateId);
-        } else {
-          final items = snapshot.docs.map((doc) {
-            return ExpenseItem.fromFirestore(
-              doc.id,
-              doc.data(),
-              dateId,
-            );
-          }).toList();
+            // Update cache for this date
+            if (snapshot.docs.isEmpty) {
+              // Remove date from cache if no items
+              _cachedExpenses.remove(dateId);
+            } else {
+              final items = snapshot.docs.map((doc) {
+                return ExpenseItem.fromFirestore(doc.id, doc.data(), dateId);
+              }).toList();
 
-          _cachedExpenses[dateId] = items;
-        }
+              _cachedExpenses[dateId] = items;
+            }
 
-        if (kDebugMode) {
-          print("✅ Updated cache for $dateId: ${snapshot.docs.length} items");
-        }
+            if (kDebugMode) {
+              print(
+                "✅ Updated cache for $dateId: ${snapshot.docs.length} items",
+              );
+            }
 
-        notifyListeners();
-      },
-      onError: (error) {
-        if (kDebugMode) {
-          print("❌ Stream error for $dateId: $error");
-        }
-      },
-    );
+            notifyListeners();
+          },
+          onError: (error) {
+            if (kDebugMode) {
+              print("❌ Stream error for $dateId: $error");
+            }
+          },
+        );
 
     _dateSubscriptions[dateId] = subscription;
   }
@@ -267,7 +261,10 @@ class MonthExpensesProvider extends ChangeNotifier {
           .collection('users')
           .doc(uid)
           .collection('expenses')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: '$_currentMonth-01')
+          .where(
+            FieldPath.documentId,
+            isGreaterThanOrEqualTo: '$_currentMonth-01',
+          )
           .where(FieldPath.documentId, isLessThan: '$_currentMonth-32')
           .get();
 
@@ -302,11 +299,7 @@ class MonthExpensesProvider extends ChangeNotifier {
 
   /// Get expenses grouped by expense type
   Map<String, double> get expensesByType {
-    final Map<String, double> typeMap = {
-      'saving': 0,
-      'needed': 0,
-      'luxury': 0,
-    };
+    final Map<String, double> typeMap = {'saving': 0, 'needed': 0, 'luxury': 0};
 
     for (final items in _cachedExpenses.values) {
       for (final item in items) {
@@ -319,11 +312,7 @@ class MonthExpensesProvider extends ChangeNotifier {
 
   /// Get expenses grouped by transaction type
   Map<String, double> get expensesByTransactionType {
-    final Map<String, double> transactionMap = {
-      'cash': 0,
-      'upi': 0,
-      'card': 0,
-    };
+    final Map<String, double> transactionMap = {'cash': 0, 'upi': 0, 'card': 0};
 
     for (final items in _cachedExpenses.values) {
       for (final item in items) {

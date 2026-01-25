@@ -107,7 +107,8 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
                   hintStyle: TextStyle(color: Colors.grey),
                   isDense: true,
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.toLowerCase()),
               ),
             ),
             if (_searchQuery.isNotEmpty)
@@ -127,7 +128,9 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
         Container(
           margin: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(
-            color: _showFilters ? const Color(0xFF64FFDA).withOpacity(0.1) : Colors.transparent,
+            color: _showFilters
+                ? const Color(0xFF64FFDA).withOpacity(0.1)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: IconButton(
@@ -192,7 +195,10 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
 
   Widget _buildYearDropdown() {
     final currentYear = DateTime.now().year;
-    final years = List.generate(10, (index) => currentYear - 5 + index); // 5 years back, 5 forward
+    final years = List.generate(
+      10,
+      (index) => currentYear - 5 + index,
+    ); // 5 years back, 5 forward
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -205,7 +211,11 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
         dropdownColor: const Color(0xFF1E1E1E),
         isExpanded: true,
         underline: const SizedBox(),
-        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64FFDA), size: 18),
+        icon: const Icon(
+          Icons.keyboard_arrow_down,
+          color: Color(0xFF64FFDA),
+          size: 18,
+        ),
         style: const TextStyle(color: Colors.white, fontSize: 14),
         items: years.map((y) {
           return DropdownMenuItem(value: y, child: Text(y.toString()));
@@ -221,7 +231,8 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
   }
 
   Widget _buildMonthDropdown() {
-    final months = DateFormat().dateSymbols.MONTHS; // ["January", "February"...]
+    final months =
+        DateFormat().dateSymbols.MONTHS; // ["January", "February"...]
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -234,13 +245,14 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
         dropdownColor: const Color(0xFF1E1E1E),
         isExpanded: true,
         underline: const SizedBox(),
-        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64FFDA), size: 18),
+        icon: const Icon(
+          Icons.keyboard_arrow_down,
+          color: Color(0xFF64FFDA),
+          size: 18,
+        ),
         style: const TextStyle(color: Colors.white, fontSize: 14),
         items: List.generate(12, (index) {
-          return DropdownMenuItem(
-            value: index + 1,
-            child: Text(months[index]),
-          );
+          return DropdownMenuItem(value: index + 1, child: Text(months[index]));
         }),
         onChanged: (val) {
           if (val != null) {
@@ -325,13 +337,20 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.manage_search, size: 60, color: Colors.grey.withOpacity(0.3)),
+                        Icon(
+                          Icons.manage_search,
+                          size: 60,
+                          color: Colors.grey.withOpacity(0.3),
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isEmpty
-                              ? 'No expenses in ${DateFormat().dateSymbols.MONTHS[_selectedMonth-1]} $_selectedYear'
+                              ? 'No expenses in ${DateFormat().dateSymbols.MONTHS[_selectedMonth - 1]} $_selectedYear'
                               : 'No matches found',
-                          style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.grey.withOpacity(0.5),
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -342,10 +361,17 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
                   children: [
                     // Summary Strip
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F1115),
-                        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.white.withOpacity(0.05),
+                          ),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -382,12 +408,12 @@ class _SearchExpensesScreenState extends State<SearchExpensesScreen> {
                           final dayExpenses = grouped[dateKey]!;
 
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            // 🔥 Using your beautiful DayCard
-                            child: DayCard(
-                              dateId: dateKey,
-                              items: dayExpenses,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
                             ),
+                            // 🔥 Using your beautiful DayCard
+                            child: DayCard(dateId: dateKey, items: dayExpenses),
                           );
                         },
                       ),

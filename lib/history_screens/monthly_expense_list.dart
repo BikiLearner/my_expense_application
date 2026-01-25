@@ -25,16 +25,13 @@ class MonthTile extends StatelessWidget {
   final String monthKey;
   final List<ExpenseDay> days;
 
-  const MonthTile({
-    super.key,
-    required this.monthKey,
-    required this.days,
-  });
+  const MonthTile({super.key, required this.monthKey, required this.days});
 
   @override
   Widget build(BuildContext context) {
-    final label =
-    DateFormat('MMMM yyyy').format(DateTime.parse("$monthKey-01"));
+    final label = DateFormat(
+      'MMMM yyyy',
+    ).format(DateTime.parse("$monthKey-01"));
     final total = days.fold(0.0, (s, d) => s + d.total);
     final daysCount = days.length;
 
@@ -44,10 +41,8 @@ class MonthTile extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => MonthlyExpensePage(
-              label: label,
-               monthKey: monthKey,
-            ),
+            builder: (_) =>
+                MonthlyExpensePage(label: label, monthKey: monthKey),
           ),
         );
       },
@@ -95,17 +90,13 @@ class MonthTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     "$daysCount day${daysCount == 1 ? '' : 's'}",
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
                   ),
                 ],
               ),
             ),
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF64FFDA).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),

@@ -114,10 +114,7 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
             ],
           ),
@@ -203,7 +200,11 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
             child: Center(
               child: Column(
                 children: [
-                  Icon(Icons.backup_outlined, size: 64, color: Colors.grey[700]),
+                  Icon(
+                    Icons.backup_outlined,
+                    size: 64,
+                    color: Colors.grey[700],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     "No backups yet",
@@ -317,8 +318,11 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline,
-                              size: 16, color: Colors.grey[600]),
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -337,8 +341,11 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.warning_amber,
-                            size: 16, color: Colors.orangeAccent),
+                        Icon(
+                          Icons.warning_amber,
+                          size: 16,
+                          color: Colors.orangeAccent,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           "${backup.issuesFound} issues found",
@@ -355,7 +362,8 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _showRestoreConfirmation(context, backup),
+                          onPressed: () =>
+                              _showRestoreConfirmation(context, backup),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF64FFDA),
                             side: const BorderSide(color: Color(0xFF64FFDA)),
@@ -366,7 +374,8 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: () => _showDeleteBackupConfirmation(context, backup),
+                        onPressed: () =>
+                            _showDeleteBackupConfirmation(context, backup),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.redAccent,
                           side: const BorderSide(color: Colors.redAccent),
@@ -407,10 +416,7 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
             ),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 10,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 10),
             ),
           ],
         ),
@@ -446,13 +452,13 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
               ),
               child: isLoading
                   ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: iconColor,
-                ),
-              )
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: iconColor,
+                      ),
+                    )
                   : Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
@@ -471,10 +477,7 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
                 ],
               ),
@@ -532,7 +535,10 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
           children: [
             Text(
               "This will:",
-              style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             _buildBulletPoint("Create a backup of current data"),
@@ -547,8 +553,11 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline,
-                      color: Colors.greenAccent, size: 20),
+                  const Icon(
+                    Icons.info_outline,
+                    color: Colors.greenAccent,
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -594,7 +603,7 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
         success: true,
         title: "Repair Complete!",
         message:
-        "Fixed ${result['totalDates']} dates\n${result['totalItems']} items processed\nGrand Total: ₹${result['grandTotal']}",
+            "Fixed ${result['totalDates']} dates\n${result['totalItems']} items processed\nGrand Total: ₹${result['grandTotal']}",
         icon: Icons.check_circle,
       );
     } else {
@@ -731,7 +740,10 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
             const SizedBox(height: 16),
             Text(
               "This will:",
-              style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             _buildBulletPoint("Create a backup of current data"),
@@ -780,7 +792,10 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
     );
   }
 
-  Future<void> _restoreBackup(BuildContext context, BackupMetadata backup) async {
+  Future<void> _restoreBackup(
+    BuildContext context,
+    BackupMetadata backup,
+  ) async {
     final provider = context.read<SettingsProvider>();
     final success = await provider.restoreFromBackup(backupId: backup.id);
 
@@ -797,7 +812,10 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
     );
   }
 
-  void _showDeleteBackupConfirmation(BuildContext context, BackupMetadata backup) {
+  void _showDeleteBackupConfirmation(
+    BuildContext context,
+    BackupMetadata backup,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -903,7 +921,10 @@ class _ExpenseMaintenancePageState extends State<ExpenseMaintenancePage> {
         children: [
           Text("• ", style: TextStyle(color: Colors.grey[400], fontSize: 16)),
           Expanded(
-            child: Text(text, style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+            child: Text(
+              text,
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+            ),
           ),
         ],
       ),

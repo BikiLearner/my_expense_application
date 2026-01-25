@@ -59,20 +59,13 @@ class AllExpensesProvider extends ChangeNotifier {
   Future<void> _persistCache() async {
     if (!_prefsReady) return;
 
-    final encoded =
-    jsonEncode(_cache.map((e) => e.toJson()).toList());
+    final encoded = jsonEncode(_cache.map((e) => e.toJson()).toList());
 
-    await _prefs.setString(
-      'expenses_cache_$_currentMonthKey',
-      encoded,
-    );
+    await _prefs.setString('expenses_cache_$_currentMonthKey', encoded);
   }
 
   /// 🚀 Start month stream
-  Future<void> setMonth({
-    required String year,
-    required int month,
-  }) async {
+  Future<void> setMonth({required String year, required int month}) async {
     final monthKey = '$year-${month.toString().padLeft(2, '0')}';
 
     if (_currentMonthKey == monthKey) return;
@@ -122,13 +115,7 @@ class AllExpensesProvider extends ChangeNotifier {
     _cache.removeWhere((e) => e.dateId == dateId);
 
     for (final doc in itemsSnapshot.docs) {
-      _cache.add(
-        ExpenseItem.fromFirestore(
-          doc.id,
-          doc.data(),
-          dateId,
-        ),
-      );
+      _cache.add(ExpenseItem.fromFirestore(doc.id, doc.data(), dateId));
     }
   }
 
@@ -144,8 +131,8 @@ class AllExpensesProvider extends ChangeNotifier {
     return _cache.where((e) {
       final matchesQuery =
           q.isEmpty ||
-              e.title.toLowerCase().contains(q) ||
-              e.description.toLowerCase().contains(q);
+          e.title.toLowerCase().contains(q) ||
+          e.description.toLowerCase().contains(q);
 
       final matchesAmount = e.amount >= min && e.amount <= max;
       final matchesType = type == null || e.type == type;
@@ -164,4 +151,3 @@ class AllExpensesProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-

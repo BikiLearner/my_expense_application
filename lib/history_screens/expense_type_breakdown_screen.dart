@@ -35,9 +35,7 @@ class ExpenseTypeBreakdownScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E1E1E),
-        iconTheme: IconThemeData(
-          color: Colors.white
-        ),
+        iconTheme: IconThemeData(color: Colors.white),
         title: Text(
           '${type.label} • $monthKey',
           style: const TextStyle(color: Colors.white),
@@ -48,9 +46,7 @@ class ExpenseTypeBreakdownScreen extends StatelessWidget {
         builder: (context, isLoading, _) {
           if (isLoading) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64FFDA),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
             );
           }
 
@@ -60,6 +56,7 @@ class ExpenseTypeBreakdownScreen extends StatelessWidget {
     );
   }
 }
+
 class _ExpenseTypeBody extends StatelessWidget {
   final ExpenseType type;
 
@@ -67,15 +64,16 @@ class _ExpenseTypeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<MonthExpensesProvider,
-        ({Map<String, List<ExpenseItem>> grouped, double total})>(
+    return Selector<
+      MonthExpensesProvider,
+      ({Map<String, List<ExpenseItem>> grouped, double total})
+    >(
       selector: (_, p) => (
-      grouped: p.getExpensesForType(type),
-      total: p.getMonthTotalForType(type),
+        grouped: p.getExpensesForType(type),
+        total: p.getMonthTotalForType(type),
       ),
       shouldRebuild: (prev, next) =>
-      prev.total != next.total ||
-          !mapEquals(prev.grouped, next.grouped),
+          prev.total != next.total || !mapEquals(prev.grouped, next.grouped),
       builder: (context, data, _) {
         if (data.grouped.isEmpty) {
           return const Center(
@@ -108,10 +106,7 @@ class _ExpenseTypeBody extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Total',
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  const Text('Total', style: TextStyle(color: Colors.white70)),
                   Text(
                     '₹${data.total.toStringAsFixed(0)}',
                     style: const TextStyle(
@@ -137,10 +132,7 @@ class _ExpenseTypeBody extends StatelessWidget {
                   final dateId = entry.key;
                   final items = entry.value;
 
-                  return DayCard(
-                    dateId: dateId,
-                    items: items,
-                  );
+                  return DayCard(dateId: dateId, items: items);
                 },
               ),
             ),
@@ -150,7 +142,3 @@ class _ExpenseTypeBody extends StatelessWidget {
     );
   }
 }
-
-
-
-

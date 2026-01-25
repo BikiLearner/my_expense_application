@@ -13,13 +13,14 @@ import 'enums/transaction_type_enum.dart';
 import 'models/expense_items.dart';
 import 'providers/expence_provider.dart';
 import 'history_screen.dart';
+
 class ExpenseScreen extends StatelessWidget {
   const ExpenseScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final selectedDate = context.select<ExpenseProvider, DateTime>(
-          (p) => p.selectedDate
+      (p) => p.selectedDate,
     );
 
     // Responsive breakpoints
@@ -40,38 +41,43 @@ class ExpenseScreen extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.w600
-              )
-            )
-          ]
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.generating_tokens_sharp, color: Color(0xFF64FFDA)),
+            icon: const Icon(
+              Icons.generating_tokens_sharp,
+              color: Color(0xFF64FFDA),
+            ),
             tooltip: 'History',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const HistoryScreen())
+                MaterialPageRoute(builder: (_) => const HistoryScreen()),
               );
-            }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.calendar_today, color: Color(0xFF64FFDA)),
             tooltip: 'Select Date',
-            onPressed: () => _selectDate(context)
+            onPressed: () => _selectDate(context),
           ),
           IconButton(
             icon: const Icon(Icons.add, color: Color(0xFF64FFDA)),
             tooltip: 'Add Category',
             onPressed: () {
               context.read<ExpenseProvider>().showAddCategoryDialog(context);
-            }
+            },
           ),
-          const SizedBox(width: 8)
-        ]
+          const SizedBox(width: 8),
+        ],
       ),
-      body: isDesktop ? _buildDesktopLayout(context) : _buildMobileLayout(context)
+      body: isDesktop
+          ? _buildDesktopLayout(context)
+          : _buildMobileLayout(context),
     );
   }
 
@@ -82,14 +88,13 @@ class ExpenseScreen extends StatelessWidget {
       context: context,
       initialDate: provider.selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now()
+      lastDate: DateTime.now(),
     );
 
     if (picked != null && picked != provider.selectedDate) {
       provider.setSelectedDate(picked);
     }
   }
-
 
   // 📱 Mobile & Tablet Layout (Stacked)
   Widget _buildMobileLayout(BuildContext context) {
@@ -98,8 +103,8 @@ class ExpenseScreen extends StatelessWidget {
         // Expense List
         Expanded(child: _buildExpenseList(context)),
         // Input Form
-        AddExpenseForm(isDesktop:false,)
-      ]
+        AddExpenseForm(isDesktop: false),
+      ],
     );
   }
 
@@ -108,22 +113,19 @@ class ExpenseScreen extends StatelessWidget {
     return Row(
       children: [
         // Left: Expense List
-        Expanded(
-          flex: 3,
-          child: _buildExpenseList(context)
-        ),
+        Expanded(flex: 3, child: _buildExpenseList(context)),
         // Right: Input Form
         Container(
           width: 400,
           decoration: const BoxDecoration(
             color: Color(0xFF1E1E1E),
             border: Border(
-              left: BorderSide(color: Color(0xFF2C2C2C), width: 1)
-            )
+              left: BorderSide(color: Color(0xFF2C2C2C), width: 1),
+            ),
           ),
-          child: AddExpenseForm(isDesktop: true)
-        )
-      ]
+          child: AddExpenseForm(isDesktop: true),
+        ),
+      ],
     );
   }
 
@@ -134,9 +136,7 @@ class ExpenseScreen extends StatelessWidget {
       builder: (_, isLoading, __) {
         if (isLoading) {
           return const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFF64FFDA)
-            )
+            child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
           );
         }
 
@@ -148,27 +148,27 @@ class ExpenseScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.receipt_long_outlined,
-                        size: 80, color: Colors.grey[700]),
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 80,
+                      color: Colors.grey[700],
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No expenses yet',
                       style: TextStyle(
                         color: Colors.grey[500],
                         fontSize: 18,
-                        fontWeight: FontWeight.w500
-                      )
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Add your first expense below',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14
-                      )
-                    )
-                  ]
-                )
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                  ],
+                ),
               );
             }
 
@@ -185,15 +185,15 @@ class ExpenseScreen extends StatelessWidget {
                         gradient: const LinearGradient(
                           colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
                           begin: Alignment.topLeft,
-                          end: Alignment.bottomRight
+                          end: Alignment.bottomRight,
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
                             blurRadius: 10,
-                            offset: const Offset(0, 4)
-                          )
-                        ]
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -205,8 +205,8 @@ class ExpenseScreen extends StatelessWidget {
                                 'Total Expenses',
                                 style: TextStyle(
                                   color: Colors.grey[300],
-                                  fontSize: 14
-                                )
+                                  fontSize: 14,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -214,28 +214,28 @@ class ExpenseScreen extends StatelessWidget {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 25,
-                                  fontWeight: FontWeight.bold
-                                )
-                              )
-                            ]
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12)
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               '${expenses.length} Transactions',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w600
-                              )
-                            )
-                          )
-                        ]
-                      )
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
                     // Expense List
@@ -246,24 +246,20 @@ class ExpenseScreen extends StatelessWidget {
                         itemBuilder: (_, i) {
                           final expense = expenses[i];
 
-                          return ExpenseItemTile(expenseItem: expense, toShow: false,);
-                        }
-                      )
-                    )
-                  ]
+                          return ExpenseItemTile(
+                            expenseItem: expense,
+                            toShow: false,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
-              }
+              },
             );
-          }
+          },
         );
-      }
+      },
     );
   }
-
-
 }
-
-
-
-
-

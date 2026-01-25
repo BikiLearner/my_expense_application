@@ -26,10 +26,8 @@ class DayExpenseTile extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => DateDetailScreen(
-                  dateId: day.dateId,
-                  date: date,
-                ),
+                builder: (_) =>
+                    DateDetailScreen(dateId: day.dateId, date: date),
               ),
             );
           },
@@ -61,9 +59,9 @@ class DayExpenseTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: isToday
                         ? Border.all(
-                      color: const Color(0xFF64FFDA).withOpacity(0.3),
-                      width: 1,
-                    )
+                            color: const Color(0xFF64FFDA).withOpacity(0.3),
+                            width: 1,
+                          )
                         : null,
                   ),
                   child: Column(
@@ -72,7 +70,9 @@ class DayExpenseTile extends StatelessWidget {
                       Text(
                         dayOfMonth,
                         style: TextStyle(
-                          color: isToday ? const Color(0xFF64FFDA) : Colors.white,
+                          color: isToday
+                              ? const Color(0xFF64FFDA)
+                              : Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -126,9 +126,7 @@ class DayExpenseTile extends StatelessWidget {
                     Text(
                       '₹${day.total.toStringAsFixed(0)}',
                       style: TextStyle(
-                        color: isToday
-                            ? const Color(0xFF64FFDA)
-                            : Colors.white,
+                        color: isToday ? const Color(0xFF64FFDA) : Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),

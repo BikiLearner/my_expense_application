@@ -6,10 +6,7 @@ import 'package:intl/intl.dart';
 class ExpenseAnalyticsScreen extends StatelessWidget {
   final String year;
 
-  const ExpenseAnalyticsScreen({
-    super.key,
-    required this.year,
-  });
+  const ExpenseAnalyticsScreen({super.key, required this.year});
 
   @override
   Widget build(BuildContext context) {
@@ -172,11 +169,11 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
   }
 
   Widget _buildSummaryCard(
-      String label,
-      String value,
-      IconData icon,
-      Color color,
-      ) {
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -202,10 +199,7 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 14),
               ),
               const SizedBox(height: 4),
               Text(
@@ -224,12 +218,12 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
   }
 
   Widget _buildStatCard(
-      String label,
-      String month,
-      String value,
-      Color color,
-      IconData icon,
-      ) {
+    String label,
+    String month,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -247,10 +241,7 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 ),
               ),
             ],
@@ -302,10 +293,7 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
                   children: [
                     Text(
                       _formatMonth(month),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     Text(
                       "₹${total.toStringAsFixed(0)}",
@@ -392,9 +380,13 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isIncreasing ? "Spending Increased" : "Spending Decreased",
+                      isIncreasing
+                          ? "Spending Increased"
+                          : "Spending Decreased",
                       style: TextStyle(
-                        color: isIncreasing ? Colors.redAccent : Colors.greenAccent,
+                        color: isIncreasing
+                            ? Colors.redAccent
+                            : Colors.greenAccent,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -402,10 +394,7 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       "${percentChange.abs().toStringAsFixed(1)}% compared to ${_formatMonth(sortedMonths.first)}",
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     ),
                   ],
                 ),

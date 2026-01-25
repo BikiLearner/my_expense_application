@@ -51,7 +51,8 @@ class SettingsProvider extends ChangeNotifier {
 
       // 1️⃣ Get current summary data (cheap reads)
       final userDoc = await userRef.get();
-      final grandTotal = (userDoc.data()?['grandTotal'] as num?)?.toDouble() ?? 0;
+      final grandTotal =
+          (userDoc.data()?['grandTotal'] as num?)?.toDouble() ?? 0;
 
       // 2️⃣ Verify data integrity before backup
       final integrity = await verifyDataIntegrity();
@@ -149,14 +150,19 @@ class SettingsProvider extends ChangeNotifier {
 
         // Write chunk when buffer is full
         if (buffer.length >= chunkSize) {
-          await backupRef.collection('expense_chunks').doc('chunk_$chunkIndex').set({
-            'index': chunkIndex,
-            'count': buffer.length,
-            'data': buffer,
-          });
+          await backupRef
+              .collection('expense_chunks')
+              .doc('chunk_$chunkIndex')
+              .set({
+                'index': chunkIndex,
+                'count': buffer.length,
+                'data': buffer,
+              });
 
           if (kDebugMode) {
-            print("   📦 Wrote expense chunk $chunkIndex (${buffer.length} dates)");
+            print(
+              "   📦 Wrote expense chunk $chunkIndex (${buffer.length} dates)",
+            );
           }
 
           buffer.clear();
@@ -166,14 +172,15 @@ class SettingsProvider extends ChangeNotifier {
 
       // Write remaining data
       if (buffer.isNotEmpty) {
-        await backupRef.collection('expense_chunks').doc('chunk_$chunkIndex').set({
-          'index': chunkIndex,
-          'count': buffer.length,
-          'data': buffer,
-        });
+        await backupRef
+            .collection('expense_chunks')
+            .doc('chunk_$chunkIndex')
+            .set({'index': chunkIndex, 'count': buffer.length, 'data': buffer});
 
         if (kDebugMode) {
-          print("   📦 Wrote final expense chunk $chunkIndex (${buffer.length} dates)");
+          print(
+            "   📦 Wrote final expense chunk $chunkIndex (${buffer.length} dates)",
+          );
         }
       }
     } catch (e) {
@@ -237,7 +244,8 @@ class SettingsProvider extends ChangeNotifier {
         final data = doc.data();
         return BackupMetadata(
           id: doc.id,
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          createdAt:
+              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
           reason: data['reason'] ?? 'Unknown',
           customName: data['customName'],
           totalItems: data['summary']?['totalItems'] ?? 0,
@@ -613,12 +621,10 @@ class SettingsProvider extends ChangeNotifier {
           final month = DateFormat('yyyy-MM').format(date);
 
           yearMonthStats.putIfAbsent(year, () => {});
-          yearMonthStats[year]!.putIfAbsent(month, () => {
-            'saving': 0,
-            'needed': 0,
-            'luxury': 0,
-            'grandTotal': 0,
-          });
+          yearMonthStats[year]!.putIfAbsent(
+            month,
+            () => {'saving': 0, 'needed': 0, 'luxury': 0, 'grandTotal': 0},
+          );
 
           yearMonthStats[year]![month]![type] =
               (yearMonthStats[year]![month]![type] ?? 0) + amount;
@@ -646,15 +652,11 @@ class SettingsProvider extends ChangeNotifier {
         final dateId = entry.key;
         final total = entry.value;
 
-        batch.set(
-          userRef.collection('expenses').doc(dateId),
-          {
-            'date': dateId,
-            'total': total,
-            'repairedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(userRef.collection('expenses').doc(dateId), {
+          'date': dateId,
+          'total': total,
+          'repairedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
         batchCount++;
         if (batchCount >= 450) {
@@ -674,14 +676,10 @@ class SettingsProvider extends ChangeNotifier {
           yearTotal += monthData['grandTotal'] ?? 0;
         }
 
-        batch.set(
-          userRef.collection('year_stats').doc(year),
-          {
-            'grandTotal': yearTotal,
-            'repairedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(userRef.collection('year_stats').doc(year), {
+          'grandTotal': yearTotal,
+          'repairedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
         batchCount++;
         if (batchCount >= 450) {
@@ -721,14 +719,10 @@ class SettingsProvider extends ChangeNotifier {
       }
 
       // Update user grand total
-      batch.set(
-        userRef,
-        {
-          'grandTotal': overallGrandTotal,
-          'lastRepaired': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(userRef, {
+        'grandTotal': overallGrandTotal,
+        'lastRepaired': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (batchCount > 0) {
         await batch.commit();
@@ -769,14 +763,11 @@ class SettingsProvider extends ChangeNotifier {
         total += (item.data()['amount'] as num?)?.toDouble() ?? 0;
       }
 
-      await dateRef.set(
-        {
-          'date': dateId,
-          'total': total,
-          'repairedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await dateRef.set({
+        'date': dateId,
+        'total': total,
+        'repairedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (kDebugMode) {
         print("✅ Repaired $dateId → ₹$total");
@@ -824,7 +815,8 @@ class SettingsProvider extends ChangeNotifier {
 
         if ((storedTotal - calculatedTotal).abs() > 0.01) {
           issues.add(
-              "$dateId: Stored=₹$storedTotal, Actual=₹$calculatedTotal (diff: ₹${storedTotal - calculatedTotal})");
+            "$dateId: Stored=₹$storedTotal, Actual=₹$calculatedTotal (diff: ₹${storedTotal - calculatedTotal})",
+          );
         }
       }
 
@@ -878,7 +870,8 @@ class BackupMetadata {
   });
 
   String get displayName {
-    return customName ?? 'Backup ${DateFormat('MMM dd, yyyy HH:mm').format(createdAt)}';
+    return customName ??
+        'Backup ${DateFormat('MMM dd, yyyy HH:mm').format(createdAt)}';
   }
 
   String get formattedDate {

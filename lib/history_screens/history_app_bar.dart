@@ -63,9 +63,8 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ExpenseAnalyticsScreen(
-                      year: provider.selectedYear,
-                    ),
+                    builder: (_) =>
+                        ExpenseAnalyticsScreen(year: provider.selectedYear),
                   ),
                 );
                 break;
@@ -73,9 +72,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               case _HistoryMenuAction.settings:
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => ExpenseMaintenancePage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => ExpenseMaintenancePage()),
                 );
                 break;
             }
@@ -109,7 +106,6 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         const SizedBox(width: 8),
       ],
-
     );
   }
 
@@ -118,9 +114,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
@@ -129,16 +123,10 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 color: const Color(0xFF64FFDA).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.file_download,
-                color: Color(0xFF64FFDA),
-              ),
+              child: const Icon(Icons.file_download, color: Color(0xFF64FFDA)),
             ),
             const SizedBox(width: 12),
-            const Text(
-              "Export Data",
-              style: TextStyle(color: Colors.white),
-            ),
+            const Text("Export Data", style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Column(
@@ -146,10 +134,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             Text(
               "Choose export format for $year expenses",
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),
             const SizedBox(height: 24),
             _ExportOptionTile(
@@ -178,10 +163,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey[400]),
-            ),
+            child: Text("Cancel", style: TextStyle(color: Colors.grey[400])),
           ),
         ],
       ),
@@ -275,9 +257,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
@@ -286,10 +266,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 color: Colors.greenAccent.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.check_circle,
-                color: Colors.greenAccent,
-              ),
+              child: const Icon(Icons.check_circle, color: Colors.greenAccent),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -308,10 +285,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
             const SizedBox(height: 8),
             Text(
               "File location:",
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
             const SizedBox(height: 4),
             Container(
@@ -322,10 +296,7 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               child: Text(
                 filePath,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 10,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 10),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -343,10 +314,9 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               foregroundColor: Colors.black,
             ),
             onPressed: () async {
-              await Share.shareXFiles(
-                [XFile(filePath)],
-                text: 'Expense Report',
-              );
+              await Share.shareXFiles([
+                XFile(filePath),
+              ], text: 'Expense Report');
               Navigator.pop(context);
             },
             icon: const Icon(Icons.share, size: 18),
@@ -386,9 +356,7 @@ class _ExportOptionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
@@ -416,32 +384,20 @@ class _ExportOptionTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[600],
-              size: 16,
-            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
           ],
         ),
       ),
     );
   }
+}
 
-}
-enum _HistoryMenuAction {
-  export,
-  search,
-  analytics,
-  settings,
-}
+enum _HistoryMenuAction { export, search, analytics, settings }
 
 PopupMenuItem<_HistoryMenuAction> _menuItem({
   required _HistoryMenuAction value,
@@ -462,10 +418,7 @@ PopupMenuItem<_HistoryMenuAction> _menuItem({
           child: Icon(icon, color: iconColor, size: 20),
         ),
         const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white),
-        ),
+        Text(label, style: const TextStyle(color: Colors.white)),
       ],
     ),
   );

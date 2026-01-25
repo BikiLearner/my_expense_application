@@ -28,16 +28,11 @@ class AuthWrapper extends StatelessWidget {
                     color: Color(0xFF64FFDA),
                   ),
                   SizedBox(height: 24),
-                  CircularProgressIndicator(
-                    color: Color(0xFF64FFDA),
-                  ),
+                  CircularProgressIndicator(color: Color(0xFF64FFDA)),
                   SizedBox(height: 16),
                   Text(
                     'Loading...',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 ],
               ),

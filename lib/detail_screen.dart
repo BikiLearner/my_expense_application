@@ -7,11 +7,7 @@ class DateDetailScreen extends StatelessWidget {
   final String dateId;
   final DateTime date;
 
-  const DateDetailScreen({
-    super.key,
-    required this.dateId,
-    required this.date,
-  });
+  const DateDetailScreen({super.key, required this.dateId, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +37,7 @@ class DateDetailScreen extends StatelessWidget {
             ),
             Text(
               DateFormat('dd MMM yyyy').format(date),
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
             ),
           ],
         ),
@@ -61,9 +54,7 @@ class DateDetailScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64FFDA),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
             );
           }
 
@@ -80,10 +71,7 @@ class DateDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     'Error loading expenses',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 16),
                   ),
                 ],
               ),
@@ -171,10 +159,7 @@ class DateDetailScreen extends StatelessWidget {
                     // Total Amount
                     Text(
                       'Total Spent',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -223,8 +208,9 @@ class DateDetailScreen extends StatelessWidget {
 
                     String timeStr = '';
                     if (createdAt != null) {
-                      timeStr = DateFormat('hh:mm a')
-                          .format(createdAt.toDate());
+                      timeStr = DateFormat(
+                        'hh:mm a',
+                      ).format(createdAt.toDate());
                     }
 
                     return Container(
@@ -256,8 +242,9 @@ class DateDetailScreen extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF64FFDA)
-                                        .withOpacity(0.1),
+                                    color: const Color(
+                                      0xFF64FFDA,
+                                    ).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Icon(
@@ -272,7 +259,7 @@ class DateDetailScreen extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         title,
@@ -313,12 +300,14 @@ class DateDetailScreen extends StatelessWidget {
                                     vertical: 10,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF64FFDA)
-                                        .withOpacity(0.15),
+                                    color: const Color(
+                                      0xFF64FFDA,
+                                    ).withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: const Color(0xFF64FFDA)
-                                          .withOpacity(0.3),
+                                      color: const Color(
+                                        0xFF64FFDA,
+                                      ).withOpacity(0.3),
                                       width: 1,
                                     ),
                                   ),
@@ -389,12 +378,11 @@ class DateDetailScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(4),
                                     child: LinearProgressIndicator(
                                       value: amount / total,
-                                      backgroundColor:
-                                      const Color(0xFF2C2C2C),
+                                      backgroundColor: const Color(0xFF2C2C2C),
                                       valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                        Color(0xFF64FFDA),
-                                      ),
+                                          const AlwaysStoppedAnimation<Color>(
+                                            Color(0xFF64FFDA),
+                                          ),
                                       minHeight: 6,
                                     ),
                                   ),

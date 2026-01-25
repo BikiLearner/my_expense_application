@@ -12,10 +12,7 @@ import 'expense_type_selector.dart';
 class AddExpenseForm extends StatelessWidget {
   final bool isDesktop;
 
-  const AddExpenseForm({
-    super.key,
-    required this.isDesktop,
-  });
+  const AddExpenseForm({super.key, required this.isDesktop});
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +117,7 @@ class AddExpenseForm extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 10,)
+          SizedBox(height: 10),
         ],
       ),
     );

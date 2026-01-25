@@ -3,13 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'monthly_expense_list.dart';
+
 class MonthlyExpensePageHolidingList extends StatelessWidget {
   final Map<String, List<ExpenseDay>> grouped;
 
-  const MonthlyExpensePageHolidingList({
-    super.key,
-    required this.grouped,
-  });
+  const MonthlyExpensePageHolidingList({super.key, required this.grouped});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +22,7 @@ class MonthlyExpensePageHolidingList extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: MonthlyExpenseList(
-        grouped: grouped,
-      ),
+      body: MonthlyExpenseList(grouped: grouped),
     );
   }
 }

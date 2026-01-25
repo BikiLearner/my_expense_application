@@ -27,9 +27,7 @@ Future<void> migrateToNewStructure(BuildContext context) async {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(
-            color: Color(0xFF64FFDA),
-          ),
+          const CircularProgressIndicator(color: Color(0xFF64FFDA)),
           const SizedBox(height: 16),
           Text(
             'Migrating your data...\nPlease wait, do not close the app',
@@ -97,17 +95,19 @@ Future<void> migrateToNewStructure(BuildContext context) async {
           .collection('expenses')
           .doc(dateId)
           .set({
-        'date': dateId,
-        'total': dateTotal,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'date': dateId,
+            'total': dateTotal,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       // Accumulate for month and grand total
       monthlyTotals[monthId] = (monthlyTotals[monthId] ?? 0) + dateTotal;
       grandTotalExpense += dateTotal;
       datesProcessed++;
 
-      print('   ✓ Date $dateId: ₹$dateTotal (${itemsSnapshot.docs.length} items)');
+      print(
+        '   ✓ Date $dateId: ₹$dateTotal (${itemsSnapshot.docs.length} items)',
+      );
     }
 
     // Step 3: Create/Update monthly data documents
@@ -122,12 +122,12 @@ Future<void> migrateToNewStructure(BuildContext context) async {
           .collection('monthlyData')
           .doc(monthId)
           .set({
-        'month': monthId,
-        'totalExpense': monthTotal,
-        'income': 0, // Default to 0, user can edit later
-        'savings': 0, // Default to 0, user can edit later
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'month': monthId,
+            'totalExpense': monthTotal,
+            'income': 0, // Default to 0, user can edit later
+            'savings': 0, // Default to 0, user can edit later
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       print('   ✓ Month $monthId: ₹$monthTotal');
     }
@@ -232,9 +232,7 @@ Future<void> migrateToNewStructure(BuildContext context) async {
 
     scaffoldMessenger.showSnackBar(
       SnackBar(
-        content: Text(
-          '✅ Migration completed! Processed $datesProcessed dates',
-        ),
+        content: Text('✅ Migration completed! Processed $datesProcessed dates'),
         backgroundColor: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 3),
       ),
@@ -261,10 +259,7 @@ Future<void> migrateToNewStructure(BuildContext context) async {
             children: [
               Icon(Icons.error_outline, color: Colors.redAccent),
               SizedBox(width: 12),
-              Text(
-                'Migration Failed',
-                style: TextStyle(color: Colors.white),
-              ),
+              Text('Migration Failed', style: TextStyle(color: Colors.white)),
             ],
           ),
           content: Column(
@@ -302,22 +297,16 @@ Future<void> migrateToNewStructure(BuildContext context) async {
               const SizedBox(height: 4),
               Text(
                 '• Make sure you have internet connection\n'
-                    '• Check if you\'re logged in\n'
-                    '• Try again in a few minutes',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
+                '• Check if you\'re logged in\n'
+                '• Try again in a few minutes',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Close',
-                style: TextStyle(color: Colors.grey[500]),
-              ),
+              child: Text('Close', style: TextStyle(color: Colors.grey[500])),
             ),
             ElevatedButton(
               onPressed: () {
@@ -353,13 +342,7 @@ Widget _buildStatRow(String label, String value, {bool highlight = false}) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(
-        label,
-        style: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 13,
-        ),
-      ),
+      Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 13)),
       Text(
         value,
         style: TextStyle(
@@ -386,8 +369,7 @@ Future<bool> needsMigration() async {
     final userData = userDoc.data();
 
     // If no grand totals exist, migration is needed
-    if (userData == null ||
-        !userData.containsKey('grandTotalExpense')) {
+    if (userData == null || !userData.containsKey('grandTotalExpense')) {
       print('🔍 Migration needed: No grand totals found');
       return true;
     }

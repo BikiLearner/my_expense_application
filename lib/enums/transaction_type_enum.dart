@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-enum TransactionTypeEnum{
-  credit,
-  cash
-}
+enum TransactionTypeEnum { credit, cash }
+
 extension TransactionTypeX on TransactionTypeEnum {
   String get label {
     switch (this) {

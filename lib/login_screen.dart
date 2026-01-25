@@ -64,10 +64,7 @@ class LoginScreen extends StatelessWidget {
                 Text(
                   'Sign in to continue tracking your expenses',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
                 ),
                 const SizedBox(height: 40),
 
@@ -94,48 +91,45 @@ class LoginScreen extends StatelessWidget {
                 // Login Button
                 provider.loading
                     ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF64FFDA),
-                  ),
-                )
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF64FFDA),
+                        ),
+                      )
                     : SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () => provider.login(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF64FFDA),
-                      foregroundColor: const Color(0xFF121212),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.login, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'Login',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: () => provider.login(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF64FFDA),
+                            foregroundColor: const Color(0xFF121212),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.login, size: 22),
+                              SizedBox(width: 8),
+                              Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
+                      ),
                 const SizedBox(height: 24),
 
                 // Divider
                 Row(
                   children: [
                     Expanded(
-                      child: Divider(
-                        color: Colors.grey[800],
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Colors.grey[800], thickness: 1),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -148,10 +142,7 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: Divider(
-                        color: Colors.grey[800],
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Colors.grey[800], thickness: 1),
                     ),
                   ],
                 ),
@@ -162,17 +153,12 @@ class LoginScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF64FFDA),
-                    side: const BorderSide(
-                      color: Color(0xFF64FFDA),
-                      width: 2,
-                    ),
+                    side: const BorderSide(color: Color(0xFF64FFDA), width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

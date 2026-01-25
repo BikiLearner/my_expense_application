@@ -39,10 +39,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _setLoading(true);
-      await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
 
       // Clear controllers after successful login
       emailController.clear();
@@ -168,19 +165,12 @@ class AuthProvider extends ChangeNotifier {
           children: [
             const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
+            Expanded(child: Text(msg, style: const TextStyle(fontSize: 14))),
           ],
         ),
         backgroundColor: Colors.redAccent,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -194,19 +184,12 @@ class AuthProvider extends ChangeNotifier {
           children: [
             const Icon(Icons.check_circle_outline, color: Colors.white),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
+            Expanded(child: Text(msg, style: const TextStyle(fontSize: 14))),
           ],
         ),
         backgroundColor: const Color(0xFF4CAF50),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
       ),
     );
