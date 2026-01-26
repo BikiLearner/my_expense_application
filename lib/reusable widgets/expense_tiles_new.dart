@@ -1,6 +1,8 @@
 import 'package:expence_app/enums/expense_type.dart';
 import 'package:expence_app/models/expense_items.dart';
+import 'package:expence_app/providers/bank_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'delete_expense_dialog.dart';
 import 'edit_expense_dialog.dart';
@@ -18,7 +20,7 @@ class ExpenseItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ExpenseType type = expenseItem.type;
-    final String txn = expenseItem.transactionType.name;
+    final String txn = expenseItem.transactionType;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -66,7 +68,7 @@ class ExpenseItemTile extends StatelessWidget {
                   ),
                 if (toShow)
                   Text(
-                    txn.toUpperCase(),
+                    context.read<BankProvider>().getTransactionBankName(txn),
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF9AA0A6),

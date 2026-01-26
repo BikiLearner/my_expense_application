@@ -1,4 +1,5 @@
 import 'package:expence_app/enums/indian_number_formatter.dart';
+import 'package:expence_app/reusable%20widgets/bank_selector_drop_down.dart';
 import 'package:expence_app/reusable%20widgets/transaction_type_chips.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -76,7 +77,7 @@ class AddExpenseForm extends StatelessWidget {
                         icon: Icons.notes,
                       ),
                       const SizedBox(height: 8),
-                      const TransactionTypeChips(),
+                      const BankSelectorDropdown(),
                     ],
                   ),
                 ),

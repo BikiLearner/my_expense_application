@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../enums/expense_type.dart';
 import '../enums/transaction_type_enum.dart';
 import '../expense_model.dart';
+import '../models/bank_model.dart';
 import '../models/expense_items.dart';
 import '../models/income_entry.dart';
 import '../models/month_stats.dart';
@@ -24,6 +25,11 @@ class ExpenseProvider extends ChangeNotifier {
   final TextEditingController descriptionController = TextEditingController();
 
   String get currentMonth => DateFormat('yyyy-MM').format(DateTime.now());
+  bool get isCashTransaction =>
+      _selectedTransaction == null || _selectedTransaction!.id == 'cash';
+
+  String get currentBankMonthId =>
+      DateFormat('yyyy-MM').format(_selectedDate);
 
   ExpenseType _selectedType = ExpenseType.luxury;
   ExpenseType get selectedType => _selectedType;
@@ -35,10 +41,17 @@ class ExpenseProvider extends ChangeNotifier {
 
   // 🔹 Auth UID (SAFE)
   String get uid => FirebaseAuth.instance.currentUser!.uid;
-  TransactionTypeEnum _selectedTransaction =
-      TransactionTypeEnum.cash; // ✅ default
+  BankModel? _selectedTransaction = BankModel(
+    id: 'cash',
+    bankName: 'Cash',
+    totalAmountWhenAdded: 0,
+    currentAmount: 0,
+    addedDate: Timestamp.now(),
+  );
+  // ✅ default
 
-  TransactionTypeEnum get selectedTransaction => _selectedTransaction;
+  BankModel? get selectedTransaction => _selectedTransaction;
+
 
   // 🔹 Selected Date
   DateTime _selectedDate = DateTime.now();
@@ -92,7 +105,7 @@ class ExpenseProvider extends ChangeNotifier {
     return DateFormat('yyyy-MM-dd').format(date);
   }
 
-  void setTransactionType(TransactionTypeEnum type) {
+  void setTransactionType(BankModel type) {
     _selectedTransaction = type;
     notifyListeners();
   }
@@ -185,7 +198,7 @@ class ExpenseProvider extends ChangeNotifier {
         'amount': amount,
         'description': desc,
         'type': _selectedType.name,
-        'transactionType': _selectedTransaction.name,
+        'transactionType': _selectedTransaction?.id ,
         'createdAt': Timestamp.fromDate(
           DateTime(
             _selectedDate.year,
@@ -215,6 +228,45 @@ class ExpenseProvider extends ChangeNotifier {
         'grandTotal': FieldValue.increment(amount),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+
+      if (!isCashTransaction) {
+        final bankId = _selectedTransaction!.id;
+
+        final bankRef = _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('bank')
+            .doc(bankId);
+
+        final bankMonthId =
+        DateFormat('yyyy-MM').format(_selectedDate);
+
+        final bankMonthRef = bankRef
+            .collection('monthAmount')
+            .doc(bankMonthId);
+
+        await _firestore.runTransaction((tx) async {
+          final bankSnap = await tx.get(bankRef);
+          final bankMonthSnap = await tx.get(bankMonthRef);
+
+          // ❌ Bank not found → do nothing
+          if (!bankSnap.exists) return;
+
+          // ❌ Month not found → do nothing
+          if (!bankMonthSnap.exists) return;
+
+          // 🔻 Expense = money OUT
+          tx.update(bankRef, {
+            'currentAmount': FieldValue.increment(-amount),
+          });
+
+          tx.update(bankMonthRef, {
+            'currentAmount': FieldValue.increment(-amount),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      }
 
       await batch.commit();
 
@@ -258,43 +310,44 @@ class ExpenseProvider extends ChangeNotifier {
     required double oldAmount,
     required ExpenseType oldType,
     required DateTime oldDate,
+    required String? oldTransactionTypeId,
   }) async {
     final title = titleController.text.trim();
-    final newAmount = double.tryParse(amountController.text.trim());
+    final newAmount =
+    double.tryParse(amountController.text.replaceAll(',', '').trim());
     final desc = descriptionController.text.trim();
 
     if (title.isEmpty || newAmount == null || newAmount <= 0) return;
 
     final newType = _selectedType;
-    final newTransactionType = _selectedTransaction;
+    final newBank = _selectedTransaction; // may be cash
     final diff = newAmount - oldAmount;
 
+    final dateId = getDateId(oldDate);
     final year = DateFormat('yyyy').format(oldDate);
     final month = DateFormat('yyyy-MM').format(oldDate);
-    // 🔧 FIXED: Use getDateId helper method
-    final oldDateId = getDateId(oldDate);
+
+    final userRef = _firestore.collection('users').doc(uid);
+    final dateRef = userRef.collection('expenses').doc(dateId);
+    final itemRef = dateRef.collection('items').doc(docId);
+    final yearRef = userRef.collection('year_stats').doc(year);
+    final monthRef = yearRef.collection('months').doc(month);
 
     try {
-      final userRef = _firestore.collection('users').doc(uid);
-      final dateRef = userRef.collection('expenses').doc(oldDateId);
-      final itemRef = dateRef.collection('items').doc(docId);
-
-      final yearRef = userRef.collection('year_stats').doc(year);
-      final monthRef = yearRef.collection('months').doc(month);
-
+      // 🔹 STEP 1: NORMAL EXPENSE + STATS UPDATE
       final batch = _firestore.batch();
 
-      // 1️⃣ Update expense item
+      // Expense item
       batch.update(itemRef, {
         'title': title,
         'amount': newAmount,
         'description': desc,
         'type': newType.name,
-        'transactionType': newTransactionType.name,
+        'transactionType': newBank?.id,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 2️⃣ Update day total + user grand total
+      // Day / user / year totals
       if (diff != 0) {
         batch.set(dateRef, {
           'total': FieldValue.increment(diff),
@@ -307,10 +360,11 @@ class ExpenseProvider extends ChangeNotifier {
 
         batch.set(yearRef, {
           'grandTotal': FieldValue.increment(diff),
+          'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
 
-      // 3️⃣ Update month stats
+      // Month stats
       if (oldType == newType) {
         if (diff != 0) {
           batch.set(monthRef, {
@@ -329,15 +383,141 @@ class ExpenseProvider extends ChangeNotifier {
 
       await batch.commit();
 
+      // 🔹 STEP 2: BANK UPDATE (TRANSACTION BASED)
+      final oldBankId = oldTransactionTypeId;
+      final newBankId = newBank?.id;
+      final bankMonthId = month; // yyyy-MM from expense date
+
+      await _firestore.runTransaction((tx) async {
+        // 🟡 SAME BANK
+        if (oldBankId == newBankId &&
+            oldBankId != null &&
+            oldBankId != 'cash') {
+          if (diff == 0) return;
+
+          final bankRef =
+          userRef.collection('bank').doc(oldBankId);
+          final bankMonthRef =
+          bankRef.collection('monthAmount').doc(bankMonthId);
+
+          final bankSnap = await tx.get(bankRef);
+          final monthSnap = await tx.get(bankMonthRef);
+
+          if (!bankSnap.exists || !monthSnap.exists) return;
+
+          tx.update(bankRef, {
+            'currentAmount': FieldValue.increment(-diff),
+          });
+
+          tx.update(bankMonthRef, {
+            'currentAmount': FieldValue.increment(-diff),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 🔵 BANK CHANGED
+        else {
+          // ➕ RETURN MONEY TO OLD BANK
+          if (oldBankId != null && oldBankId != 'cash') {
+            final oldBankRef =
+            userRef.collection('bank').doc(oldBankId);
+            final oldMonthRef =
+            oldBankRef.collection('monthAmount').doc(bankMonthId);
+
+            final oldBankSnap = await tx.get(oldBankRef);
+            final oldMonthSnap = await tx.get(oldMonthRef);
+
+            if (oldBankSnap.exists && oldMonthSnap.exists) {
+              tx.update(oldBankRef, {
+                'currentAmount': FieldValue.increment(oldAmount),
+              });
+
+              tx.update(oldMonthRef, {
+                'currentAmount': FieldValue.increment(oldAmount),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          // ➖ DEDUCT FROM NEW BANK
+          if (newBankId != null && newBankId != 'cash') {
+            final newBankRef =
+            userRef.collection('bank').doc(newBankId);
+            final newMonthRef =
+            newBankRef.collection('monthAmount').doc(bankMonthId);
+
+            final newBankSnap = await tx.get(newBankRef);
+            final newMonthSnap = await tx.get(newMonthRef);
+
+            if (newBankSnap.exists && newMonthSnap.exists) {
+              tx.update(newBankRef, {
+                'currentAmount': FieldValue.increment(-newAmount),
+              });
+
+              tx.update(newMonthRef, {
+                'currentAmount': FieldValue.increment(-newAmount),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          }
+        }
+      });
+
       clearForm();
 
       if (kDebugMode) {
-        print("✏️ Expense updated successfully: $docId");
+        print("✏️ Expense updated with correct bank sync");
       }
     } catch (e) {
       debugPrint("❌ Edit expense failed: $e");
     }
   }
+
+  void hideLoadingDialog(BuildContext context) {
+    if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
+  Future<void> showLoadingDialog(BuildContext context,
+      {String message = 'Processing...'}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // ❌ user cannot close
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Row(
+            children: [
+              const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Color(0xFF64FFDA),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   void clearForm() {
     titleController.clear();
@@ -345,7 +525,6 @@ class ExpenseProvider extends ChangeNotifier {
     descriptionController.clear();
     _autoCompleteKey++; // Force rebuild
     _selectedType = ExpenseType.luxury; // Reset to default
-    _selectedTransaction = TransactionTypeEnum.cash;
     notifyListeners();
   }
 
@@ -587,11 +766,11 @@ class ExpenseProvider extends ChangeNotifier {
     required String docId,
     required double amount,
     required ExpenseType type,
-    required String dateId, // ✅ Uses expense's actual date
+    required String dateId,
+    required String? bankId, // 👈 IMPORTANT
   }) async {
     try {
       final userRef = _firestore.collection('users').doc(uid);
-      // 🔧 FIXED: Use getDateId helper with the expense's actual date
       final dateRef = userRef.collection('expenses').doc(dateId);
 
       final year = dateId.substring(0, 4);
@@ -600,42 +779,68 @@ class ExpenseProvider extends ChangeNotifier {
       final yearRef = userRef.collection('year_stats').doc(year);
       final monthRef = yearRef.collection('months').doc(month);
 
+      // 🔹 STEP 1: Delete expense + stats (BATCH)
       final batch = _firestore.batch();
 
-      // 1️⃣ Delete expense item
       batch.delete(dateRef.collection('items').doc(docId));
 
-      // 2️⃣ Decrement date total
       batch.set(dateRef, {
         'total': FieldValue.increment(-amount),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // 3️⃣ Decrement grand total
       batch.set(userRef, {
         'grandTotal': FieldValue.increment(-amount),
       }, SetOptions(merge: true));
 
-      // 4️⃣ Decrement year total
       batch.set(yearRef, {
         'grandTotal': FieldValue.increment(-amount),
       }, SetOptions(merge: true));
 
-      // 5️⃣ Decrement month stats
       batch.set(monthRef, {
         type.name: FieldValue.increment(-amount),
         'grandTotal': FieldValue.increment(-amount),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       await batch.commit();
 
+      // 🔹 STEP 2: Restore bank balance (TRANSACTION)
+      if (bankId != null && bankId != 'cash') {
+        final bankRef = userRef.collection('bank').doc(bankId);
+        final bankMonthRef =
+        bankRef.collection('monthAmount').doc(month);
+
+        await _firestore.runTransaction((tx) async {
+          final bankSnap = await tx.get(bankRef);
+          final bankMonthSnap = await tx.get(bankMonthRef);
+
+          // ❌ Bank not found → skip
+          if (!bankSnap.exists) return;
+
+          // ❌ Month not found → skip
+          if (!bankMonthSnap.exists) return;
+
+          // 🔺 Delete expense = money BACK
+          tx.update(bankRef, {
+            'currentAmount': FieldValue.increment(amount),
+          });
+
+          tx.update(bankMonthRef, {
+            'currentAmount': FieldValue.increment(amount),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      }
+
       if (kDebugMode) {
-        print("⚡ Expense deleted from $dateId: $docId");
+        print("🗑️ Expense deleted & bank restored: $docId");
       }
     } catch (e) {
       debugPrint("❌ Delete expense failed: $e");
     }
   }
+
 
   // 🔹 Expense Stream
   Stream<QuerySnapshot> expenseStream() {

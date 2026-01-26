@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../models/bank_model.dart';
+import '../providers/bank_provider.dart';
+import '../providers/expence_provider.dart';
+
+class BankSelectorDropdown extends StatelessWidget {
+  const BankSelectorDropdown({super.key});
+
+  static final BankModel _cashBank = BankModel(
+    id: 'cash',
+    bankName: 'Cash',
+    totalAmountWhenAdded: 0,
+    currentAmount: 0,
+    addedDate: Timestamp.now(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector2<BankProvider, ExpenseProvider, _BankSelectionState>(
+      selector: (_, bankProvider, expenseProvider) {
+        final banks = [_cashBank, ...bankProvider.banks];
+
+        final selectedId =
+            expenseProvider.selectedTransaction?.id ?? 'cash';
+
+        final selectedBank = banks.firstWhere(
+              (b) => b.id == selectedId,
+          orElse: () => _cashBank,
+        );
+
+        return _BankSelectionState(banks, selectedBank);
+      },
+      builder: (_, state, __) {
+        return DropdownButtonFormField<BankModel>(
+          value: state.selectedBank,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF2C2C2C),
+
+          decoration: InputDecoration(
+            labelText: 'Payment Method',
+            labelStyle: TextStyle(color: Colors.grey[500]),
+            hintText: 'Select bank or cash',
+            hintStyle: TextStyle(color: Colors.grey[700]),
+            prefixIcon: const Icon(
+              Icons.account_balance_wallet,
+              color: Color(0xFF64FFDA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFF2C2C2C),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+              const BorderSide(color: Color(0xFF3C3C3C), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+              const BorderSide(color: Color(0xFF64FFDA), width: 2),
+            ),
+          ),
+
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.white70,
+          ),
+
+          items: state.banks.map((bank) {
+            return DropdownMenuItem<BankModel>(
+              value: bank,
+              child: Row(
+                children: [
+                  Icon(
+                    bank.id == 'cash'
+                        ? Icons.money_rounded
+                        : Icons.account_balance_rounded,
+                    size: 20,
+                    color: bank.id == 'cash'
+                        ? const Color(0xFF64FFDA)
+                        : Colors.white70,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      bank.bankName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+
+          onChanged: (bank) {
+            if (bank != null) {
+              context.read<ExpenseProvider>().setTransactionType(bank);
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+
+
+
+class _BankSelectionState {
+  final List<BankModel> banks;
+  final BankModel selectedBank;
+
+  const _BankSelectionState(this.banks, this.selectedBank);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is _BankSelectionState &&
+              banks == other.banks &&
+              selectedBank.id == other.selectedBank.id;
+
+  @override
+  int get hashCode => banks.hashCode ^ selectedBank.id.hashCode;
+}

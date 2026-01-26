@@ -316,7 +316,7 @@ class MonthExpensesProvider extends ChangeNotifier {
 
     for (final items in _cachedExpenses.values) {
       for (final item in items) {
-        final transactionType = item.transactionType?.name ?? 'cash';
+        final transactionType = item.transactionType;
         transactionMap[transactionType] =
             (transactionMap[transactionType] ?? 0) + item.amount;
       }

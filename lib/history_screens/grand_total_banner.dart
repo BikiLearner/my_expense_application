@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../pages/bank_list_page.dart';
+import '../providers/bank_provider.dart';
 import '../providers/expence_provider.dart';
 import 'income_breakdown.dart';
 import 'monthly_expense_page.dart';
@@ -155,6 +157,15 @@ class GrandTotalBanner extends StatelessWidget {
                           ),
                         );
                       }
+                      else if (value == 'bank_details') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BankPage(
+                            ),
+                          ),
+                        );
+                      }
                     },
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -229,6 +240,30 @@ class GrandTotalBanner extends StatelessWidget {
                           ],
                         ),
                       ),
+                      PopupMenuItem(
+                        value: 'bank_details',
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.greenAccent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.currency_bitcoin,
+                                color: Colors.greenAccent,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Bank Details',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -280,6 +315,39 @@ class GrandTotalBanner extends StatelessWidget {
               //         fontWeight: FontWeight.w600
               //     )
               // )
+              InkWell(
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>BankPage()));
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet,
+                      color: Color(0xFF64FFDA),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+
+                    Selector<BankProvider, double>(
+                      selector: (_, provider) => provider.totalBankBalance,
+                      builder: (_, total, __) {
+                        return Text(
+                          "Total Balance : ₹${total.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                            color: Color(0xFF64FFDA),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+
+              const SizedBox(height: 6),
             ],
           ),
           const SizedBox(height: 16),

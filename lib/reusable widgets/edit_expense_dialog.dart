@@ -43,6 +43,7 @@ class EditExpenseDialog extends StatelessWidget {
               oldAmount: expense.amount,
               oldType: expense.type,
               oldDate: expense.createdAt,
+              oldTransactionTypeId: expense.transactionType,
             );
 
             if (context.mounted) Navigator.pop(context);

@@ -10,7 +10,7 @@ class ExpenseItem {
   final ExpenseType type;
   final String description;
   final DateTime createdAt;
-  final TransactionTypeEnum transactionType;
+  final String transactionType;
 
   ExpenseItem({
     required this.id,
@@ -40,12 +40,7 @@ class ExpenseItem {
         orElse: () => ExpenseType.needed,
       ),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
-      transactionType: TransactionTypeEnum.values.firstWhere(
-        (e) =>
-            e.name ==
-            (data['transactionType'] ?? TransactionTypeEnum.cash.name),
-        orElse: () => TransactionTypeEnum.cash,
-      ),
+      transactionType: data['transactionType'] ?? 'cash'
     );
   }
 
@@ -59,7 +54,7 @@ class ExpenseItem {
       'description': description,
       'type': type.name,
       'createdAt': createdAt.toIso8601String(),
-      'transactionType': transactionType.name,
+      'transactionType': transactionType,
     };
   }
 
@@ -76,10 +71,7 @@ class ExpenseItem {
         orElse: () => ExpenseType.needed,
       ),
       createdAt: DateTime.parse(json['createdAt']),
-      transactionType: TransactionTypeEnum.values.firstWhere(
-        (e) => e.name == json['transactionType'],
-        orElse: () => TransactionTypeEnum.cash,
-      ),
+      transactionType: json['transactionType'],
     );
   }
 
@@ -90,7 +82,7 @@ class ExpenseItem {
     ExpenseType? type,
     String? description,
     DateTime? createdAt,
-    TransactionTypeEnum? transactionType,
+    String? transactionType,
   }) {
     return ExpenseItem(
       id: id,

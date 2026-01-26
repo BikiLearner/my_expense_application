@@ -39,6 +39,7 @@ class DeleteExpenseDialog extends StatelessWidget {
               amount: expense.amount,
               type: expense.type,
               dateId: expense.dateId,
+              bankId: expense.transactionType
             );
             Navigator.pop(context);
           },

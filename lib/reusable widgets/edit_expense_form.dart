@@ -1,3 +1,4 @@
+import 'package:expence_app/reusable%20widgets/bank_selector_drop_down.dart';
 import 'package:expence_app/reusable%20widgets/transaction_type_chips.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +26,7 @@ class EditExpenseForm extends StatelessWidget {
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 8),
-              TransactionTypeChips(),
+              BankSelectorDropdown(),
               const SizedBox(height: 16),
               TitleAutoCompleteField(controller: provider.titleController),
               const SizedBox(height: 16),

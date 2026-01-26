@@ -1,4 +1,5 @@
 import 'package:expence_app/providers/all_expense_provider.dart';
+import 'package:expence_app/providers/bank_provider.dart';
 import 'package:expence_app/providers/export_provider.dart';
 import 'package:expence_app/providers/month_expense_provider.dart';
 import 'package:expence_app/providers/setting_provider.dart';
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
         ChangeNotifierProvider(create: (_) => AllExpensesProvider()),
+        ChangeNotifierProvider(create: (_) => BankProvider()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,
