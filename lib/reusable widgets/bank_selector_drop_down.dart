@@ -9,26 +9,24 @@ import '../providers/expence_provider.dart';
 class BankSelectorDropdown extends StatelessWidget {
   const BankSelectorDropdown({super.key});
 
-  static final BankModel _cashBank = BankModel(
-    id: 'cash',
-    bankName: 'Cash',
-    totalAmountWhenAdded: 0,
-    currentAmount: 0,
-    addedDate: Timestamp.now(),
-  );
+
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<BankProvider>().listenBanks();
+    });
+
     return Selector2<BankProvider, ExpenseProvider, _BankSelectionState>(
       selector: (_, bankProvider, expenseProvider) {
-        final banks = [_cashBank, ...bankProvider.banks];
+        final banks = [cashBank, ...bankProvider.banks];
 
         final selectedId =
             expenseProvider.selectedTransaction?.id ?? 'cash';
 
         final selectedBank = banks.firstWhere(
               (b) => b.id == selectedId,
-          orElse: () => _cashBank,
+          orElse: () => cashBank,
         );
 
         return _BankSelectionState(banks, selectedBank);
@@ -90,17 +88,34 @@ class BankSelectorDropdown extends StatelessWidget {
                         : Colors.white70,
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      bank.bankName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                  Row(
+                    children: [
+                      // 🏦 Title / Bank Name
+                      Text(
+                        bank.bankName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+
+                      const SizedBox(width: 8),
+
+                      // 💰 Amount
+                      Text(
+                        '₹${bank.currentAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ],
+                  )
+
                 ],
               ),
             );

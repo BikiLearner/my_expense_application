@@ -29,6 +29,7 @@ class _BankPageState extends State<BankPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E1E1E),
         elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
         title: Row(
           children: [
             const Icon(Icons.account_balance, color: Color(0xFF64FFDA)),

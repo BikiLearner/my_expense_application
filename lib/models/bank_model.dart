@@ -28,4 +28,19 @@ class BankModel {
       addedDate: data['addedDate'],
     );
   }
+
+  @override
+  String toString() {
+    return 'BankModel{id: $id, bankName: $bankName, totalAmountWhenAdded: $totalAmountWhenAdded, currentAmount: $currentAmount, addedDate: $addedDate}';
+  }
+
+
 }
+
+final BankModel cashBank = BankModel(
+  id: 'cash',
+  bankName: 'Cash',
+  totalAmountWhenAdded: 0,
+  currentAmount: 0,
+  addedDate: Timestamp.now(),
+);

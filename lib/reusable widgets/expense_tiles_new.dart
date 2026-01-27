@@ -20,7 +20,7 @@ class ExpenseItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ExpenseType type = expenseItem.type;
-    final String txn = expenseItem.transactionType;
+    final String txn = context.read<BankProvider>().getTransactionBankName(expenseItem.transactionType);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -54,7 +54,7 @@ class ExpenseItemTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: Colors.white, 
                   ),
                 ),
                 if ((expenseItem.description ?? '').toString().isNotEmpty &&
@@ -68,7 +68,7 @@ class ExpenseItemTile extends StatelessWidget {
                   ),
                 if (toShow)
                   Text(
-                    context.read<BankProvider>().getTransactionBankName(txn),
+                  txn,
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF9AA0A6),

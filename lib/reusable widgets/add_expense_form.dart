@@ -97,7 +97,9 @@ class AddExpenseForm extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: provider.addExpense,
+              onPressed: (){
+                provider.addExpense(context);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF64FFDA),
                 foregroundColor: const Color(0xFF121212),

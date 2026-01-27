@@ -196,9 +196,12 @@ class BankProvider extends ChangeNotifier {
     });
   }
 
-  String getTransactionBankName(String id){
-    return _banks.firstWhere((element) => element.id == id).bankName;
+  String getTransactionBankName(String id) {
+    final bank = _banks.where((e) => e.id == id);
+    debugPrint("Bank Details : $bank");
+    return bank.isNotEmpty ? bank.first.bankName : 'Cash';
   }
+
 
 
   @override

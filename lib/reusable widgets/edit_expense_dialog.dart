@@ -39,6 +39,7 @@ class EditExpenseDialog extends StatelessWidget {
         ElevatedButton(
           onPressed: () async {
             await provider.editExpense(
+              context: context,
               docId: expense.id,
               oldAmount: expense.amount,
               oldType: expense.type,

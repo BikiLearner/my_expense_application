@@ -23,6 +23,7 @@ class ExpenseProvider extends ChangeNotifier {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  bool _isBalanceDialogOpen = false;
 
   String get currentMonth => DateFormat('yyyy-MM').format(DateTime.now());
   bool get isCashTransaction =>
@@ -162,7 +163,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 🔹 Add Expense
-  Future<void> addExpense() async {
+  Future<void> addExpense(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -173,6 +174,21 @@ class ExpenseProvider extends ChangeNotifier {
     final desc = descriptionController.text.trim();
 
     if (title.isEmpty || amount == null || amount <= 0) return;
+// 🔒 HARD BANK VALIDATION
+    if (!isCashTransaction) {
+      final bank = _selectedTransaction!;
+      final available = bank.currentAmount;
+
+      if (available < amount) {
+        await showInsufficientBalanceDialog(
+          context,
+          available: available,
+          requiredAmount: amount,
+          bankName: bank.bankName,
+        );
+        return; // ❌ STOP HERE
+      }
+    }
 
     try {
       final userRef = _firestore.collection('users').doc(uid);
@@ -280,6 +296,132 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> showInsufficientBalanceDialog(
+      BuildContext context, {
+        required double available,
+        required double requiredAmount,
+        required String bankName,
+      }) async {
+    if (_isBalanceDialogOpen) return; // 🚫 prevent stacking
+    _isBalanceDialogOpen = true;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+
+        title: Row(
+          children: const [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+              size: 28,
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Aukat Alert 🚨',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            const Text(
+              'Bhai ruk ja 😶‍🌫️\n'
+                  'Yeh expense thoda zyada ho raha hai.',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2C2C),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF3C3C3C)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    bankName,
+                    style: const TextStyle(
+                      color: Color(0xFF64FFDA),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Wallet mein: ₹${available.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    'Kharcha chahiye: ₹${requiredAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+            const Text(
+              '😌 Tip: Cash use kar le ya amount kam kar.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF64FFDA),
+                foregroundColor: const Color(0xFF121212),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // ✅ ALWAYS WORKS
+              },
+              child: const Text(
+                'Samajh gaya 😅',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    _isBalanceDialogOpen = false; // ✅ reset after close
+  }
+
+
+
   Future<void> fetchCategories() async {
     try {
       final snapshot = await _firestore
@@ -306,6 +448,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   Future<void> editExpense({
+    required BuildContext context,
     required String docId,
     required double oldAmount,
     required ExpenseType oldType,
@@ -322,6 +465,36 @@ class ExpenseProvider extends ChangeNotifier {
     final newType = _selectedType;
     final newBank = _selectedTransaction; // may be cash
     final diff = newAmount - oldAmount;
+// 🔒 HARD BANK BALANCE VALIDATION (EDIT EXPENSE)
+    if (!isCashTransaction) {
+      final newBank = _selectedTransaction!;
+      final available = newBank.currentAmount;
+
+      if (oldTransactionTypeId == newBank.id) {
+
+        if (diff > 0 && available < diff) {
+          await showInsufficientBalanceDialog(
+            context,
+            available: available,
+            requiredAmount: diff,
+            bankName: newBank.bankName,
+          );
+          return; // ❌ STOP
+        }
+      }
+      // 🔵 BANK CHANGED
+      else {
+        if (available < newAmount) {
+          await showInsufficientBalanceDialog(
+            context,
+            available: available,
+            requiredAmount: newAmount,
+            bankName: newBank.bankName,
+          );
+          return; // ❌ STOP
+        }
+      }
+    }
 
     final dateId = getDateId(oldDate);
     final year = DateFormat('yyyy').format(oldDate);

@@ -248,7 +248,7 @@ class ExpenseScreen extends StatelessWidget {
 
                           return ExpenseItemTile(
                             expenseItem: expense,
-                            toShow: false,
+                            toShow: true,
                           );
                         },
                       ),
