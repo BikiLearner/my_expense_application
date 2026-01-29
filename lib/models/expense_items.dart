@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expence_app/enums/transaction_type_enum.dart';
+import 'package:flutter/material.dart';
 import '../enums/expense_type.dart';
 
 class ExpenseItem {
@@ -29,6 +30,7 @@ class ExpenseItem {
     Map<String, dynamic> data,
     String dateId,
   ) {
+    debugPrint('ExpenseItem.fromFirestore called with data: $data');
     return ExpenseItem(
       id: id,
       dateId: dateId,

@@ -8,14 +8,30 @@ import '../models/bank_model.dart';
 import '../models/bank_month_entry_model.dart';
 import '../models/bank_month_model.dart';
 import '../providers/bank_provider.dart';
-
-class BankAccountPage extends StatelessWidget {
+class BankAccountPage extends StatefulWidget
+{
   final BankModel bank;
 
   const BankAccountPage({super.key, required this.bank});
 
   @override
-  Widget build(BuildContext context) {
+  State<BankAccountPage> createState() => _BankAccountPageState();
+}
+
+class _BankAccountPageState extends State<BankAccountPage>
+{
+  @override
+  void initState() 
+  {
+    super.initState();
+
+    // 🔥 Start listening ONCE
+    context.read<BankProvider>()
+      .listenBankMonths(widget.bank.id);
+  }
+  @override
+  Widget build(BuildContext context) 
+  {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -31,7 +47,7 @@ class BankAccountPage extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                bank.bankName,
+                widget.bank.bankName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -46,8 +62,9 @@ class BankAccountPage extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF64FFDA),
         foregroundColor: const Color(0xFF121212),
-        onPressed: () {
-          showAddMonthAmountDialog(context, bank);
+        onPressed: ()
+        {
+          showAddMonthAmountDialog(context, widget.bank);
         },
         icon: const Icon(Icons.add),
         label: const Text(
@@ -55,36 +72,14 @@ class BankAccountPage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: StreamBuilder<List<BankMonthModel>>(
-        stream: context.read<BankProvider>().streamBankMonths(bank.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading data',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      body: Selector<BankProvider, List<BankMonthModel>>(
+        selector: (_, p) => p.getBankMonths(widget.bank.id),
+        builder: (context, months, _)
+        {
+          if (months.isEmpty) 
+          {
             return _buildEmptyState();
           }
-
-          final months = snapshot.data!;
           return _buildMonthList(months);
         },
       ),
@@ -92,7 +87,8 @@ class BankAccountPage extends StatelessWidget {
   }
 
   // 🎨 Empty State
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState() 
+  {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -122,7 +118,8 @@ class BankAccountPage extends StatelessWidget {
   }
 
   // 📋 Month List
-  Widget _buildMonthList(List<BankMonthModel> months) {
+  Widget _buildMonthList(List<BankMonthModel> months) 
+  {
     return Column(
       children: [
         // 💰 Current Balance Banner
@@ -155,7 +152,7 @@ class BankAccountPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '₹${bank.currentAmount.toStringAsFixed(2)}',
+                '₹${widget.bank.currentAmount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 32,
@@ -168,13 +165,13 @@ class BankAccountPage extends StatelessWidget {
                   _BankInfoChip(
                     icon: Icons.arrow_upward,
                     label: 'Total Added',
-                    value: '₹${bank.totalAmountWhenAdded.toStringAsFixed(0)}',
+                    value: '₹${widget.bank.totalAmountWhenAdded.toStringAsFixed(0)}',
                   ),
                   const SizedBox(width: 12),
                   _BankInfoChip(
                     icon: Icons.calendar_today,
                     label: 'Since',
-                    value: _formatDate(bank.addedDate.toDate()),
+                    value: _formatDate(widget.bank.addedDate.toDate()),
                   ),
                 ],
               ),
@@ -227,8 +224,9 @@ class BankAccountPage extends StatelessWidget {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: months.length,
-            itemBuilder: (_, i) {
-              return _MonthCard(month: months[i], bankId: bank.id);
+            itemBuilder: (_, i)
+            {
+              return _MonthCard(month: months[i], bankId: widget.bank.id);
             },
           ),
         ),
@@ -236,7 +234,8 @@ class BankAccountPage extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime date) 
+  {
     final months = [
       'Jan',
       'Feb',
@@ -256,7 +255,8 @@ class BankAccountPage extends StatelessWidget {
 }
 
 // 📊 Bank Info Chip
-class _BankInfoChip extends StatelessWidget {
+class _BankInfoChip extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final String value;
@@ -268,7 +268,8 @@ class _BankInfoChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -312,7 +313,8 @@ class _BankInfoChip extends StatelessWidget {
 }
 
 // 🗓️ Month Card with Expandable Entries
-class _MonthCard extends StatefulWidget {
+class _MonthCard extends StatefulWidget
+{
   final BankMonthModel month;
   final String bankId;
 
@@ -322,11 +324,13 @@ class _MonthCard extends StatefulWidget {
   State<_MonthCard> createState() => _MonthCardState();
 }
 
-class _MonthCardState extends State<_MonthCard> {
+class _MonthCardState extends State<_MonthCard>
+{
   bool _isExpanded = false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -347,8 +351,20 @@ class _MonthCardState extends State<_MonthCard> {
       child: Column(
         children: [
           InkWell(
-            onTap: () {
+            onTap: ()
+            {
               setState(() => _isExpanded = !_isExpanded);
+              if (_isExpanded) {
+                context.read<BankProvider>().listenMonthEntries(
+                  bankId: widget.bankId,
+                  monthId: widget.month.id,
+                );
+              } else {
+                context.read<BankProvider>().stopListeningMonthEntries(
+                  widget.bankId,
+                  widget.month.id,
+                );
+              }
             },
             borderRadius: BorderRadius.circular(16),
             child: Padding(
@@ -384,8 +400,8 @@ class _MonthCardState extends State<_MonthCard> {
                       ),
                       Icon(
                         _isExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                         color: const Color(0xFF64FFDA),
                       ),
                     ],
@@ -420,6 +436,20 @@ class _MonthCardState extends State<_MonthCard> {
                           color: const Color(0xFF64FFDA),
                         ),
                       ),
+                      Container(
+                        width: 1,
+                        height: 40,
+                        color: Colors.grey[800],
+                      ),
+                      Expanded(
+                        child: _StatItem(
+                          icon: Icons.account_balance_wallet,
+                          label: 'surplus',
+                          value:
+                          '₹${context.read<BankProvider>().getSurplus(bankId: widget.bankId, monthId: widget.month.id).toStringAsFixed(2)}',
+                          color: const Color(0xFF64FFDA),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -429,94 +459,84 @@ class _MonthCardState extends State<_MonthCard> {
 
           // Expandable Entries Section
           if (_isExpanded)
-            StreamBuilder<List<BankMonthEntry>>(
-              stream: context
-                  .read<BankProvider>()
-                  .streamMonthEntries(widget.bankId, widget.month.id),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF64FFDA),
-                        strokeWidth: 2,
-                      ),
+          Selector<BankProvider, List<BankMonthEntry>>(
+            selector: (_, p) => p.getMonthEntries(widget.bankId, widget.month.id),
+            builder: (_, entries, __)
+            {
+              if (entries.isEmpty) 
+              {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'No entries',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
                     ),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'No entries',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-
-                final entries = snapshot.data!;
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF121212),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.receipt_long,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Transactions (${entries.length})',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: entries.length,
-                        separatorBuilder: (_, __) => Divider(
-                          color: Colors.grey[800],
-                          height: 1,
-                        ),
-                        itemBuilder: (_, i) {
-                          return _EntryTile(entry: entries[i]);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                    textAlign: TextAlign.center,
                   ),
                 );
-              },
-            ),
+              }
+
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF121212),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.receipt_long,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Transactions (${entries.length})',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: entries.length,
+                      separatorBuilder: (_, __) => Divider(
+                        color: Colors.grey[800],
+                        height: 1,
+                      ),
+                      itemBuilder: (_, i)
+                      {
+                        return _EntryTile(entry: entries[i]);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  String _formatMonthId(String monthId) {
-    try {
+  String _formatMonthId(String monthId) 
+  {
+    try
+    {
       final parts = monthId.split('-');
       final year = parts[0];
       final monthNum = int.parse(parts[1]);
@@ -535,20 +555,23 @@ class _MonthCardState extends State<_MonthCard> {
         'December'
       ];
       return '${months[monthNum - 1]} $year';
-    } catch (e) {
+    } catch (e)
+    {
       return monthId;
     }
   }
 }
 
 // 📝 Entry Tile
-class _EntryTile extends StatelessWidget {
+class _EntryTile extends StatelessWidget
+{
   final BankMonthEntry entry;
 
   const _EntryTile({required this.entry});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -578,6 +601,14 @@ class _EntryTile extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                Text(
+                  entry.description,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   _formatEntryDate(entry.createdAt),
@@ -594,18 +625,23 @@ class _EntryTile extends StatelessWidget {
     );
   }
 
-  String _formatEntryDate(Timestamp timestamp) {
+  String _formatEntryDate(Timestamp timestamp) 
+  {
     final date = timestamp.toDate();
     final now = DateTime.now();
     final difference = now.difference(date);
 
-    if (difference.inDays == 0) {
+    if (difference.inDays == 0) 
+    {
       return 'Today at ${_formatTime(date)}';
-    } else if (difference.inDays == 1) {
+    } else if (difference.inDays == 1) 
+    {
       return 'Yesterday at ${_formatTime(date)}';
-    } else if (difference.inDays < 7) {
+    } else if (difference.inDays < 7) 
+    {
       return '${difference.inDays} days ago';
-    } else {
+    } else 
+    {
       final months = [
         'Jan',
         'Feb',
@@ -624,9 +660,10 @@ class _EntryTile extends StatelessWidget {
     }
   }
 
-  String _formatTime(DateTime date) {
+  String _formatTime(DateTime date) 
+  {
     final hour =
-    date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
     final minute = date.minute.toString().padLeft(2, '0');
     final period = date.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $period';
@@ -634,7 +671,8 @@ class _EntryTile extends StatelessWidget {
 }
 
 // 📈 Stat Item
-class _StatItem extends StatelessWidget {
+class _StatItem extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final String value;
@@ -648,7 +686,8 @@ class _StatItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Column(
       children: [
         Icon(icon, color: color, size: 18),
@@ -675,19 +714,24 @@ class _StatItem extends StatelessWidget {
 }
 
 // 💬 Add Amount Dialog
+// 💬 Add Amount Dialog
 Future<void> showAddMonthAmountDialog(
-    BuildContext context,
-    BankModel bank,
-    ) async {
+  BuildContext context,
+  BankModel bank,
+) async
+{
   final formKey = GlobalKey<FormState>();
   final amountCtrl = TextEditingController();
+  final descriptionCtrl = TextEditingController(); // 🆕
   bool isLoading = false;
 
   await showDialog(
     context: context,
-    builder: (ctx) {
+    builder: (ctx)
+    {
       return StatefulBuilder(
-        builder: (context, setState) {
+        builder: (context, setState)
+        {
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E1E),
             shape: RoundedRectangleBorder(
@@ -730,6 +774,8 @@ Future<void> showAddMonthAmountDialog(
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // 💰 Amount
                   TextFormField(
                     controller: amountCtrl,
                     keyboardType: TextInputType.number,
@@ -744,7 +790,8 @@ Future<void> showAddMonthAmountDialog(
                     ),
                     decoration: InputDecoration(
                       labelText: 'Amount',
-                      labelStyle: const TextStyle(color: Color(0xFF64FFDA)),
+                      labelStyle:
+                      const TextStyle(color: Color(0xFF64FFDA)),
                       hintText: 'Enter amount to add',
                       hintStyle: TextStyle(color: Colors.grey[600]),
                       prefixIcon: const Icon(
@@ -768,24 +815,66 @@ Future<void> showAddMonthAmountDialog(
                           width: 2,
                         ),
                       ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red),
-                      ),
                     ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
+                    validator: (v)
+                    {
+                      if (v == null || v.isEmpty) 
+                      {
                         return 'Enter amount';
                       }
                       final cleanValue = v.replaceAll(',', '');
-                      if (double.tryParse(cleanValue) == null) {
+                      final amount = double.tryParse(cleanValue);
+                      if (amount == null) 
+                      {
                         return 'Enter valid amount';
                       }
-                      if (double.parse(cleanValue) <= 0) {
+                      if (amount <= 0) 
+                      {
                         return 'Amount must be greater than 0';
                       }
                       return null;
                     },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // 📝 Description (NEW)
+                  TextFormField(
+                    controller: descriptionCtrl,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLines: 2,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Description (optional)',
+                      labelStyle:
+                      const TextStyle(color: Color(0xFF64FFDA)),
+                      hintText: 'e.g. Salary, Cashback, Adjustment',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: const Icon(
+                        Icons.notes,
+                        color: Color(0xFF64FFDA),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF121212),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[800]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[800]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF64FFDA),
+                          width: 2,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -811,67 +900,81 @@ Future<void> showAddMonthAmountDialog(
                   ),
                 ),
                 onPressed: isLoading
-                    ? null
-                    : () async {
-                  if (!formKey.currentState!.validate()) return;
+                  ? null
+                  : () async
+                  {
+                    if (!formKey.currentState!.validate()) return;
 
-                  setState(() => isLoading = true);
+                    setState(() => isLoading = true);
 
-                  try {
-                    final cleanAmount =
-                    amountCtrl.text.trim().replaceAll(',', '');
-                    await context.read<BankProvider>().addMonthAmount(
-                      bankId: bank.id,
-                      amount: double.parse(cleanAmount),
-                    );
+                    try
+                    {
+                      final cleanAmount =
+                        amountCtrl.text.replaceAll(',', '');
 
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('✅ Amount added successfully'),
-                          backgroundColor: Color(0xFF64FFDA),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      await context
+                        .read<BankProvider>()
+                        .addMonthAmount(
+                          bankId: bank.id,
+                          amount: double.parse(cleanAmount),
+                          description:
+                          descriptionCtrl.text.trim(), // 🆕
+                        );
+
+                      if (context.mounted) 
+                      {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                            Text('✅ Amount added successfully'),
+                            backgroundColor: Color(0xFF64FFDA),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (e)
+                    {
+                      if (context.mounted) 
+                      {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Error: $e'),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } finally
+                    {
+                      if (context.mounted) 
+                      {
+                        setState(() => isLoading = false);
+                      }
                     }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('❌ Error: $e'),
-                          backgroundColor: Colors.red,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } finally {
-                    if (context.mounted) {
-                      setState(() => isLoading = false);
-                    }
-                  }
-                },
+                  },
                 child: isLoading
-                    ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor:
-                    AlwaysStoppedAnimation(Color(0xFF121212)),
-                  ),
-                )
-                    : const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Add',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                  ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(
+                        Color(0xFF121212),
+                      ),
                     ),
-                  ],
-                ),
+                  )
+                  : const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
               ),
             ],
           );

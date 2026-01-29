@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:expence_app/enums/expense_type.dart';
+import 'package:expence_app/history_screens/bank_monthly_break_down_screen.dart';
 import 'package:expence_app/history_screens/expense_type_breakdown_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -9,13 +10,13 @@ import 'package:provider/provider.dart';
 import '../pages/bank_list_page.dart';
 import '../providers/bank_provider.dart';
 import '../providers/expence_provider.dart';
-import 'income_breakdown.dart';
 import 'monthly_expense_page.dart';
 
-class GrandTotalBanner extends StatelessWidget {
+class GrandTotalBanner extends StatelessWidget
+{
   final double grandTotal;
   final double yearExpense;
-  final double yearIncome;
+
   final int totalDays;
   final double monthTotal;
   final double saving;
@@ -28,7 +29,7 @@ class GrandTotalBanner extends StatelessWidget {
     super.key,
     required this.grandTotal,
     required this.yearExpense,
-    required this.yearIncome,
+
     required this.totalDays,
     required this.onRefresh,
     required this.monthTotal,
@@ -38,12 +39,12 @@ class GrandTotalBanner extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     final provider = context.watch<ExpenseProvider>();
-    final savings = yearIncome - yearExpense;
-    final moneyLeft = yearIncome - yearExpense;
+
     final monthKey =
-        '${provider.selectedYear}-${provider.selectedMonth.toString().padLeft(2, '0')}';
+      '${provider.selectedYear}-${provider.selectedMonth.toString().padLeft(2, '0')}';
     final label = DateFormat(
       'MMMM yyyy',
     ).format(DateTime.parse("$monthKey-01"));
@@ -137,27 +138,21 @@ class GrandTotalBanner extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     offset: const Offset(0, 50),
-                    onSelected: (value) {
-                      if (value == 'savings') {
-                        _showSavingsDialog(
-                          context,
-                          yearIncome,
-                          yearExpense,
-                          savings,
-                        );
-                      } else if (value == 'income') {
-                        _showAddIncomeDialog(context);
-                      } else if (value == 'view_income') {
+                    onSelected: (value)
+                    {
+                      if (value == 'view_month_Bank_Details') 
+                      {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => IncomeBreakdownScreen(
+                            builder: (_) => BankMonthlyBreakdownScreen(
                               year: provider.selectedYear,
                             ),
                           ),
                         );
                       }
-                      else if (value == 'bank_details') {
+                      else if (value == 'bank_details') 
+                      {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -169,7 +164,7 @@ class GrandTotalBanner extends StatelessWidget {
                     },
                     itemBuilder: (context) => [
                       PopupMenuItem(
-                        value: 'view_income',
+                        value: 'view_month_Bank_Details',
                         child: Row(
                           children: [
                             Container(
@@ -186,55 +181,7 @@ class GrandTotalBanner extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             const Text(
-                              'View Income Breakdown',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'income',
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF64FFDA).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.add_circle_outline,
-                                color: Color(0xFF64FFDA),
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Add Income',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'savings',
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.greenAccent.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.savings_outlined,
-                                color: Colors.greenAccent,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'View Total Savings',
+                              'View Month Bank Breakdown',
                               style: TextStyle(color: Colors.white),
                             ),
                           ],
@@ -316,8 +263,9 @@ class GrandTotalBanner extends StatelessWidget {
               //     )
               // )
               InkWell(
-                onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>BankPage()));
+                onTap: ()
+                {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => BankPage()));
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -331,9 +279,10 @@ class GrandTotalBanner extends StatelessWidget {
 
                     Selector<BankProvider, double>(
                       selector: (_, provider) => provider.totalBankBalance,
-                      builder: (_, total, __) {
+                      builder: (_, total, __)
+                      {
                         return Text(
-                          "Total Balance : ₹${total.toStringAsFixed(0)}",
+                          "Total Bank Balance : ₹${total.toStringAsFixed(0)}",
                           style: const TextStyle(
                             color: Color(0xFF64FFDA),
                             fontSize: 16,
@@ -345,7 +294,6 @@ class GrandTotalBanner extends StatelessWidget {
                   ],
                 ),
               ),
-
 
               const SizedBox(height: 6),
             ],
@@ -365,27 +313,37 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Expenses",
                   value: "₹${yearExpense.toStringAsFixed(0)}",
                   color: Colors.redAccent,
-                  onTap: () {},
+                  onTap: ()
+                  {
+                  },
                 ),
                 Container(
                   width: 1,
                   height: 40,
                   color: Colors.white.withOpacity(0.2),
                 ),
-                _StatItem(
-                  icon: moneyLeft >= 0
-                      ? Icons.account_balance_wallet
-                      : Icons.warning,
-                  label: "Money Left",
-                  value: "₹${moneyLeft.toStringAsFixed(0)}",
-                  color: moneyLeft >= 0 ? Colors.greenAccent : Colors.redAccent,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            IncomeBreakdownScreen(year: provider.selectedYear),
-                      ),
+                Selector<BankProvider, double>(
+                  selector: (_, provider) => provider.totalBankBalance,
+                  builder: (_, total, __)
+                  {
+                    return
+                    _StatItem(
+                      icon: total >= 0
+                        ? Icons.account_balance_wallet
+                        : Icons.warning,
+                      label: "Money Left",
+                      value: "₹${total.toStringAsFixed(0)}",
+                      color: total >= 0 ? Colors.greenAccent : Colors.redAccent,
+                      onTap: ()
+                      {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                            BankMonthlyBreakdownScreen(year: provider.selectedYear),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -399,7 +357,8 @@ class GrandTotalBanner extends StatelessWidget {
                   label: "Days",
                   value: "$totalDays",
                   color: const Color(0xFF64FFDA),
-                  onTap: () {
+                  onTap: ()
+                  {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -436,7 +395,8 @@ class GrandTotalBanner extends StatelessWidget {
                     color: Colors.greenAccent,
                   ),
                   color: Colors.greenAccent,
-                  onTap: () {
+                  onTap: ()
+                  {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -464,7 +424,8 @@ class GrandTotalBanner extends StatelessWidget {
                     color: Colors.pinkAccent,
                   ),
                   color: Colors.pinkAccent,
-                  onTap: () {
+                  onTap: ()
+                  {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -492,7 +453,8 @@ class GrandTotalBanner extends StatelessWidget {
                     color: Colors.orangeAccent,
                   ),
                   color: Colors.orangeAccent,
-                  onTap: () {
+                  onTap: ()
+                  {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -512,7 +474,8 @@ class GrandTotalBanner extends StatelessWidget {
     );
   }
 
-  void _showAddIncomeDialog(BuildContext context) {
+  void _showAddIncomeDialog(BuildContext context) 
+  {
     final provider = context.read<ExpenseProvider>();
     final amountController = TextEditingController();
     final sourceController = TextEditingController();
@@ -593,10 +556,12 @@ class GrandTotalBanner extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            onPressed: () async {
+            onPressed: () async
+            {
               final amount = double.tryParse(amountController.text.trim()) ?? 0;
 
-              if (amount > 0) {
+              if (amount > 0) 
+              {
                 await provider.addIncome(
                   amount: amount,
                   source: sourceController.text.trim(),
@@ -616,7 +581,8 @@ class GrandTotalBanner extends StatelessWidget {
     );
   }
 
-  void _openYearPicker(BuildContext context) {
+  void _openYearPicker(BuildContext context) 
+  {
     final provider = context.read<ExpenseProvider>();
     final currentYear = DateTime.now().year;
 
@@ -626,7 +592,8 @@ class GrandTotalBanner extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) {
+      builder: (_)
+      {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
@@ -650,37 +617,39 @@ class GrandTotalBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              ...List.generate(6, (i) {
-                final year = (currentYear - i).toString();
-                final isSelected = year == provider.selectedYear;
-                return ListTile(
-                  leading: Icon(
-                    Icons.calendar_today,
-                    color: isSelected
+              ...List.generate(6, (i)
+                {
+                  final year = (currentYear - i).toString();
+                  final isSelected = year == provider.selectedYear;
+                  return ListTile(
+                    leading: Icon(
+                      Icons.calendar_today,
+                      color: isSelected
                         ? const Color(0xFF64FFDA)
                         : Colors.grey[600],
-                  ),
-                  title: Text(
-                    year,
-                    style: TextStyle(
-                      color: isSelected
+                    ),
+                    title: Text(
+                      year,
+                      style: TextStyle(
+                        color: isSelected
                           ? const Color(0xFF64FFDA)
                           : Colors.white,
-                      fontWeight: isSelected
+                        fontWeight: isSelected
                           ? FontWeight.bold
                           : FontWeight.normal,
+                      ),
                     ),
-                  ),
-                  trailing: isSelected
+                    trailing: isSelected
                       ? const Icon(Icons.check_circle, color: Color(0xFF64FFDA))
                       : null,
-                  onTap: () {
-                    provider.setYear(year);
-                    Navigator.pop(context);
-                    onRefresh();
-                  },
-                );
-              }),
+                    onTap: ()
+                    {
+                      provider.setYear(year);
+                      Navigator.pop(context);
+                      onRefresh();
+                    },
+                  );
+                }),
             ],
           ),
         );
@@ -693,7 +662,8 @@ class GrandTotalBanner extends StatelessWidget {
     double income,
     double expense,
     double savings,
-  ) {
+  ) 
+  {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -766,7 +736,8 @@ class GrandTotalBanner extends StatelessWidget {
   }
 }
 
-class _TypeStat extends StatelessWidget {
+class _TypeStat extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final double value;
@@ -780,7 +751,8 @@ class _TypeStat extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Column(
       children: [
         Container(
@@ -807,7 +779,8 @@ class _TypeStat extends StatelessWidget {
   }
 }
 
-class _StatItem extends StatelessWidget {
+class _StatItem extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final String value;
@@ -825,7 +798,8 @@ class _StatItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return InkWell(
       onTap: onTap,
       child: Column(
@@ -849,7 +823,8 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-class _SummaryRow extends StatelessWidget {
+class _SummaryRow extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final double value;
@@ -865,13 +840,14 @@ class _SummaryRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: highlight
-            ? color.withOpacity(0.1)
-            : Colors.white.withOpacity(0.05),
+          ? color.withOpacity(0.1)
+          : Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -900,7 +876,8 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _QuickStatCard extends StatelessWidget {
+class _QuickStatCard extends StatelessWidget
+{
   final IconData icon;
   final String label;
   final String value;
@@ -914,7 +891,8 @@ class _QuickStatCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

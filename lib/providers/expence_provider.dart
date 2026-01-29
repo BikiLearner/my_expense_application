@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../enums/expense_type.dart';
 import '../enums/transaction_type_enum.dart';
@@ -40,16 +41,11 @@ class ExpenseProvider extends ChangeNotifier {
 
   String get currentYear => DateFormat('yyyy').format(DateTime.now());
 
+  static const _kTransactionTypeKey = 'selected_transaction_type';
+
   // 🔹 Auth UID (SAFE)
   String get uid => FirebaseAuth.instance.currentUser!.uid;
-  BankModel? _selectedTransaction = BankModel(
-    id: 'cash',
-    bankName: 'Cash',
-    totalAmountWhenAdded: 0,
-    currentAmount: 0,
-    addedDate: Timestamp.now(),
-  );
-  // ✅ default
+  BankModel? _selectedTransaction = cashBank;
 
   BankModel? get selectedTransaction => _selectedTransaction;
 
@@ -106,10 +102,41 @@ class ExpenseProvider extends ChangeNotifier {
     return DateFormat('yyyy-MM-dd').format(date);
   }
 
-  void setTransactionType(BankModel type) {
+  Future<void> setTransactionType(BankModel type) async {
     _selectedTransaction = type;
     notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kTransactionTypeKey, type.id);
   }
+
+  Future<void> restoreTransactionTypeFromBanks(
+      List<BankModel> banks,
+      ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedId = prefs.getString(_kTransactionTypeKey);
+
+    // Default → cash
+    if (savedId == null || savedId == 'cash') {
+      _selectedTransaction = cashBank;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final bank = banks.firstWhere(
+            (b) => b.id == savedId,
+        orElse: () => cashBank,
+      );
+
+      _selectedTransaction = bank;
+    } catch (_) {
+      _selectedTransaction = cashBank;
+    }
+
+    notifyListeners();
+  }
+
 
   // 🔹 Select Date
   void setSelectedDate(DateTime date) {
@@ -879,60 +906,6 @@ class ExpenseProvider extends ChangeNotifier {
     _subscribeToExpenses();
   }
 
-  Future<List<Map<String, dynamic>>> getAllExpensesForSearch() async {
-    try {
-      final List<Map<String, dynamic>> allExpenses = [];
-
-      final datesSnapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .get();
-
-      for (var dateDoc in datesSnapshot.docs) {
-        final dateId = dateDoc.id;
-
-        final itemsSnapshot = await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('expenses')
-            .doc(dateId)
-            .collection('items')
-            .get();
-
-        for (var item in itemsSnapshot.docs) {
-          final data = item.data();
-          allExpenses.add({
-            'id': item.id,
-            'dateId': dateId,
-            'title': data['title'] ?? '',
-            'amount': (data['amount'] ?? 0).toDouble(),
-            'description': data['description'] ?? '',
-            'createdAt': data['createdAt'],
-          });
-        }
-      }
-
-      allExpenses.sort((a, b) {
-        final aDate = a['createdAt'] as Timestamp?;
-        final bDate = b['createdAt'] as Timestamp?;
-        if (aDate == null || bDate == null) return 0;
-        return bDate.compareTo(aDate);
-      });
-
-      if (kDebugMode) {
-        print("📊 Fetched ${allExpenses.length} expenses for search");
-      }
-
-      return allExpenses;
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Error fetching all expenses: $e");
-      }
-      return [];
-    }
-  }
-
   // 🔹 Delete Expense - ✅ ALREADY CORRECT!
   // This method was already using the expense's actual date correctly
   Future<void> deleteExpense({
@@ -1015,37 +988,6 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
 
-  // 🔹 Expense Stream
-  Stream<QuerySnapshot> expenseStream() {
-    if (FirebaseAuth.instance.currentUser == null) {
-      if (kDebugMode) {
-        print("❌ No authenticated user");
-      }
-      return const Stream.empty();
-    }
-
-    if (kDebugMode) {
-      print("🔍 Fetching expenses for:");
-      print("   User: $uid");
-      print("   Date: $currentDateId");
-      print("   Path: users/$uid/expenses/$currentDateId/items");
-    }
-
-    // 🔧 FIXED: Use currentDateId
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .doc(currentDateId)
-        .collection('items')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .handleError((error) {
-          if (kDebugMode) {
-            print("❌ Stream error: $error");
-          }
-        });
-  }
 
   Future<List<ExpenseDay>> getAllExpenseDays() async {
     try {
@@ -1068,6 +1010,19 @@ class ExpenseProvider extends ChangeNotifier {
       return [];
     }
   }
+  Map<String, List<ExpenseDay>> groupByMonthAllYears(
+      List<ExpenseDay> days,
+      ) {
+    final Map<String, List<ExpenseDay>> map = {};
+
+    for (final d in days) {
+      final monthKey = d.dateId.substring(0, 7); // yyyy-MM
+      map.putIfAbsent(monthKey, () => []).add(d);
+    }
+
+    return map;
+  }
+
 
   Future<Map<String, List<ExpenseItem>>> fetchMonthExpenses(
     String monthKey, // yyyy-MM format (e.g., '2025-01')

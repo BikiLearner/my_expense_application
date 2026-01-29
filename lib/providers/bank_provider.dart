@@ -14,9 +14,34 @@ class BankProvider extends ChangeNotifier {
 
   List<BankModel> _banks = [];
   List<BankModel> get banks => _banks;
+  final Map<String, List<BankMonthModel>> _bankMonths = {};
+  String _entryKey(String bankId, String monthId) => '$bankId|$monthId';
+
+  List<BankMonthModel> getBankMonths(String bankId) =>
+      _bankMonths[bankId] ?? [];
+  List<BankMonthEntry> getMonthEntries(
+      String bankId,
+      String monthId,
+      ) {
+    return _monthEntries[_entryKey(bankId, monthId)] ?? [];
+  }
+
+  // 🔹 Cache: bankId_monthId → entries
+  final Map<String, List<BankMonthEntry>> _monthEntries = {};
+
+// 🔹 Subscriptions
+  final Map<String, StreamSubscription> _entrySubs = {};
+
 
   StreamSubscription? _sub;
+  StreamSubscription? _monthSub;
   bool isLoading = false;
+
+  BankProvider() {
+    listenBanks();
+
+  }
+
 
   void listenBanks() {
     isLoading = true;
@@ -78,6 +103,7 @@ class BankProvider extends ChangeNotifier {
       // 3️⃣ Create initial entry (history)
       tx.set(entryRef, {
         'amount': amount,
+        'description': 'Initial amount',
         'createdAt': FieldValue.serverTimestamp(),
       });
     });
@@ -105,8 +131,97 @@ class BankProvider extends ChangeNotifier {
 
 // Add this method to BankProvider class
 // Add this to your BankProvider class
-  Stream<List<BankMonthEntry>> streamMonthEntries(String bankId, String monthId) {
-    return _firestore
+//   Stream<List<BankMonthEntry>> streamMonthEntries(String bankId, String monthId) {
+//     return _firestore
+//         .collection('users')
+//         .doc(uid)
+//         .collection('bank')
+//         .doc(bankId)
+//         .collection('monthAmount')
+//         .doc(monthId)
+//         .collection('entries')
+//         .orderBy('createdAt', descending: true)
+//         .snapshots()
+//         .map((snapshot) {
+//       return snapshot.docs
+//           .map((e) => BankMonthEntry.fromFirestore(e.id, e.data()))
+//           .toList();
+//     });
+//   }
+
+
+  void stopListeningMonthEntries(String bankId, String monthId) {
+    final key = _entryKey(bankId, monthId);
+    _entrySubs[key]?.cancel();
+    _entrySubs.remove(key);
+    _monthEntries.remove(key);
+  }
+
+  double getTotalMonthAmountOfThisMonth() {
+    final now = DateTime.now();
+    final currentMonthId =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    double total = 0;
+
+    for (final bankMonths in _bankMonths.values) {
+      for (final m in bankMonths) {
+        if (m.id == currentMonthId) {
+          total += m.totalAdded;
+          break; // one month per bank
+        }
+      }
+    }
+
+    return total;
+  }
+
+  double? getTotalCurrentAmountMonthAmountOfThisMonth(){
+    final now = DateTime.now();
+    final currentMonthId = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    double total = 0;
+    for (final bankMonths in _bankMonths.values) {
+      for (final m in bankMonths) {
+        if (m.id == currentMonthId) {
+          total += m.currentAmount;
+          break; // one month per bank
+        }
+      }
+    }
+    return total;
+
+  }
+  double getTotalThisMonthSurplus() {
+    final now = DateTime.now();
+
+    final prevMonthDate = DateTime(now.year, now.month - 1);
+    final prevMonthId =
+        '${prevMonthDate.year}-${prevMonthDate.month.toString().padLeft(2, '0')}';
+
+    double total = 0;
+
+    for (final bankMonths in _bankMonths.values) {
+      for (final m in bankMonths) {
+        if (m.id == prevMonthId) {
+          total += m.currentAmount;
+          break; // one month per bank
+        }
+      }
+    }
+
+    return total;
+  }
+
+  void listenMonthEntries({
+    required String bankId,
+    required String monthId,
+  }) {
+    final key = _entryKey(bankId, monthId);
+
+    // Avoid duplicate listeners
+    if (_entrySubs.containsKey(key)) return;
+
+    final sub = _firestore
         .collection('users')
         .doc(uid)
         .collection('bank')
@@ -116,34 +231,74 @@ class BankProvider extends ChangeNotifier {
         .collection('entries')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
+        .listen((snapshot) {
+      _monthEntries[key] = snapshot.docs
           .map((e) => BankMonthEntry.fromFirestore(e.id, e.data()))
           .toList();
+
+      notifyListeners();
     });
+
+    _entrySubs[key] = sub;
   }
-  // 🔹 Stream monthAmount for a bank
-  Stream<List<BankMonthModel>> streamBankMonths(String bankId) {
-    return _firestore
+
+
+
+  void listenBankMonths(String bankId) {
+    _monthSub?.cancel();
+
+    _monthSub = _firestore
         .collection('users')
         .doc(uid)
         .collection('bank')
         .doc(bankId)
         .collection('monthAmount')
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
+        .listen((snapshot) {
+      _bankMonths[bankId] = snapshot.docs
           .map((e) => BankMonthModel.fromFirestore(e.id, e.data()))
           .toList();
+
+      notifyListeners();
     });
   }
 
+  // 🔹 Stream monthAmount for a bank
+  // Stream<List<BankMonthModel>> streamBankMonths(String bankId) {
+  //   return _firestore
+  //       .collection('users')
+  //       .doc(uid)
+  //       .collection('bank')
+  //       .doc(bankId)
+  //       .collection('monthAmount')
+  //       .snapshots()
+  //       .map((snapshot) {
+  //     return snapshot.docs
+  //         .map((e) => BankMonthModel.fromFirestore(e.id, e.data()))
+  //         .toList();
+  //   });
+  // }
+
+  double getSurplus({
+    required String bankId,
+    required String monthId,
+  }) {
+    final months = _bankMonths[bankId] ?? [];
+
+    final currentIndex = months.indexWhere((m) => m.id == monthId);
+    if (currentIndex <= 0) return 0;
+
+    final previous = months[currentIndex - 1].currentAmount;
+
+    return previous;
+  }
 
 // 🔹 Add / update monthAmount
 // 🔹 Add amount to current month (MULTIPLE TIMES SAFE)
   Future<void> addMonthAmount({
     required String bankId,
     required double amount,
+    String? description = "Not Provided"
   }) async {
     final now = DateTime.now();
     final monthId = '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -178,6 +333,7 @@ class BankProvider extends ChangeNotifier {
       // 1️⃣ Add entry (history)
       tx.set(entryRef, {
         'amount': amount,
+        'description': description,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -196,17 +352,56 @@ class BankProvider extends ChangeNotifier {
     });
   }
 
-  String getTransactionBankName(String id) {
-    final bank = _banks.where((e) => e.id == id);
-    debugPrint("Bank Details : $bank");
-    return bank.isNotEmpty ? bank.first.bankName : 'Cash';
+  String getTransactionBankName(String? id) {
+    debugPrint('🔍 getTransactionBankName called with id: $id');
+
+    // 🟢 Cash / null fallback
+    if (id == null || id == 'cash') {
+      debugPrint('✅ Transaction type is cash / null');
+      return 'Cash';
+    }
+
+    // 🟡 Bank list not ready yet
+    if (_banks.isEmpty) {
+      debugPrint(
+        '⏳ Bank list not loaded yet. Returning Loading... (id=$id)',
+      );
+      return 'Loading...';
+    }
+
+    // 🔵 Try to find bank
+    final matches = _banks.where((b) => b.id == id);
+
+    if (matches.isNotEmpty) {
+      final bankName = matches.first.bankName;
+      debugPrint(
+        '🏦 Bank found for id=$id → name="$bankName"',
+      );
+      return bankName;
+    }
+
+    // 🔴 Bank deleted / stale transactionType
+    debugPrint(
+      '❌ No bank found for id=$id. '
+          'This may be a deleted bank or stale transactionType.',
+    );
+
+    return 'Unknown Bank';
   }
 
 
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _sub?.cancel(); // bank list
+
+    for (final sub in _entrySubs.values) {
+      sub.cancel();
+    }
+
+    _entrySubs.clear();
+    _monthEntries.clear();
+
     super.dispose();
   }
 }

@@ -8,19 +8,26 @@ import '../providers/expence_provider.dart';
 
 class BankSelectorDropdown extends StatelessWidget {
   const BankSelectorDropdown({super.key});
-
-
-
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bankProvider = context.read<BankProvider>();
+      final expenseProvider = context.read<ExpenseProvider>();
       context.read<BankProvider>().listenBanks();
+      if (bankProvider.banks.isNotEmpty &&
+          expenseProvider.selectedTransaction == null) {
+        expenseProvider.restoreTransactionTypeFromBanks(
+          bankProvider.banks,
+        );
+      }
     });
 
     return Selector2<BankProvider, ExpenseProvider, _BankSelectionState>(
       selector: (_, bankProvider, expenseProvider) {
         final banks = [cashBank, ...bankProvider.banks];
-
+        expenseProvider.restoreTransactionTypeFromBanks(
+          bankProvider.banks,
+        );
         final selectedId =
             expenseProvider.selectedTransaction?.id ?? 'cash';
 
