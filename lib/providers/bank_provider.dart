@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../models/bank_model.dart';
 import '../models/bank_month_entry_model.dart';
@@ -11,7 +13,7 @@ class BankProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
 
   String get uid => FirebaseAuth.instance.currentUser!.uid;
-
+  final Map<String, StreamSubscription> _currentMonthSubs = {};
   List<BankModel> _banks = [];
   List<BankModel> get banks => _banks;
   final Map<String, List<BankMonthModel>> _bankMonths = {};
@@ -32,6 +34,10 @@ class BankProvider extends ChangeNotifier {
 // 🔹 Subscriptions
   final Map<String, StreamSubscription> _entrySubs = {};
 
+  String get currentMonthId {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
 
   StreamSubscription? _sub;
   StreamSubscription? _monthSub;
@@ -42,6 +48,21 @@ class BankProvider extends ChangeNotifier {
 
   }
 
+  double getCurrentMonthBalance(String bankId) {
+    final now = DateTime.now();
+    final monthId =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    final months = _bankMonths[bankId];
+    if (months == null) return 0;
+
+    final match = months.firstWhere(
+          (m) => m.id == monthId,
+      orElse: () => BankMonthModel.empty(monthId),
+    );
+
+    return match.currentAmount;
+  }
 
   void listenBanks() {
     isLoading = true;
@@ -58,10 +79,47 @@ class BankProvider extends ChangeNotifier {
           .map((e) => BankModel.fromFirestore(e.id, e.data()))
           .toList();
 
+
+      for (final bank in _banks) {
+        listenCurrentBankMonth(bank.id);
+      }
+
       isLoading = false;
       notifyListeners();
     });
   }
+
+
+
+
+  void listenCurrentBankMonth(String bankId) {
+    final key = '$bankId|$currentMonthId';
+
+    // 🚫 Avoid duplicate listeners
+    if (_currentMonthSubs.containsKey(key)) return;
+
+    final sub = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('bank')
+        .doc(bankId)
+        .collection('monthAmount')
+        .doc(currentMonthId)
+        .snapshots()
+        .listen((doc) {
+      if (!doc.exists) {
+        _bankMonths[bankId] = [];
+      } else {
+        _bankMonths[bankId] = [
+          BankMonthModel.fromFirestore(doc.id, doc.data()!)
+        ];
+      }
+      notifyListeners();
+    });
+
+    _currentMonthSubs[key] = sub;
+  }
+
 
   Future<void> addBank({
     required String bankName,
@@ -88,8 +146,6 @@ class BankProvider extends ChangeNotifier {
       // 1️⃣ Create bank document
       tx.set(bankRef, {
         'bankName': bankName,
-        'totalAmountWhenAdded': amount,
-        'currentAmount': amount,
         'addedDate': Timestamp.now(),
       });
 
@@ -97,6 +153,9 @@ class BankProvider extends ChangeNotifier {
       tx.set(monthRef, {
         'totalAdded': amount,
         'currentAmount': amount,
+        'surplusPreviousMonth':0,
+        'incomeThisMonth':amount,
+        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -108,12 +167,100 @@ class BankProvider extends ChangeNotifier {
       });
     });
   }
-  double get totalBankBalance {
-    return _banks.fold<double>(
-      0.0,
-          (sum, bank) => sum + bank.currentAmount,
+
+  BankMonthModel? getCurrentMonthForBank(String bankId) {
+    final now = DateTime.now();
+    final currentMonthId =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    final months = _bankMonths[bankId];
+    if (months == null) return null;
+
+    return months.firstWhere(
+          (m) => m.id == currentMonthId,
+      orElse: () => BankMonthModel(
+        id: currentMonthId,
+        totalAdded: 0,
+        currentAmount: 0,
+        updatedAt: null, surplusPreviousMonth: 0, incomeThisMonth: 0,
+      ),
     );
   }
+
+
+  Future<void> editBankMonth({
+    required String bankId,
+    required String monthId, // yyyy-MM
+    required double totalAdded,
+    required double incomeThisMonth,
+    required double surplusPreviousMonth,
+    required double currentAmount,
+  }) async {
+    final bankRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('bank')
+        .doc(bankId);
+
+    final monthRef =
+    bankRef.collection('monthAmount').doc(monthId);
+
+    await _firestore.runTransaction((tx) async {
+      final monthSnap = await tx.get(monthRef);
+
+      if (!monthSnap.exists) {
+        throw Exception('❌ Month does not exist, cannot edit');
+      }
+
+      // 🔒 Single source of truth update
+      tx.update(monthRef, {
+        'totalAdded': totalAdded,
+        'incomeThisMonth': incomeThisMonth,
+        'surplusPreviousMonth': surplusPreviousMonth,
+        'currentAmount': currentAmount,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    // 🔄 Update local cache so UI refreshes instantly
+    final months = _bankMonths[bankId];
+    if (months != null) {
+      final index = months.indexWhere((m) => m.id == monthId);
+      if (index != -1) {
+        months[index] = BankMonthModel(
+          id: monthId,
+          totalAdded: totalAdded,
+          incomeThisMonth: incomeThisMonth,
+          surplusPreviousMonth: surplusPreviousMonth,
+          currentAmount: currentAmount,
+          updatedAt: Timestamp.now(),
+        );
+      }
+    }
+
+    notifyListeners();
+  }
+
+
+  double get totalBankBalance {
+    final now = DateTime.now();
+    final currentMonthId =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    double total = 0;
+
+    for (final bankMonths in _bankMonths.values) {
+      for (final m in bankMonths) {
+        if (m.id == currentMonthId) {
+          total += m.currentAmount;
+          break; // one month per bank
+        }
+      }
+    }
+
+    return total;
+  }
+
 
   Future<void> updateBank({
     required String bankId,
@@ -129,25 +276,6 @@ class BankProvider extends ChangeNotifier {
     });
   }
 
-// Add this method to BankProvider class
-// Add this to your BankProvider class
-//   Stream<List<BankMonthEntry>> streamMonthEntries(String bankId, String monthId) {
-//     return _firestore
-//         .collection('users')
-//         .doc(uid)
-//         .collection('bank')
-//         .doc(bankId)
-//         .collection('monthAmount')
-//         .doc(monthId)
-//         .collection('entries')
-//         .orderBy('createdAt', descending: true)
-//         .snapshots()
-//         .map((snapshot) {
-//       return snapshot.docs
-//           .map((e) => BankMonthEntry.fromFirestore(e.id, e.data()))
-//           .toList();
-//     });
-//   }
 
 
   void stopListeningMonthEntries(String bankId, String monthId) {
@@ -341,6 +469,7 @@ class BankProvider extends ChangeNotifier {
       tx.set(monthRef, {
         'totalAdded': newMonthTotal,
         'currentAmount': newBankAmount,
+        'incomeThisMonth':amount,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -350,6 +479,141 @@ class BankProvider extends ChangeNotifier {
         'totalAmountWhenAdded': FieldValue.increment(amount),
       });
     });
+  }
+  Future<bool> ensureBankMonthExistsWithDialog({
+    required BuildContext context,
+    required String bankId,
+    required String monthId, // yyyy-MM
+  }) async {
+    final bankRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('bank')
+        .doc(bankId);
+
+    final monthRef =
+    bankRef.collection('monthAmount').doc(monthId);
+
+    final bankSnap = await bankRef.get();
+    if (!bankSnap.exists) return false;
+
+    final monthSnap = await monthRef.get();
+    if (monthSnap.exists) return true;
+
+    // 🔹 Previous month (year change handled automatically)
+    final parts = monthId.split('-');
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+
+    final prevMonthDate = DateTime(year, month - 1);
+    final prevMonthId =
+        '${prevMonthDate.year}-${prevMonthDate.month.toString().padLeft(2, '0')}';
+
+    final prevMonthRef =
+    bankRef.collection('monthAmount').doc(prevMonthId);
+
+    double previousClosing = 0.0;
+
+    final prevMonthSnap = await prevMonthRef.get();
+    if (prevMonthSnap.exists) {
+      previousClosing =
+          (prevMonthSnap.data()?['currentAmount'] ?? 0).toDouble();
+    }
+
+    // 🔹 Controllers (USER CONTROL)
+    final surplusController =
+    TextEditingController(text: previousClosing.toStringAsFixed(2));
+    final totalAddedController =
+    TextEditingController(text: previousClosing.toStringAsFixed(2));
+    final currentAmountController =
+    TextEditingController(text: previousClosing.toStringAsFixed(2));
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Initialize Bank Month',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _field('Surplus from Previous Month', surplusController),
+              _field('Total Amount Added', totalAddedController),
+              _field('Current Amount', currentAmountController),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return false;
+
+    final surplusValue =
+        double.tryParse(surplusController.text) ?? 0;
+    final totalAdded =
+        double.tryParse(totalAddedController.text) ?? 0;
+    final currentAmount =
+        double.tryParse(currentAmountController.text) ?? surplusValue;
+
+    // 🔒 Atomic write
+    await _firestore.runTransaction((tx) async {
+      tx.set(monthRef, {
+        'surplusPreviousMonth': surplusValue, // carry from prev month
+        'totalAdded': totalAdded,
+        'incomeThisMonth':0,
+        'currentAmount': currentAmount,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+    });
+
+    return true;
+  }
+
+
+
+  Widget _field(
+      String label,
+      TextEditingController controller, {
+        bool enabled = true,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.grey),
+          filled: true,
+          fillColor: const Color(0xFF2C2C2C),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
   }
 
   String getTransactionBankName(String? id) {

@@ -8,239 +8,180 @@ import 'providers/history_page_provider.dart';
 import 'history_screens/grand_total_banner.dart';
 import 'history_screens/history_app_bar.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  Widget build(BuildContext context) {
+    final expense = context.read<ExpenseProvider>();
+
+    return ChangeNotifierProvider(
+      create: (_) => HistoryPageProvider(
+        uid: expense.uid,
+        selectedYear: expense.selectedYear,
+        selectedMonth: expense.selectedMonth,
+      )..fetchHistoryData(),
+      child: const _HistoryView(),
+    );
+  }
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
-  late HistoryPageProvider _historyProvider;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeProvider();
-  }
-
-  void _initializeProvider() {
-    final expenseProvider = context.read<ExpenseProvider>();
-
-    _historyProvider = HistoryPageProvider(
-      uid: expenseProvider.uid,
-      selectedYear: expenseProvider.selectedYear,
-      selectedMonth: expenseProvider.selectedMonth,
-    );
-
-    // Fetch data
-    _historyProvider.fetchHistoryData();
-  }
-
-  void _refresh() {
-    // Recreate provider with current year/month
-    _initializeProvider();
-  }
+class _HistoryView extends StatelessWidget {
+  const _HistoryView();
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<HistoryPageProvider>.value(
-      value: _historyProvider,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF121212),
-        appBar: HistoryAppBar(),
-        body: Consumer<HistoryPageProvider>(
-          builder: (context, historyProvider, _) {
-            // Handle loading state
-            if (historyProvider.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
-              );
-            }
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      appBar: HistoryAppBar(),
+      body: Consumer<HistoryPageProvider>(
+        builder: (context, history, _) {
 
-            // Handle error state
-            if (historyProvider.error != null) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 80,
-                      color: Colors.red[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Error loading data",
-                      style: TextStyle(color: Colors.red[400], fontSize: 18),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      historyProvider.error!,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _refresh,
-                      child: const Text("Retry"),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Handle empty data
-            if (historyProvider.yearExpenseDays.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 80,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "No expenses yet",
-                      style: TextStyle(color: Colors.grey[400], fontSize: 18),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      "Start tracking your expenses\nto see insights here",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            final grouped = historyProvider.getGroupedByMonth();
-
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  GrandTotalBanner(
-                    grandTotal: historyProvider.yearExpense,
-                    yearExpense: historyProvider.yearExpense,
-                    totalDays: historyProvider.totalDays,
-                    monthTotal: historyProvider.monthTotal,
-                    saving: historyProvider.saving,
-                    luxury: historyProvider.luxury,
-                    needed: historyProvider.needed,
-                    onRefresh: _refresh,
-                  ),
-
-                  _buildQuickStatsRow(
-                    context,
-                    historyProvider.avgPerDay,
-                    historyProvider.highestDay,
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    MonthlyExpensePageHolidingList(
-                                    ),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E1E1E),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.calendar_month,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-
-                                const SizedBox(width: 12),
-
-                                const Expanded(
-                                  child: Text(
-                                    'Go to monthly expenses',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-
-                                const Icon(
-                                  Icons.arrow_forward_ios,
-                                  color: Colors.white70,
-                                  size: 16,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+          // 🔄 Loading
+          if (history.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF64FFDA),
               ),
             );
-          },
-        ),
+          }
+
+          // ❌ Error
+          if (history.error != null) {
+            return _ErrorView(
+              message: history.error!,
+              onRetry: history.fetchHistoryData,
+            );
+          }
+
+          // 🟡 Empty
+          if (history.yearExpenseDays.isEmpty) {
+            return const _EmptyHistoryView();
+          }
+
+          final grouped = history.getGroupedByMonth();
+
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+
+                /// 🔥 GRAND TOTAL BANNER
+                GrandTotalBanner(
+                  grandTotal: history.yearExpense,
+                  yearExpense: history.yearExpense,
+                  totalDays: history.totalDays,
+                  monthTotal: history.monthTotal,
+                  saving: history.saving,
+                  luxury: history.luxury,
+                  needed: history.needed,
+                  onRefresh: history.fetchHistoryData,
+                ),
+
+                /// 📊 QUICK STATS
+                _QuickStatsRow(
+                  avg: history.avgPerDay,
+                  highest: history.highestDay,
+                ),
+
+                /// 📅 GO TO MONTH LIST
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: _MonthNavigationTile(),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
+}
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
 
-  Widget _buildQuickStatsRow(
-      BuildContext context,
-      double avgPerDay,
-      double highestDay,
-      ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+          const SizedBox(height: 16),
+          const Text(
+            "Error loading data",
+            style: TextStyle(color: Colors.red, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: onRetry,
+            child: const Text("Retry"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _EmptyHistoryView extends StatelessWidget {
+  const _EmptyHistoryView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[600]),
+          const SizedBox(height: 16),
+          const Text(
+            "No expenses yet",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Start tracking your expenses",
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _QuickStatsRow extends StatelessWidget {
+  final double avg;
+  final double highest;
+
+  const _QuickStatsRow({
+    required this.avg,
+    required this.highest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           Expanded(
             child: _QuickStatCard(
               icon: Icons.trending_up,
               label: "Avg",
-              value: "₹${avgPerDay.toStringAsFixed(0)}",
+              value: "₹${avg.toStringAsFixed(0)}",
               color: Colors.blueAccent,
             ),
           ),
@@ -249,7 +190,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: _QuickStatCard(
               icon: Icons.arrow_upward,
               label: "Highest",
-              value: "₹${highestDay.toStringAsFixed(0)}",
+              value: "₹${highest.toStringAsFixed(0)}",
               color: Colors.orangeAccent,
             ),
           ),
@@ -258,6 +199,46 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 }
+class _MonthNavigationTile extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MonthlyExpensePageHolidingList(),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.calendar_month, color: Colors.green),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Go to monthly expenses",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _QuickStatCard extends StatelessWidget {
   final IconData icon;

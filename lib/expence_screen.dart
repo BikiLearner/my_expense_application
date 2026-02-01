@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import 'enums/expense_type.dart';
 import 'enums/transaction_type_enum.dart';
+import 'fun/audio_player.dart';
 import 'models/expense_items.dart';
 import 'providers/expence_provider.dart';
 import 'history_screen.dart';
@@ -54,6 +55,8 @@ class ExpenseScreen extends StatelessWidget {
             ),
             tooltip: 'History',
             onPressed: () {
+              final audioService = AudioPlayerService();
+              audioService.play('audio/fahhhhh.mp3');
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const HistoryScreen()),

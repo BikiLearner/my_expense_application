@@ -8,6 +8,7 @@ import '../models/bank_model.dart';
 import '../models/bank_month_entry_model.dart';
 import '../models/bank_month_model.dart';
 import '../providers/bank_provider.dart';
+import 'edit_bank_month_dialog.dart';
 class BankAccountPage extends StatefulWidget
 {
   final BankModel bank;
@@ -20,6 +21,12 @@ class BankAccountPage extends StatefulWidget
 
 class _BankAccountPageState extends State<BankAccountPage>
 {
+
+  String get _currentMonthId {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
   @override
   void initState() 
   {
@@ -123,61 +130,108 @@ class _BankAccountPageState extends State<BankAccountPage>
     return Column(
       children: [
         // 💰 Current Balance Banner
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current Balance',
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 14,
+        Selector<BankProvider, BankMonthModel?>(
+          selector: (_, p) =>
+              p.getBankMonths(widget.bank.id)
+                  .firstWhere(
+                    (m) => m.id == _currentMonthId,
+                orElse: () => BankMonthModel(
+                  id: _currentMonthId,
+                  totalAdded: 0,
+                  currentAmount: 0,
+                  surplusPreviousMonth: 0,
+                  incomeThisMonth: 0,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                '₹${widget.bank.currentAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+          builder: (context, month, _) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BankInfoChip(
-                    icon: Icons.arrow_upward,
-                    label: 'Total Added',
-                    value: '₹${widget.bank.totalAmountWhenAdded.toStringAsFixed(0)}',
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Month Balance',
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '₹${month!.currentAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const Spacer(),
+
+                      // ➕ Add Surplus Button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          context.read<BankProvider>().ensureBankMonthExistsWithDialog(
+                            bankId: widget.bank.id,
+                            monthId: _currentMonthId, context: context,
+                          );
+                        },
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Surplus'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent.shade400,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  _BankInfoChip(
-                    icon: Icons.calendar_today,
-                    label: 'Since',
-                    value: _formatDate(widget.bank.addedDate.toDate()),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      _BankInfoChip(
+                        icon: Icons.trending_up,
+                        label: 'Income (This Month)',
+                        value: '₹${month.incomeThisMonth.toStringAsFixed(0)}',
+                      ),
+                      const SizedBox(width: 12),
+                      _BankInfoChip(
+                        icon: Icons.history,
+                        label: 'Surplus',
+                        value: '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+
+            );
+          },
         ),
+
 
         // 📅 Month Records Title
         Padding(
@@ -234,24 +288,6 @@ class _BankAccountPageState extends State<BankAccountPage>
     );
   }
 
-  String _formatDate(DateTime date) 
-  {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.year}';
-  }
 }
 
 // 📊 Bank Info Chip
@@ -398,6 +434,23 @@ class _MonthCardState extends State<_MonthCard>
                           ),
                         ),
                       ),
+                      InkWell(
+                        onTap: (){
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => EditBankMonthDialog(
+                              bankId: widget.bankId,
+                              month: widget.month,
+                            ),
+                          );
+
+                        },
+                        child: Icon(
+                            Icons.edit,
+                          color:  Colors.redAccent,
+                        ),
+                      ),
                       Icon(
                         _isExpanded
                           ? Icons.keyboard_arrow_up
@@ -429,6 +482,19 @@ class _MonthCardState extends State<_MonthCard>
                       ),
                       Expanded(
                         child: _StatItem(
+                          icon: Icons.add_circle_outline,
+                          label: 'This Month Added',
+                          value: '₹${widget.month.incomeThisMonth.toStringAsFixed(2)}',
+                          color: Colors.green,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 40,
+                        color: Colors.grey[800],
+                      ),
+                      Expanded(
+                        child: _StatItem(
                           icon: Icons.account_balance_wallet,
                           label: 'Balance',
                           value:
@@ -446,7 +512,7 @@ class _MonthCardState extends State<_MonthCard>
                           icon: Icons.account_balance_wallet,
                           label: 'surplus',
                           value:
-                          '₹${context.read<BankProvider>().getSurplus(bankId: widget.bankId, monthId: widget.month.id).toStringAsFixed(2)}',
+                          '₹${widget.month.surplusPreviousMonth.toStringAsFixed(2)}',
                           color: const Color(0xFF64FFDA),
                         ),
                       ),
@@ -766,13 +832,29 @@ Future<void> showAddMonthAmountDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Current Balance: ₹${bank.currentAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
-                    ),
+                  Selector<BankProvider, double>(
+                    selector: (_, p) {
+                      final month = p.getBankMonths(bank.id).firstWhere(
+                            (m) => m.id ==
+                            '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}',
+                        orElse: () => BankMonthModel(
+                          id: '',
+                          totalAdded: 0,
+                          currentAmount: 0,
+                          surplusPreviousMonth: 0,
+                          incomeThisMonth: 0,
+                        ),
+                      );
+                      return month.currentAmount;
+                    },
+                    builder: (_, balance, __) {
+                      return Text(
+                        'Current Balance: ₹${balance.toStringAsFixed(2)}',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      );
+                    },
                   ),
+
                   const SizedBox(height: 16),
 
                   // 💰 Amount

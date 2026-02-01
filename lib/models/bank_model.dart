@@ -1,17 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class BankModel {
   final String id;
   final String bankName;
-  final double totalAmountWhenAdded;
-  final double currentAmount;
   final Timestamp addedDate;
 
   BankModel({
     required this.id,
     required this.bankName,
-    required this.totalAmountWhenAdded,
-    required this.currentAmount,
     required this.addedDate,
   });
 
@@ -21,26 +19,20 @@ class BankModel {
       ) {
     return BankModel(
       id: id,
-      bankName: data['bankName'],
-      totalAmountWhenAdded:
-      (data['totalAmountWhenAdded'] as num).toDouble(),
-      currentAmount: (data['currentAmount'] as num).toDouble(),
-      addedDate: data['addedDate'],
+      bankName: data['bankName'] as String,
+      addedDate: data['addedDate'] as Timestamp,
     );
   }
 
   @override
   String toString() {
-    return 'BankModel{id: $id, bankName: $bankName, totalAmountWhenAdded: $totalAmountWhenAdded, currentAmount: $currentAmount, addedDate: $addedDate}';
+    return 'BankModel{id: $id, bankName: $bankName, addedDate: $addedDate}';
   }
-
-
 }
+
 
 final BankModel cashBank = BankModel(
   id: 'cash',
   bankName: 'Cash',
-  totalAmountWhenAdded: 0,
-  currentAmount: 0,
   addedDate: Timestamp.now(),
 );

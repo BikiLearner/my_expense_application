@@ -7,21 +7,21 @@ import '../providers/month_expense_provider.dart';
 import '../reusable widgets/day_expense.dart';
 // Update this path as needed
 
-class MonthlyExpensePage extends StatefulWidget {
+class MonthCreditExpensePage extends StatefulWidget {
   final String label;
   final String monthKey; // yyyy-MM
 
-  const MonthlyExpensePage({
+  const MonthCreditExpensePage({
     super.key,
     required this.label,
     required this.monthKey,
   });
 
   @override
-  State<MonthlyExpensePage> createState() => _MonthlyExpensePageState();
+  State<MonthCreditExpensePage> createState() => _MonthCreditExpensePage();
 }
 
-class _MonthlyExpensePageState extends State<MonthlyExpensePage> {
+class _MonthCreditExpensePage extends State<MonthCreditExpensePage> {
   @override
   void initState() {
     super.initState();

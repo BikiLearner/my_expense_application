@@ -8,8 +8,12 @@ import '../expense_model.dart';
 class HistoryPageProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String uid;
-  final String selectedYear;
-  final int selectedMonth;
+  String _selectedYear;
+  int _selectedMonth;
+
+  String get selectedYear => _selectedYear;
+  int get selectedMonth => _selectedMonth;
+
 
   // Cache data
   YearStats? _yearStats;
@@ -21,9 +25,11 @@ class HistoryPageProvider extends ChangeNotifier {
 
   HistoryPageProvider({
     required this.uid,
-    required this.selectedYear,
-    required this.selectedMonth,
-  });
+    required String selectedYear,
+    required int selectedMonth,
+  })  : _selectedYear = selectedYear,
+        _selectedMonth = selectedMonth;
+
 
   // Getters
   YearStats? get yearStats => _yearStats;
@@ -37,16 +43,41 @@ class HistoryPageProvider extends ChangeNotifier {
   double get saving => _monthStats?.saving ?? 0.0;
   double get luxury => _monthStats?.luxury ?? 0.0;
   double get needed => _monthStats?.needed ?? 0.0;
+  String get _selectedMonthId =>
+      '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
 
-  int get totalDays => _yearExpenseDays.length;
 
-  double get avgPerDay => totalDays > 0 ? yearExpense / totalDays : 0.0;
+  int get totalDays => monthExpenseDays.length;
+
+  double get avgPerDay =>
+      totalDays > 0 ? monthTotal / totalDays : 0.0;
+
 
   double get highestDay {
-    if (_yearExpenseDays.isEmpty) return 0.0;
-    return _yearExpenseDays
+    if (monthExpenseDays.isEmpty) return 0.0;
+    return monthExpenseDays
         .map((d) => d.total)
         .reduce((a, b) => a > b ? a : b);
+  }
+
+
+  List<ExpenseDay> get monthExpenseDays {
+    return _yearExpenseDays
+        .where((d) => d.dateId.startsWith(_selectedMonthId))
+        .toList();
+  }
+
+
+  void setYear(String year) {
+    if (_selectedYear == year) return;
+    _selectedYear = year;
+    fetchHistoryData(); // 🔥
+  }
+
+  void setMonth(int month) {
+    if (_selectedMonth == month) return;
+    _selectedMonth = month;
+    fetchHistoryData(); // 🔥 THIS WAS MISSING
   }
 
   /// Fetch all required data for the history screen

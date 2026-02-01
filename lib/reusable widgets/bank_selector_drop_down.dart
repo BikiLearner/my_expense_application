@@ -111,15 +111,26 @@ class BankSelectorDropdown extends StatelessWidget {
                       const SizedBox(width: 8),
 
                       // 💰 Amount
-                      Text(
-                        '₹${bank.currentAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                      Selector<BankProvider, _BankBalanceView>(
+                        selector: (_, provider) => _BankBalanceView(
+                          bank,
+                          bank.id == 'cash'
+                              ? 0.0
+                              : provider.getCurrentMonthBalance(bank.id),
                         ),
-                        maxLines: 1,
+                        builder: (_, state, __) {
+                          return Text(
+                            '₹${state.balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                          );
+                        },
                       ),
+
                     ],
                   )
 
@@ -140,6 +151,22 @@ class BankSelectorDropdown extends StatelessWidget {
 }
 
 
+class _BankBalanceView {
+  final BankModel bank;
+  final double balance;
+
+  const _BankBalanceView(this.bank, this.balance);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is _BankBalanceView &&
+              bank.id == other.bank.id &&
+              balance == other.balance;
+
+  @override
+  int get hashCode => bank.id.hashCode ^ balance.hashCode;
+}
 
 
 class _BankSelectionState {

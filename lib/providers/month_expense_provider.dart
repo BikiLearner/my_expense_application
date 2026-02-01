@@ -7,25 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../enums/expense_type.dart';
 import '../models/expense_items.dart';
 
-/// 📊 Month Expenses Provider
-///
-/// Manages expense data for a specific month with:
-/// - Real-time streaming from Firestore
-/// - Automatic caching
-/// - Efficient updates
-///
-/// Usage:
-/// ```dart
-/// // In main.dart, add to MultiProvider:
-/// ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
-///
-/// // In your widget:
-/// final provider = context.read<MonthExpensesProvider>();
-/// provider.setMonth('2025-01'); // Stream for January 2025
-///
-/// // Listen to updates:
-/// context.watch<MonthExpensesProvider>().groupedExpenses
-/// ```
+
 class MonthExpensesProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -45,6 +27,27 @@ class MonthExpensesProvider extends ChangeNotifier {
   // 🔹 Loading state
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  /// 🔹 Total days with at least one expense
+  int get totalDays => _cachedExpenses.length;
+  /// 🔹 Average expense per day
+  double get avgPerDay {
+    if (totalDays == 0) return 0.0;
+    return monthTotal / totalDays;
+  }
+  /// 🔹 Highest spending day amount
+  double get highestDay {
+    if (_cachedExpenses.isEmpty) return 0.0;
+
+    double max = 0.0;
+    for (final items in _cachedExpenses.values) {
+      final dayTotal =
+      items.fold(0.0, (sum, item) => sum + item.amount);
+      if (dayTotal > max) {
+        max = dayTotal;
+      }
+    }
+    return max;
+  }
 
   // 🔹 Total for the month (calculated from cache)
   double get monthTotal {

@@ -3,6 +3,7 @@ import 'package:expence_app/providers/bank_provider.dart';
 import 'package:expence_app/providers/export_provider.dart';
 import 'package:expence_app/providers/month_expense_provider.dart';
 import 'package:expence_app/providers/setting_provider.dart';
+import 'package:expence_app/providers/year_stat_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
         ChangeNotifierProvider(create: (_) => AllExpensesProvider()),
         ChangeNotifierProvider(create: (_) => BankProvider()),
+        ChangeNotifierProvider(create: (_) => YearStatsProvider()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,

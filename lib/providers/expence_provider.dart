@@ -3,11 +3,13 @@
 
 import 'dart:async';
 
+import 'package:expence_app/providers/bank_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../enums/expense_type.dart';
@@ -48,6 +50,11 @@ class ExpenseProvider extends ChangeNotifier {
   BankModel? _selectedTransaction = cashBank;
 
   BankModel? get selectedTransaction => _selectedTransaction;
+  bool get isCurrentMonth {
+    final now = DateTime.now();
+    return selectedDate.year == now.year &&
+        selectedDate.month == now.month;
+  }
 
 
   // 🔹 Selected Date
@@ -171,6 +178,7 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+
   void setMonth(int month) {
     _selectedMonth = month;
     notifyListeners();
@@ -189,6 +197,55 @@ class ExpenseProvider extends ChangeNotifier {
         .fold(0.0, (s, i) => s + i.amount);
   }
 
+
+  Future<bool> validateAndPrepareBankTransaction({
+    required BuildContext context,
+    required String bankId,
+    required DateTime selectedDate,
+    required double expenseAmount,
+    required String bankName,
+  }) async {
+    final bankRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('bank')
+        .doc(bankId);
+
+    final bankMonthId =
+    DateFormat('yyyy-MM').format(selectedDate);
+
+    // 1️⃣ Ensure month exists (returns result)
+    final monthReady =
+    await context.read<BankProvider>().ensureBankMonthExistsWithDialog(
+      context: context,
+      bankId: bankId,
+      monthId: bankMonthId,
+    );
+
+    if (!monthReady) return false;
+
+    // 2️⃣ Fetch fresh bank state (SOURCE OF TRUTH)
+    final bankSnap = await bankRef.get();
+    if (!bankSnap.exists) return false;
+
+    final available =
+    (bankSnap.data()?['currentAmount'] ?? 0).toDouble();
+
+    // 3️⃣ Final balance check
+    if (available < expenseAmount) {
+      await showInsufficientBalanceDialog(
+        context,
+        available: available,
+        requiredAmount: expenseAmount,
+        bankName: bankName,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+
   // 🔹 Add Expense
   Future<void> addExpense(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -203,19 +260,18 @@ class ExpenseProvider extends ChangeNotifier {
     if (title.isEmpty || amount == null || amount <= 0) return;
 // 🔒 HARD BANK VALIDATION
     if (!isCashTransaction) {
-      final bank = _selectedTransaction!;
-      final available = bank.currentAmount;
+      final canProceed = await validateAndPrepareBankTransaction(
+        context: context,
+        bankId: _selectedTransaction!.id,
+        selectedDate: _selectedDate,
+        expenseAmount: amount,
+        bankName: _selectedTransaction!.bankName,
+      );
 
-      if (available < amount) {
-        await showInsufficientBalanceDialog(
-          context,
-          available: available,
-          requiredAmount: amount,
-          bankName: bank.bankName,
-        );
-        return; // ❌ STOP HERE
-      }
+      // ❌ STOP if bank / month / balance invalid
+      if (!canProceed) return;
     }
+    bool _ = true;
 
     try {
       final userRef = _firestore.collection('users').doc(uid);
@@ -285,30 +341,42 @@ class ExpenseProvider extends ChangeNotifier {
         final bankMonthId =
         DateFormat('yyyy-MM').format(_selectedDate);
 
-        final bankMonthRef = bankRef
-            .collection('monthAmount')
-            .doc(bankMonthId);
+        final bankMonthRef =
+        bankRef.collection('monthAmount').doc(bankMonthId);
 
-        await _firestore.runTransaction((tx) async {
-          final bankSnap = await tx.get(bankRef);
-          final bankMonthSnap = await tx.get(bankMonthRef);
+        try {
+          await _firestore.runTransaction((tx) async {
+            // 🔁 MUST read inside transaction
+            final bankSnap = await tx.get(bankRef);
+            final bankMonthSnap = await tx.get(bankMonthRef);
 
-          // ❌ Bank not found → do nothing
-          if (!bankSnap.exists) return;
+            // ❌ Bank deleted → HARD STOP
+            if (!bankSnap.exists) {
+              throw Exception('Bank not found during deduction');
+            }
 
-          // ❌ Month not found → do nothing
-          if (!bankMonthSnap.exists) return;
+            // ❌ Month missing → HARD STOP
+            if (!bankMonthSnap.exists) {
+              throw Exception('Bank month not found during deduction');
+            }
 
-          // 🔻 Expense = money OUT
-          tx.update(bankRef, {
-            'currentAmount': FieldValue.increment(-amount),
+            final currentBalance =
+            (bankSnap.data()?['currentAmount'] ?? 0).toDouble();
+
+            // ❌ Balance changed meanwhile → HARD STOP
+            if (currentBalance < amount) {
+              throw Exception('Insufficient balance during transaction');
+            }
+
+            tx.update(bankMonthRef, {
+              'currentAmount': FieldValue.increment(-amount),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
           });
-
-          tx.update(bankMonthRef, {
-            'currentAmount': FieldValue.increment(-amount),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        });
+        } catch (e) {
+          debugPrint('❌ Bank deduction failed: $e');
+          return; // ⛔ DO NOT COMMIT EXPENSE BATCH
+        }
       }
 
       await batch.commit();
@@ -492,52 +560,20 @@ class ExpenseProvider extends ChangeNotifier {
     final newType = _selectedType;
     final newBank = _selectedTransaction; // may be cash
     final diff = newAmount - oldAmount;
-// 🔒 HARD BANK BALANCE VALIDATION (EDIT EXPENSE)
-    if (!isCashTransaction) {
-      final newBank = _selectedTransaction!;
-      final available = newBank.currentAmount;
-
-      if (oldTransactionTypeId == newBank.id) {
-
-        if (diff > 0 && available < diff) {
-          await showInsufficientBalanceDialog(
-            context,
-            available: available,
-            requiredAmount: diff,
-            bankName: newBank.bankName,
-          );
-          return; // ❌ STOP
-        }
-      }
-      // 🔵 BANK CHANGED
-      else {
-        if (available < newAmount) {
-          await showInsufficientBalanceDialog(
-            context,
-            available: available,
-            requiredAmount: newAmount,
-            bankName: newBank.bankName,
-          );
-          return; // ❌ STOP
-        }
-      }
-    }
 
     final dateId = getDateId(oldDate);
     final year = DateFormat('yyyy').format(oldDate);
-    final month = DateFormat('yyyy-MM').format(oldDate);
+    final monthId = DateFormat('yyyy-MM').format(oldDate);
 
     final userRef = _firestore.collection('users').doc(uid);
     final dateRef = userRef.collection('expenses').doc(dateId);
     final itemRef = dateRef.collection('items').doc(docId);
     final yearRef = userRef.collection('year_stats').doc(year);
-    final monthRef = yearRef.collection('months').doc(month);
+    final monthRef = yearRef.collection('months').doc(monthId);
 
     try {
-      // 🔹 STEP 1: NORMAL EXPENSE + STATS UPDATE
       final batch = _firestore.batch();
 
-      // Expense item
       batch.update(itemRef, {
         'title': title,
         'amount': newAmount,
@@ -547,7 +583,6 @@ class ExpenseProvider extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Day / user / year totals
       if (diff != 0) {
         batch.set(dateRef, {
           'total': FieldValue.increment(diff),
@@ -564,7 +599,6 @@ class ExpenseProvider extends ChangeNotifier {
         }, SetOptions(merge: true));
       }
 
-      // Month stats
       if (oldType == newType) {
         if (diff != 0) {
           batch.set(monthRef, {
@@ -583,33 +617,30 @@ class ExpenseProvider extends ChangeNotifier {
 
       await batch.commit();
 
-      // 🔹 STEP 2: BANK UPDATE (TRANSACTION BASED)
-      final oldBankId = oldTransactionTypeId;
-      final newBankId = newBank?.id;
-      final bankMonthId = month; // yyyy-MM from expense date
-
       await _firestore.runTransaction((tx) async {
         // 🟡 SAME BANK
-        if (oldBankId == newBankId &&
-            oldBankId != null &&
-            oldBankId != 'cash') {
+        if (oldTransactionTypeId == newBank?.id &&
+            oldTransactionTypeId != null &&
+            oldTransactionTypeId != 'cash') {
           if (diff == 0) return;
 
-          final bankRef =
-          userRef.collection('bank').doc(oldBankId);
-          final bankMonthRef =
-          bankRef.collection('monthAmount').doc(bankMonthId);
+          final monthRef = userRef
+              .collection('bank')
+              .doc(oldTransactionTypeId)
+              .collection('monthAmount')
+              .doc(monthId);
 
-          final bankSnap = await tx.get(bankRef);
-          final monthSnap = await tx.get(bankMonthRef);
+          final monthSnap = await tx.get(monthRef);
+          if (!monthSnap.exists) return;
 
-          if (!bankSnap.exists || !monthSnap.exists) return;
+          final current =
+          (monthSnap.data()?['currentAmount'] ?? 0).toDouble();
 
-          tx.update(bankRef, {
-            'currentAmount': FieldValue.increment(-diff),
-          });
+          if (diff > 0 && current < diff) {
+            throw Exception('Insufficient balance during edit');
+          }
 
-          tx.update(bankMonthRef, {
+          tx.update(monthRef, {
             'currentAmount': FieldValue.increment(-diff),
             'updatedAt': FieldValue.serverTimestamp(),
           });
@@ -617,21 +648,17 @@ class ExpenseProvider extends ChangeNotifier {
 
         // 🔵 BANK CHANGED
         else {
-          // ➕ RETURN MONEY TO OLD BANK
-          if (oldBankId != null && oldBankId != 'cash') {
-            final oldBankRef =
-            userRef.collection('bank').doc(oldBankId);
-            final oldMonthRef =
-            oldBankRef.collection('monthAmount').doc(bankMonthId);
+          // ➕ RETURN TO OLD BANK
+          if (oldTransactionTypeId != null &&
+              oldTransactionTypeId != 'cash') {
+            final oldMonthRef = userRef
+                .collection('bank')
+                .doc(oldTransactionTypeId)
+                .collection('monthAmount')
+                .doc(monthId);
 
-            final oldBankSnap = await tx.get(oldBankRef);
             final oldMonthSnap = await tx.get(oldMonthRef);
-
-            if (oldBankSnap.exists && oldMonthSnap.exists) {
-              tx.update(oldBankRef, {
-                'currentAmount': FieldValue.increment(oldAmount),
-              });
-
+            if (oldMonthSnap.exists) {
               tx.update(oldMonthRef, {
                 'currentAmount': FieldValue.increment(oldAmount),
                 'updatedAt': FieldValue.serverTimestamp(),
@@ -640,25 +667,29 @@ class ExpenseProvider extends ChangeNotifier {
           }
 
           // ➖ DEDUCT FROM NEW BANK
-          if (newBankId != null && newBankId != 'cash') {
-            final newBankRef =
-            userRef.collection('bank').doc(newBankId);
-            final newMonthRef =
-            newBankRef.collection('monthAmount').doc(bankMonthId);
+          if (newBank?.id != null && newBank!.id != 'cash') {
+            final newMonthRef = userRef
+                .collection('bank')
+                .doc(newBank.id)
+                .collection('monthAmount')
+                .doc(monthId);
 
-            final newBankSnap = await tx.get(newBankRef);
             final newMonthSnap = await tx.get(newMonthRef);
-
-            if (newBankSnap.exists && newMonthSnap.exists) {
-              tx.update(newBankRef, {
-                'currentAmount': FieldValue.increment(-newAmount),
-              });
-
-              tx.update(newMonthRef, {
-                'currentAmount': FieldValue.increment(-newAmount),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
+            if (!newMonthSnap.exists) {
+              throw Exception('Target bank month missing');
             }
+
+            final current =
+            (newMonthSnap.data()?['currentAmount'] ?? 0).toDouble();
+
+            if (current < newAmount) {
+              throw Exception('Insufficient balance in new bank');
+            }
+
+            tx.update(newMonthRef, {
+              'currentAmount': FieldValue.increment(-newAmount),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
           }
         }
       });
@@ -666,12 +697,13 @@ class ExpenseProvider extends ChangeNotifier {
       clearForm();
 
       if (kDebugMode) {
-        print("✏️ Expense updated with correct bank sync");
+        print('✏️ Expense edited successfully (month-based bank sync)');
       }
     } catch (e) {
-      debugPrint("❌ Edit expense failed: $e");
+      debugPrint('❌ Edit expense failed: $e');
     }
   }
+
 
   void hideLoadingDialog(BuildContext context) {
     if (Navigator.of(context, rootNavigator: true).canPop()) {

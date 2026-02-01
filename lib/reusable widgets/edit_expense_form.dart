@@ -8,11 +8,13 @@ import 'app_text_fields.dart';
 import 'auto_complete_text_fields.dart';
 import 'expense_type_selector.dart';
 
-class EditExpenseForm extends StatelessWidget {
+class EditExpenseForm extends StatelessWidget
+{
   const EditExpenseForm({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     final provider = context.read<ExpenseProvider>();
 
     return Row(
@@ -26,7 +28,36 @@ class EditExpenseForm extends StatelessWidget {
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 8),
-              BankSelectorDropdown(),
+              // Selector<ExpenseProvider, bool>(
+              //   selector: (_, p) => p.isCurrentMonth,
+              //   builder: (context, isCurrentMonth, _)
+              //   {
+              //     return Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Opacity(
+              //           opacity: isCurrentMonth ? 1 : 0.5,
+              //           child: IgnorePointer(
+              //             ignoring: !isCurrentMonth,
+              //             child: BankSelectorDropdown(),
+              //           ),
+              //         ),
+              //         if (!isCurrentMonth) ...[
+              //           const SizedBox(height: 6),
+              //           const Text(
+              //             '❌ Bank cannot be edited for past expenses Apun may\n itna aaukat nahi hai ki hum kar paya aa wala solly',
+              //             style: TextStyle(
+              //               color: Colors.redAccent,
+              //               fontSize: 12,
+              //               fontWeight: FontWeight.w500,
+              //             ),
+              //           ),
+              //         ],
+              //       ],
+              //     );
+              //   },
+              // ),
+
               const SizedBox(height: 16),
               TitleAutoCompleteField(controller: provider.titleController),
               const SizedBox(height: 16),

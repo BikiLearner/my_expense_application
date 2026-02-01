@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/bank_month_model.dart';
 import '../providers/bank_provider.dart';
 import '../models/bank_model.dart';
 import 'bank_form_page.dart';
@@ -116,9 +117,13 @@ class _BankPageState extends State<BankPage> {
 
   // 📋 Bank List with Total Summary
   Widget _buildBankList(List<BankModel> banks) {
+    final provider = context.read<BankProvider>();
     final totalBalance = banks.fold<double>(
       0.0,
-          (sum, bank) => sum + bank.currentAmount,
+          (sum, bank) {
+        final month = provider.getCurrentMonthForBank(bank.id);
+        return sum + (month?.currentAmount ?? 0);
+      },
     );
 
     return Column(
@@ -225,148 +230,98 @@ class _BankCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Selector<BankProvider, BankMonthModel?>(
+      selector: (_, provider) =>
+          provider.getCurrentMonthForBank(bank.id),
+      builder: (_, month, __) {
+        final currentBalance = month?.currentAmount ?? 0;
+        final surplus = month?.surplusPreviousMonth ?? 0;
+        final incomeThisMonth = month?.incomeThisMonth ?? 0;
+
+        return _buildCard(
+          context,
+          currentBalance: currentBalance,
+          surplus: surplus,
+          incomeThisMonth: incomeThisMonth,
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(
+      BuildContext context, {
+        required double currentBalance,
+        required double surplus,
+        required double incomeThisMonth,
+      }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF2C2C2C),
-            const Color(0xFF1E1E1E),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C2C2C), Color(0xFF1E1E1E)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF64FFDA).withOpacity(0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BankAccountPage(bank: bank),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Row: Bank Name + Edit Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF64FFDA).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.account_balance,
-                            color: Color(0xFF64FFDA),
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          bank.bankName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        color: Color(0xFF64FFDA),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BankFormPage(bank: bank),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Current Balance
-                Text(
-                  'Current Balance',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '₹${bank.currentAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Color(0xFF64FFDA),
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-                Divider(color: Colors.grey[800], thickness: 1),
-                const SizedBox(height: 12),
-
-                // Bottom Info Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _InfoChip(
-                      label: 'Initial Amount',
-                      value: '₹${bank.totalAmountWhenAdded.toStringAsFixed(0)}',
-                    ),
-                    _InfoChip(
-                      label: 'Added On',
-                      value: _formatDate(bank.addedDate.toDate()),
-                      icon: Icons.calendar_today,
-                    ),
-                  ],
-                ),
-              ],
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BankAccountPage(bank: bank),
             ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Bank name
+              Text(
+                bank.bankName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 💰 CURRENT MONTH BALANCE
+              Text(
+                '₹${currentBalance.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Color(0xFF64FFDA),
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              Divider(color: Colors.grey[800]),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _InfoChip(
+                    label: 'Surplus',
+                    value: '₹${surplus.toStringAsFixed(0)}',
+                  ),
+                  _InfoChip(
+                    label: 'Income (This Month)',
+                    value: '₹${incomeThisMonth.toStringAsFixed(0)}',
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
 }
+
 
 // 📊 Info Chip Widget
 class _InfoChip extends StatelessWidget {
