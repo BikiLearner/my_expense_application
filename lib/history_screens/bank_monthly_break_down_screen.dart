@@ -212,7 +212,7 @@ class _FinancialOverviewCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _MetricCard(
-                      label: 'This Month Income',
+                      label: 'This Month Initial',
                       value: '₹${thisMonthTotal.toStringAsFixed(0)}',
                       valueColor: thisMonthTotal >= 0
                           ? const Color(0xFF10B981)
@@ -438,7 +438,7 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Current: ₹${month.currentAmount.toStringAsFixed(0)}',
+                              'Total Amount: ₹${month.totalAdded.toStringAsFixed(0)}',
                               style: const TextStyle(
                                 color: Color(0xFF10B981),
                                 fontSize: 13,
@@ -454,7 +454,7 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '₹${month.totalAdded.toStringAsFixed(0)}',
+                            '₹${month.currentAmount.toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: Color(0xFF3B82F6),
                               fontWeight: FontWeight.w700,
@@ -526,8 +526,8 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                       // Month Stats
                       _MonthStatRow(
                         icon: Icons.savings_rounded,
-                        label: 'Previous Surplus',
-                        value: '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
+                        label: 'Current Amount',
+                        value: '₹${month.currentAmount.toStringAsFixed(0)}',
                         valueColor: const Color(0xFF60A5FA),
                       ),
                       const SizedBox(height: 12),
@@ -544,7 +544,13 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                         value: '₹${month.totalAdded.toStringAsFixed(0)}',
                         valueColor: const Color(0xFF3B82F6),
                       ),
-
+                      const SizedBox(height: 12),
+                      _MonthStatRow(
+                        icon: Icons.savings_rounded,
+                        label: 'Previous Surplus',
+                        value: '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
+                        valueColor: const Color(0xFF60A5FA),
+                      ),
                       const SizedBox(height: 20),
 
                       // Transaction History Header

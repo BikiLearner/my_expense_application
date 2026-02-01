@@ -44,9 +44,11 @@ class GrandTotalBanner extends StatelessWidget
   {
     final provider = context.watch<ExpenseProvider>();
     final providerHistory = context.watch<HistoryPageProvider>();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 420; // recommended breakpoint
 
     final monthKey =
-      '${provider.selectedYear}-${provider.selectedMonth.toString().padLeft(2, '0')}';
+      '${providerHistory.selectedYear}-${providerHistory.selectedMonth.toString().padLeft(2, '0')}';
     final label = DateFormat(
       'MMMM yyyy',
     ).format(DateTime.parse("$monthKey-01"));
@@ -74,7 +76,23 @@ class GrandTotalBanner extends StatelessWidget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              isSmallScreen
+                  ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _YearSelector(
+                    year: providerHistory.selectedYear,
+                    onTap: () => _openYearPicker(context),
+                  ),
+                  const SizedBox(height: 8),
+                  _MonthSelector(
+                    month: providerHistory.selectedMonth,
+                    onTap: () => _openMonthPicker(context),
+                  ),
+                ],
+              )
+                  : Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _YearSelector(
                     year: providerHistory.selectedYear,
@@ -216,13 +234,26 @@ class GrandTotalBanner extends StatelessWidget
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                "₹${monthTotal.toStringAsFixed(0)}",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -1,
+              InkWell(
+                onTap: (){
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MonthlyExpensePage(
+                        label: label,
+                        monthKey: monthKey,
+                      ),
+                    ),
+                  );
+                },
+                child: Text(
+                  "₹${monthTotal.toStringAsFixed(0)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -1,
+                  ),
                 ),
               ),
               const SizedBox(height: 6),

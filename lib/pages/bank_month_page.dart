@@ -759,7 +759,9 @@ class _StatItem extends StatelessWidget
         Icon(icon, color: color, size: 18),
         const SizedBox(height: 4),
         Text(
+
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.grey[600],
             fontSize: 11,

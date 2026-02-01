@@ -15,11 +15,13 @@ import 'models/expense_items.dart';
 import 'providers/expence_provider.dart';
 import 'history_screen.dart';
 
-class ExpenseScreen extends StatelessWidget {
+class ExpenseScreen extends StatelessWidget
+{
   const ExpenseScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     final selectedDate = context.select<ExpenseProvider, DateTime>(
       (p) => p.selectedDate,
     );
@@ -54,13 +56,17 @@ class ExpenseScreen extends StatelessWidget {
               color: Color(0xFF64FFDA),
             ),
             tooltip: 'History',
-            onPressed: () {
+            onPressed: () async
+            {
               final audioService = AudioPlayerService();
-              audioService.play('audio/fahhhhh.mp3');
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const HistoryScreen()),
-              );
+              await audioService.play('audio/fahhhhh.mp3', isAsset: true);
+              if (context.mounted) 
+              {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                );
+              }
             },
           ),
           IconButton(
@@ -71,7 +77,8 @@ class ExpenseScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.add, color: Color(0xFF64FFDA)),
             tooltip: 'Add Category',
-            onPressed: () {
+            onPressed: ()
+            {
               context.read<ExpenseProvider>().showAddCategoryDialog(context);
             },
           ),
@@ -79,12 +86,13 @@ class ExpenseScreen extends StatelessWidget {
         ],
       ),
       body: isDesktop
-          ? _buildDesktopLayout(context)
-          : _buildMobileLayout(context),
+        ? _buildDesktopLayout(context)
+        : _buildMobileLayout(context),
     );
   }
 
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context) async
+  {
     final provider = context.read<ExpenseProvider>();
 
     final picked = await showDatePicker(
@@ -94,13 +102,15 @@ class ExpenseScreen extends StatelessWidget {
       lastDate: DateTime.now(),
     );
 
-    if (picked != null && picked != provider.selectedDate) {
+    if (picked != null && picked != provider.selectedDate) 
+    {
       provider.setSelectedDate(picked);
     }
   }
 
   // 📱 Mobile & Tablet Layout (Stacked)
-  Widget _buildMobileLayout(BuildContext context) {
+  Widget _buildMobileLayout(BuildContext context) 
+  {
     return Column(
       children: [
         // Expense List
@@ -112,7 +122,8 @@ class ExpenseScreen extends StatelessWidget {
   }
 
   // 🖥️ Desktop Layout (Side by Side)
-  Widget _buildDesktopLayout(BuildContext context) {
+  Widget _buildDesktopLayout(BuildContext context) 
+  {
     return Row(
       children: [
         // Left: Expense List
@@ -133,11 +144,14 @@ class ExpenseScreen extends StatelessWidget {
   }
 
   // 📋 Expense List Widget
-  Widget _buildExpenseList(BuildContext context) {
+  Widget _buildExpenseList(BuildContext context) 
+  {
     return Selector<ExpenseProvider, bool>(
       selector: (_, p) => p.isLoading,
-      builder: (_, isLoading, __) {
-        if (isLoading) {
+      builder: (_, isLoading, __)
+      {
+        if (isLoading) 
+        {
           return const Center(
             child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
           );
@@ -145,8 +159,10 @@ class ExpenseScreen extends StatelessWidget {
 
         return Selector<ExpenseProvider, List<ExpenseItem>>(
           selector: (_, p) => p.cachedExpenses,
-          builder: (_, expenses, __) {
-            if (expenses.isEmpty) {
+          builder: (_, expenses, __)
+          {
+            if (expenses.isEmpty) 
+            {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -177,7 +193,8 @@ class ExpenseScreen extends StatelessWidget {
 
             return Selector<ExpenseProvider, double>(
               selector: (_, p) => p.totalExpense,
-              builder: (_, total, __) {
+              builder: (_, total, __)
+              {
                 return Column(
                   children: [
                     // Total Banner
@@ -246,7 +263,8 @@ class ExpenseScreen extends StatelessWidget {
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: expenses.length,
-                        itemBuilder: (_, i) {
+                        itemBuilder: (_, i)
+                        {
                           final expense = expenses[i];
 
                           return ExpenseItemTile(

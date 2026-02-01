@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../pages/export_data_page.dart';
 import '../providers/expence_provider.dart';
 
 import '../providers/export_provider.dart';
@@ -47,7 +48,12 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
           onSelected: (action) {
             switch (action) {
               case _HistoryMenuAction.export:
-                _showExportDialog(context, provider.selectedYear);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ExportDataPage(),
+                  ),
+                );
                 break;
 
               case _HistoryMenuAction.search:
@@ -109,148 +115,6 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  void _showExportDialog(BuildContext context, String year) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF64FFDA).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.file_download, color: Color(0xFF64FFDA)),
-            ),
-            const SizedBox(width: 12),
-            const Text("Export Data", style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Choose export format for $year expenses",
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            _ExportOptionTile(
-              icon: Icons.picture_as_pdf,
-              iconColor: Colors.redAccent,
-              title: "Export as PDF",
-              subtitle: "Professional report format",
-              onTap: () {
-                Navigator.pop(context);
-                _exportPDF(context, year);
-              },
-            ),
-            const SizedBox(height: 12),
-            _ExportOptionTile(
-              icon: Icons.table_chart,
-              iconColor: Colors.greenAccent,
-              title: "Export as Excel",
-              subtitle: "Spreadsheet format (.xlsx)",
-              onTap: () {
-                Navigator.pop(context);
-                _exportExcel(context, year);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: Colors.grey[400])),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _exportPDF(BuildContext context, String year) async {
-    final exportProvider = context.read<ExportProvider>();
-
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          color: Color(0xFF2A2A2A),
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFF64FFDA)),
-                SizedBox(height: 16),
-                Text(
-                  "Generating PDF...",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    final filePath = await exportProvider.exportToPDF(
-      year: year,
-      context: context,
-    );
-
-    // Close loading dialog
-    Navigator.pop(context);
-
-    if (filePath != null) {
-      _showShareDialog(context, filePath, "PDF");
-    }
-  }
-
-  Future<void> _exportExcel(BuildContext context, String year) async {
-    final exportProvider = context.read<ExportProvider>();
-
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          color: Color(0xFF2A2A2A),
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFF64FFDA)),
-                SizedBox(height: 16),
-                Text(
-                  "Generating Excel...",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    final filePath = await exportProvider.exportToExcel(
-      year: year,
-      context: context,
-    );
-
-    // Close loading dialog
-    Navigator.pop(context);
-
-    if (filePath != null) {
-      _showShareDialog(context, filePath, "Excel");
-    }
-  }
 
   void _showShareDialog(BuildContext context, String filePath, String type) {
     showDialog(
