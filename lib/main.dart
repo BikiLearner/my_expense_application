@@ -5,6 +5,7 @@ import 'package:expence_app/providers/month_expense_provider.dart';
 import 'package:expence_app/providers/setting_provider.dart';
 import 'package:expence_app/providers/year_stat_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
@@ -21,10 +22,12 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await Workmanager().initialize(
-    callbackDispatcher, // must be top-level
-    isInDebugMode: true, // set false in release
-  );
+  if(!kIsWeb) {
+    await Workmanager().initialize(
+      callbackDispatcher, // must be top-level
+      isInDebugMode: true, // set false in release
+    );
+  }
   runApp(const MyApp());
 }
 

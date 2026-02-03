@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'fun/audio_player.dart';
 import 'history_screens/month_list_page.dart';
 import 'providers/expence_provider.dart';
 import 'providers/history_page_provider.dart';
@@ -206,7 +207,9 @@ class _MonthNavigationTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
+        onTap: () async {
+          final audioService = AudioPlayerService();
+          await audioService.play('audio/fahhhhh.mp3', isAsset: true);
           Navigator.push(
             context,
             MaterialPageRoute(
