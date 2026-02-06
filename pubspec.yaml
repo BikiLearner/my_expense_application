@@ -55,6 +55,10 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences:
   audioplayers: ^6.5.1
+  syncfusion_flutter_pdf: ^32.2.3
+  file_picker: ^10.3.10
+  textify: ^0.5.1
+
 
 dev_dependencies:
   flutter_test:

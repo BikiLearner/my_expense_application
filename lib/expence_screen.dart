@@ -1,3 +1,4 @@
+import 'package:expence_app/pages/expense_particular_day_overView.dart';
 import 'package:expence_app/reusable%20widgets/add_expense_form.dart';
 
 import 'package:expence_app/reusable%20widgets/expense_tiles_new.dart';
@@ -15,7 +16,7 @@ class ExpenseScreen extends StatelessWidget
   const ExpenseScreen({super.key});
 
   @override
-  Widget build(BuildContext context) 
+  Widget build(BuildContext context)
   {
     final selectedDate = context.select<ExpenseProvider, DateTime>(
       (p) => p.selectedDate,
@@ -55,7 +56,7 @@ class ExpenseScreen extends StatelessWidget
             {
               final audioService = AudioPlayerService();
               // await audioService.play('audio/fahhhhh.mp3', isAsset: true);
-              if (context.mounted) 
+              if (context.mounted)
               {
                 Navigator.push(
                   context,
@@ -97,14 +98,14 @@ class ExpenseScreen extends StatelessWidget
       lastDate: DateTime.now(),
     );
 
-    if (picked != null && picked != provider.selectedDate) 
+    if (picked != null && picked != provider.selectedDate)
     {
       provider.setSelectedDate(picked);
     }
   }
 
   // 📱 Mobile & Tablet Layout (Stacked)
-  Widget _buildMobileLayout(BuildContext context) 
+  Widget _buildMobileLayout(BuildContext context)
   {
     return Column(
       children: [
@@ -117,7 +118,7 @@ class ExpenseScreen extends StatelessWidget
   }
 
   // 🖥️ Desktop Layout (Side by Side)
-  Widget _buildDesktopLayout(BuildContext context) 
+  Widget _buildDesktopLayout(BuildContext context)
   {
     return Row(
       children: [
@@ -139,13 +140,13 @@ class ExpenseScreen extends StatelessWidget
   }
 
   // 📋 Expense List Widget
-  Widget _buildExpenseList(BuildContext context) 
+  Widget _buildExpenseList(BuildContext context)
   {
     return Selector<ExpenseProvider, bool>(
       selector: (_, p) => p.isLoading,
       builder: (_, isLoading, __)
       {
-        if (isLoading) 
+        if (isLoading)
         {
           return const Center(
             child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
@@ -156,7 +157,7 @@ class ExpenseScreen extends StatelessWidget
           selector: (_, p) => p.cachedExpenses,
           builder: (_, expenses, __)
           {
-            if (expenses.isEmpty) 
+            if (expenses.isEmpty)
             {
               return Center(
                 child: Column(
@@ -234,18 +235,24 @@ class ExpenseScreen extends StatelessWidget
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${expenses.length} Transactions',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                          InkWell(
+                            onTap: ()
+                            {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => ExpensesOverviewPageParticularDay()));
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${expenses.length} Transactions',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),

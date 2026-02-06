@@ -352,10 +352,7 @@ class BankProvider extends ChangeNotifier
   double getTotalThisMonthSurplus() 
   {
     final now = DateTime.now();
-
-    final prevMonthDate = DateTime(now.year, now.month - 1);
-    final prevMonthId =
-      '${prevMonthDate.year}-${prevMonthDate.month.toString().padLeft(2, '0')}';
+    final currentMonthId = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     double total = 0;
 
@@ -363,9 +360,9 @@ class BankProvider extends ChangeNotifier
     {
       for (final m in bankMonths)
       {
-        if (m.id == prevMonthId) 
+        if (m.id == currentMonthId)
         {
-          total += m.currentAmount;
+          total += m.surplusPreviousMonth;
           break; // one month per bank
         }
       }

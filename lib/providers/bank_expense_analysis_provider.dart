@@ -68,9 +68,9 @@ class BankAnalysisProvider extends ChangeNotifier {
   int get totalTransactions {
     int count = 0;
 
-    _bankAnalysis.values.forEach((analysis) {
+    for (var analysis in _bankAnalysis.values) {
       count += analysis.transactionCount;
-    });
+    }
 
     if (_cashAnalysis != null) {
       count += _cashAnalysis!.transactionCount;
