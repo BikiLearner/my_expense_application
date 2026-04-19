@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../detail_screen.dart';
-import '../expense_model.dart';
+import '../expense_home/models/expense_model.dart';
 
 class DayExpenseTile extends StatelessWidget {
   final ExpenseDay day;

@@ -3,11 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../pages/export_data_page.dart';
-import '../providers/expence_provider.dart';
+import '../expense_home/provider/expence_provider.dart';
 
 import '../providers/export_provider.dart';
-import '../repair tools/setting_page.dart';
-import 'anaylitcs_scree.dart';
+import '../setting/screens/setting_page.dart';
+import '../analytics/screens/anaylitcs_scree.dart';
 import 'search_expance_screen.dart';
 
 class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {

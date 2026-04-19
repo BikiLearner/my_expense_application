@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../enums/expense_type.dart';
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 
 
 class MonthExpensesProvider extends ChangeNotifier {

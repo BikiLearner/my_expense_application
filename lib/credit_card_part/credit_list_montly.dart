@@ -1,8 +1,8 @@
-import 'package:expence_app/expense_model.dart';
+import 'package:expence_app/expense_home/models/expense_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/expence_provider.dart';
+import '../expense_home/provider/expence_provider.dart';
 import 'credit_month_list_tiles.dart';
 
 class CreditListMontly extends StatelessWidget {

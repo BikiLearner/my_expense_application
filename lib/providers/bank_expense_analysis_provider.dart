@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../models/bank_model.dart';
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 
 class BankExpenseAnalysis {
   final String bankId;

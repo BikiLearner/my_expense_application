@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/all_expense_provider.dart';
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 import '../reusable widgets/day_expense.dart';
 // 👆 Ensure this path matches your project structure
 

@@ -4,9 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../enums/expense_type.dart';
-import '../models/expense_items.dart';
-import '../providers/expence_provider.dart';
-import '../expense_model.dart';
+import '../expense_home/models/expense_items.dart';
+import '../expense_home/provider/expence_provider.dart';
+import '../expense_home/models/expense_model.dart';
 import '../providers/month_expense_provider.dart';
 import '../reusable widgets/day_expense.dart';
 import 'day_expense_tile.dart';

@@ -5,17 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/credit_model.dart';
 import 'bank_provider.dart';
-
 class BankCreditProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
   String get uid => FirebaseAuth.instance.currentUser!.uid;
 
   StreamSubscription? _sub;
 
-  /// 🔥 STREAMED LISTS
-  List<BankCredit> _borrow = [];
-  List<BankCredit> _lent = [];
-  List<BankCredit> _completed = [];
+  final List<BankCredit> _borrow = [];
+  final List<BankCredit> _lent = [];
+  final List<BankCredit> _completed = [];
 
   List<BankCredit> get borrow => _borrow;
   List<BankCredit> get lent => _lent;
@@ -40,9 +38,9 @@ class BankCreditProvider extends ChangeNotifier {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .listen((snapshot) {
-      _borrow = [];
-      _lent = [];
-      _completed = [];
+      _borrow.clear();
+      _lent.clear();
+      _completed.clear();
 
       for (final doc in snapshot.docs) {
         final credit = BankCredit.fromFirestore(doc.id, doc.data());
@@ -66,18 +64,12 @@ class BankCreditProvider extends ChangeNotifier {
   Future<void> addBorrow({
     required String title,
     required double amount,
-  }) async {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('credits')
-        .add({
-      'title': title,
-      'amount': amount,
-      'type': 'borrow',
-      'status': 'active',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  }) {
+    return _createCredit(
+      title: title,
+      amount: amount,
+      type: CreditType.borrow,
+    );
   }
 
   Future<void> addLent({
@@ -86,38 +78,61 @@ class BankCreditProvider extends ChangeNotifier {
     required String bankId,
     required BankProvider bankProvider,
   }) async {
-    // 🔹 1️⃣ Deduct bank immediately
-    await bankProvider.deductForLent(
-      bankId: bankId,
-      amount: amount,
-      description: 'Lent: $title',
-    );
+    await _firestore.runTransaction((tx) async {
+      // 1️⃣ Deduct bank
+      await bankProvider.deductForLent(
+        bankId: bankId,
+        amount: amount,
+        description: 'Lent: $title',
+      );
 
-    // 🔹 2️⃣ Save credit
-    await _firestore
+      // 2️⃣ Create credit
+      await _createCredit(
+        title: title,
+        amount: amount,
+        type: CreditType.lent,
+        bankId: bankId,
+        transaction: tx,
+      );
+    });
+  }
+
+  Future<void> _createCredit({
+    required String title,
+    required double amount,
+    required CreditType type,
+    String? bankId,
+    Transaction? transaction,
+  }) async {
+    final ref = _firestore
         .collection('users')
         .doc(uid)
         .collection('credits')
-        .add({
+        .doc();
+
+    final data = {
       'title': title,
       'amount': amount,
-      'type': 'lent',
-      'status': 'active',
+      'type': type.name,
+      'status': CreditStatus.active.name,
       'bankId': bankId,
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    };
+
+    if (transaction != null) {
+      transaction.set(ref, data);
+    } else {
+      await ref.set(data);
+    }
   }
 
   // ───────────────── COMPLETE ─────────────────
 
   Future<void> completeBorrow({
     required BankCredit credit,
-    required BuildContext context,
-    required Function payBorrowAsExpense,
+    required Future<void> Function() payAsExpense,
   }) async {
-    // Expense + bank handled by ExpenseProvider
-    await payBorrowAsExpense();
-
+    await payAsExpense();
     await _markCompleted(credit.id);
   }
 
@@ -125,7 +140,6 @@ class BankCreditProvider extends ChangeNotifier {
     required BankCredit credit,
     required BankProvider bankProvider,
   }) async {
-    // 🔹 Add money back to bank
     await bankProvider.addMonthAmount(
       bankId: credit.bankId!,
       amount: credit.amount,
@@ -142,7 +156,7 @@ class BankCreditProvider extends ChangeNotifier {
         .collection('credits')
         .doc(creditId)
         .update({
-      'status': 'completed',
+      'status': CreditStatus.completed.name,
       'completedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -155,3 +169,4 @@ class BankCreditProvider extends ChangeNotifier {
     super.dispose();
   }
 }
+

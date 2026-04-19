@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../expense_model.dart';
+import '../expense_home/models/expense_model.dart';
 import 'day_expense_tile.dart';
 import 'monthly_expense_page.dart';
 

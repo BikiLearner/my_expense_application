@@ -2,7 +2,7 @@ import 'package:expence_app/history_screens/simple_grand_total_form_month.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 import '../providers/month_expense_provider.dart';
 import '../reusable widgets/day_expense.dart';
 // Update this path as needed

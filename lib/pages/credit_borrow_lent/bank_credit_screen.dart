@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/credit_model.dart';
 import '../../providers/bank_provider.dart';
 import '../../providers/credit_provider.dart';
+import '../../expense_home/provider/expence_provider.dart';
 
 class BankCreditScreen extends StatelessWidget {
   const BankCreditScreen({super.key});
@@ -38,6 +39,10 @@ class BankCreditScreen extends StatelessWidget {
     );
   }
 }
+
+//
+// ───────────────── BORROW TAB ─────────────────
+//
 class _BorrowTab extends StatelessWidget {
   const _BorrowTab();
 
@@ -50,7 +55,10 @@ class _BorrowTab extends StatelessWidget {
     }
 
     if (provider.borrow.isEmpty) {
-      return const _EmptyState('No borrowed money');
+      return const _EmptyState(
+        text: 'No borrowed money',
+        subtitle: 'Track money you owe clearly here',
+      );
     }
 
     return ListView.builder(
@@ -63,12 +71,18 @@ class _BorrowTab extends StatelessWidget {
           actionText: 'Pay',
           actionColor: Colors.orangeAccent,
           onAction: () {
-            // YOU will connect this to Expense flow
-            provider.completeBorrow(
-              credit: credit,
+            showConfirmAction(
               context: context,
-              payBorrowAsExpense: () async {
-                // Call your existing expense flow here
+              title: 'Pay Borrowed Amount?',
+              message:
+              'This will mark the borrow as completed and record an expense.',
+              onConfirm: () {
+                provider.completeBorrow(
+                  credit: credit,
+                  payAsExpense: () async {
+                    await context.read<ExpenseProvider>().addExpense(context);
+                  }
+                );
               },
             );
           },
@@ -77,6 +91,10 @@ class _BorrowTab extends StatelessWidget {
     );
   }
 }
+
+//
+// ───────────────── LENT TAB ─────────────────
+//
 class _LentTab extends StatelessWidget {
   const _LentTab();
 
@@ -90,7 +108,10 @@ class _LentTab extends StatelessWidget {
     }
 
     if (creditProvider.lent.isEmpty) {
-      return const _EmptyState('No lent money');
+      return const _EmptyState(
+        text: 'No lent money',
+        subtitle: 'Money you give will appear here',
+      );
     }
 
     return ListView.builder(
@@ -102,10 +123,18 @@ class _LentTab extends StatelessWidget {
           credit: credit,
           actionText: 'Receive',
           actionColor: Colors.greenAccent,
-          onAction: () async {
-            await creditProvider.receiveLent(
-              credit: credit,
-              bankProvider: bankProvider,
+          onAction: () {
+            showConfirmAction(
+              context: context,
+              title: 'Receive Lent Money?',
+              message:
+              'This will add money back to your bank and close this credit.',
+              onConfirm: () async {
+                await creditProvider.receiveLent(
+                  credit: credit,
+                  bankProvider: bankProvider,
+                );
+              },
             );
           },
         );
@@ -113,6 +142,10 @@ class _LentTab extends StatelessWidget {
     );
   }
 }
+
+//
+// ───────────────── COMPLETED TAB ─────────────────
+//
 class _CompletedTab extends StatelessWidget {
   const _CompletedTab();
 
@@ -125,7 +158,10 @@ class _CompletedTab extends StatelessWidget {
     }
 
     if (provider.completed.isEmpty) {
-      return const _EmptyState('No completed credits');
+      return const _EmptyState(
+        text: 'No completed credits',
+        subtitle: 'Closed credits will appear here',
+      );
     }
 
     return ListView.builder(
@@ -141,6 +177,10 @@ class _CompletedTab extends StatelessWidget {
     );
   }
 }
+
+//
+// ───────────────── CREDIT CARD ─────────────────
+//
 class _CreditCard extends StatelessWidget {
   final BankCredit credit;
   final String? actionText;
@@ -158,23 +198,37 @@ class _CreditCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = credit.status == CreditStatus.completed;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: isCompleted
+            ? const Color(0xFF1A1A1A)
+            : const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(14),
+        border: isCompleted
+            ? Border.all(color: Colors.green.withOpacity(0.3))
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            credit.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  credit.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              _StatusChip(credit.status),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -185,38 +239,153 @@ class _CreditCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
-          if (showAction)
+          if (showAction) ...[
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: actionColor,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
                 ),
                 onPressed: onAction,
                 child: Text(actionText!),
               ),
             ),
+          ],
         ],
       ),
     );
   }
 }
+
+//
+// ───────────────── STATUS CHIP ─────────────────
+//
+class _StatusChip extends StatelessWidget {
+  final CreditStatus status;
+  const _StatusChip(this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = status == CreditStatus.completed
+        ? Colors.greenAccent
+        : Colors.orangeAccent;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.name.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+//
+// ───────────────── EMPTY STATE ─────────────────
+//
 class _EmptyState extends StatelessWidget {
   final String text;
-  const _EmptyState(this.text);
+  final String subtitle;
+
+  const _EmptyState({
+    required this.text,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        text,
-        style: const TextStyle(color: Colors.grey),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
+}
+
+//
+// ───────────────── CONFIRMATION SHEET ─────────────────
+//
+Future<void> showConfirmAction({
+  required BuildContext context,
+  required String title,
+  required String message,
+  required VoidCallback onConfirm,
+}) async {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF1E1E1E),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onConfirm();
+                    },
+                    child: const Text('Confirm'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

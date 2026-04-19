@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:expence_app/fun/audio_player.dart';
+import 'package:expence_app/services/audio_player.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -633,11 +633,11 @@ class BankProvider extends ChangeNotifier
 
     await _firestore.runTransaction((tx) async
       {
-        final bankSnap = await tx.get(bankRef);
+        // final bankSnap = await tx.get(bankRef);
         final monthSnap = await tx.get(monthRef);
 
         final currentBankAmount =
-          (bankSnap.data()?['currentAmount'] ?? 0).toDouble();
+          (monthSnap.data()?['currentAmount'] ?? 0).toDouble();
 
         final monthTotal =
           (monthSnap.data()?['totalAdded'] ?? 0).toDouble();

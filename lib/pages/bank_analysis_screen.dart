@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../enums/expense_type.dart';
 import '../models/bank_model.dart';
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 import '../providers/bank_expense_analysis_provider.dart';
 
 class BankAnalysisScreen extends StatefulWidget {

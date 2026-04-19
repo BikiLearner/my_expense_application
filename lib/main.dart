@@ -2,18 +2,18 @@ import 'package:expence_app/providers/all_expense_provider.dart';
 import 'package:expence_app/providers/bank_provider.dart';
 import 'package:expence_app/providers/export_provider.dart';
 import 'package:expence_app/providers/month_expense_provider.dart';
-import 'package:expence_app/providers/setting_provider.dart';
 import 'package:expence_app/providers/year_stat_provider.dart';
+import 'package:expence_app/setting/provider/setting_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
-import 'providers/auth_provider.dart';
-import 'auth_wraper.dart';
-import 'providers/expence_provider.dart';
-import 'expence_screen.dart';
+import 'auth/provider/auth_provider.dart';
+import 'auth/screen/auth_wraper.dart';
+import 'expense_home/provider/expence_provider.dart';
+import 'expense_home/screens/expence_screen.dart';
 import 'firebase_options.dart';
 
 import 'package:flutter/material.dart';

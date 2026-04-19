@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../models/expense_items.dart';
-import 'expense_tiles_new.dart';
+import '../expense_home/models/expense_items.dart';
+import '../expense_home/widgets/expense_tiles_new.dart';
 
 class DayCard extends StatelessWidget {
   final String dateId;

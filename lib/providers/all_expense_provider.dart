@@ -7,7 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../enums/expense_type.dart';
-import '../models/expense_items.dart';
+import '../expense_home/models/expense_items.dart';
 
 class AllExpensesProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

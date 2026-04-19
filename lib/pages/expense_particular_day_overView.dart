@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/expence_provider.dart';
-import '../models/expense_items.dart';
+import '../expense_home/provider/expence_provider.dart';
+import '../expense_home/models/expense_items.dart';
 import '../enums/expense_type.dart';
-import '../reusable widgets/expense_tiles_new.dart';
+import '../expense_home/widgets/expense_tiles_new.dart';
 
 class ExpensesOverviewPageParticularDay extends StatelessWidget {
   const ExpensesOverviewPageParticularDay({super.key});
