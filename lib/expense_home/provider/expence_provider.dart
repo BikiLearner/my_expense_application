@@ -224,12 +224,16 @@ class ExpenseProvider extends ChangeNotifier {
 
     if (!monthReady) return false;
 
-    // 2️⃣ Fetch fresh bank state (SOURCE OF TRUTH)
-    final bankSnap = await bankRef.get();
-    if (!bankSnap.exists) return false;
 
-    final available =
-    (bankSnap.data()?['currentAmount'] ?? 0).toDouble();
+
+    // 🔧 FIXED: Read from the specific month document instead of the parent bank doc
+    final bankMonthRef = bankRef.collection('monthAmount').doc(bankMonthId);
+    final bankMonthSnap = await bankMonthRef.get();
+
+    if (!bankMonthSnap.exists) return false;
+
+    final available = (bankMonthSnap.data()?['currentAmount'] ?? 0).toDouble();
+
 
     // 3️⃣ Final balance check
     if (available < expenseAmount) {
@@ -361,7 +365,7 @@ class ExpenseProvider extends ChangeNotifier {
             }
 
             final currentBalance =
-            (bankSnap.data()?['currentAmount'] ?? 0).toDouble();
+            (bankMonthSnap.data()?['currentAmount'] ?? 0).toDouble();
 
             // ❌ Balance changed meanwhile → HARD STOP
             if (currentBalance < amount) {
@@ -1000,9 +1004,9 @@ class ExpenseProvider extends ChangeNotifier {
           if (!bankMonthSnap.exists) return;
 
           // 🔺 Delete expense = money BACK
-          tx.update(bankRef, {
-            'currentAmount': FieldValue.increment(amount),
-          });
+          // tx.update(bankRef, {
+          //   'currentAmount': FieldValue.increment(amount),
+          // });
 
           tx.update(bankMonthRef, {
             'currentAmount': FieldValue.increment(amount),
