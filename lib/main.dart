@@ -1,28 +1,29 @@
-import 'package:expence_app/providers/all_expense_provider.dart';
-import 'package:expence_app/providers/bank_provider.dart';
-import 'package:expence_app/providers/export_provider.dart';
-import 'package:expence_app/providers/month_expense_provider.dart';
-import 'package:expence_app/providers/year_stat_provider.dart';
-import 'package:expence_app/setting/provider/setting_provider.dart';
+import 'package:expence_app/features/history/presentation/provider/all_expense_provider.dart';
+import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
+import 'package:expence_app/features/export/presentation/provider/export_provider.dart';
+import 'package:expence_app/features/history/presentation/provider/month_expense_provider.dart';
+import 'package:expence_app/shared/providers/year_stat_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import 'features/expense/data/datasource/expense_firestore_datasource.dart';
+import 'features/expense/data/repository/expense_repository_impl.dart';
+import 'features/expense/presentation/provider/expence_provider.dart';
 
-import 'auth/provider/auth_provider.dart';
-import 'auth/screen/auth_wraper.dart';
-import 'expense_home/provider/expence_provider.dart';
-import 'expense_home/screens/expence_screen.dart';
+import 'features/auth/presentation/provider/auth_provider.dart';
+import 'features/auth/presentation/screen/auth_wraper.dart';
+import 'features/setting/provider/setting_provider.dart';
 import 'firebase_options.dart';
 
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-void main() async {
+void main() async
+{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  if(!kIsWeb) {
+  if (!kIsWeb) 
+  {
     await Workmanager().initialize(
       callbackDispatcher, // must be top-level
       isInDebugMode: true, // set false in release
@@ -31,15 +32,23 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatelessWidget
+{
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(
+          create: (_) => ExpenseProvider(
+            repository: ExpenseRepositoryImpl(
+              datasource: ExpenseFirestoreDatasource(),
+            ),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ExportProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
@@ -52,6 +61,5 @@ class MyApp extends StatelessWidget {
         home: AuthWrapper(),
       ),
     );
-    ;
   }
 }
