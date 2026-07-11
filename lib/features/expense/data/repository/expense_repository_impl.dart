@@ -1,3 +1,8 @@
+// expense_repository_impl.dart
+//
+// Thin pass-through implementation of ExpenseRepository. All Firestore work
+// happens in ExpenseFirestoreDatasource; this class only wires the domain
+// contract to that datasource.
 
 import '../../domain/repository/expense_repository.dart';
 import '../../../../shared/models/month_stats.dart';
@@ -128,6 +133,19 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<List<String>> getCategories({required String uid}) {
     return _datasource.getCategories(uid: uid);
+  }
+
+  @override
+  Future<double?> getBankMonthBalance({
+    required String uid,
+    required String bankId,
+    required String monthId,
+  }) {
+    return _datasource.getBankMonthBalance(
+      uid: uid,
+      bankId: bankId,
+      monthId: monthId,
+    );
   }
 
   @override

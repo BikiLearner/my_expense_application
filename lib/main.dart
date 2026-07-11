@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
+import 'core/services/session_maganger.dart';
 import 'features/expense/data/datasource/expense_firestore_datasource.dart';
 import 'features/expense/data/repository/expense_repository_impl.dart';
 import 'features/expense/presentation/provider/expence_provider.dart';
@@ -22,6 +23,7 @@ void main() async
 {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await SessionManager.instance.initialize();
   if (!kIsWeb) 
   {
     await Workmanager().initialize(

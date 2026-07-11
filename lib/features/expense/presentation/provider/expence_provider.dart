@@ -1,9 +1,26 @@
 // 🔧 CORRECTED: Changed dateId getter to currentDateId for clarity
 // This prevents confusion between current selected date and expense dates
+//
+// 🏗️ CLEAN ARCHITECTURE REFACTOR:
+// All direct Firestore access has been extracted into
+// ExpenseFirestoreDatasource (via ExpenseRepository). This Provider now
+// only holds UI state, controllers, dialogs and delegates data operations
+// to _repository. Business logic, field names, and behavior are unchanged.
+//
+// Income methods (addIncome / deleteIncome / getYearIncomeFromFirestore /
+// getYearIncome) were removed — Income is a separate, currently unusable
+// feature.
+//
+// This Provider no longer imports cloud_firestore at all. The bank-balance
+// pre-flight check in validateAndPrepareBankTransaction() now goes through
+// _repository.getBankMonthBalance() instead of a raw Firestore read. Note
+// that read technically belongs to the Bank feature's data, not Expense's —
+// it was added to ExpenseFirestoreDatasource as a pragmatic exception so
+// this file could be fully Firestore-free. If a BankRepository is
+// introduced later, getBankMonthBalance() should move there instead.
 
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -12,22 +29,23 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../shared/models/income_entry.dart';
-import '../../../../shared/models/month_stats.dart';
-import '../../../../shared/models/year_stats.dart';
+import '../../../../shared/dialogs/app_loader_dialog.dart';
+import '../../../../shared/dialogs/category_dialog.dart';
+import '../../../../shared/dialogs/insufficient_balance_dialog.dart';
 import '../../../bank/data/model/bank_model.dart';
 
 import '../../../../shared/enums/expense_type.dart';
+import '../../../../shared/models/month_stats.dart';
+import '../../../../shared/models/year_stats.dart';
 import '../../data/model/expense_items.dart';
 import '../../data/model/expense_model.dart';
 import '../../domain/repository/expense_repository.dart';
 
 class ExpenseProvider extends ChangeNotifier {
+  // 🔹 Controllers
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  bool _isBalanceDialogOpen = false;
-
 
   String get currentMonth => DateFormat('yyyy-MM').format(DateTime.now());
 
@@ -64,7 +82,6 @@ class ExpenseProvider extends ChangeNotifier {
 
   DateTime get selectedDate => _selectedDate;
 
-  // 🔹 Firestore
   String _selectedYear = DateTime.now().year.toString();
 
   String get selectedYear => _selectedYear;
@@ -72,7 +89,9 @@ class ExpenseProvider extends ChangeNotifier {
   int _selectedMonth = DateTime.now().month;
 
   int get selectedMonth => _selectedMonth;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // 🔹 Repository (ONLY this talks to data — no FirebaseFirestore here)
+  final ExpenseRepository _repository;
 
   // 🔧 FIXED: Renamed to currentDateId for clarity
   String get currentDateId => DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -80,8 +99,6 @@ class ExpenseProvider extends ChangeNotifier {
   List<ExpenseItem> _cachedExpenses = [];
 
   List<ExpenseItem> get cachedExpenses => _cachedExpenses;
-
-  // Current selected date
 
   String monthFromInt(int month) {
     const months = [
@@ -104,21 +121,19 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // Stream subscription
-  StreamSubscription<QuerySnapshot>? _expenseSubscription;
+  StreamSubscription<List<ExpenseItem>>? _expenseSubscription;
 
   // Loading state
   bool _isLoading = false;
 
   bool get isLoading => _isLoading;
 
-
-  final ExpenseRepository _repository;
-  ExpenseProvider({
-    required ExpenseRepository repository,
-  }) : _repository = repository {
+  ExpenseProvider({required ExpenseRepository repository})
+      : _repository = repository {
     _init();
   }
 
+  // 🔧 NEW: Helper method to get date ID from any DateTime
   String getDateId(DateTime date) {
     return DateFormat('yyyy-MM-dd').format(date);
   }
@@ -144,7 +159,7 @@ class ExpenseProvider extends ChangeNotifier {
 
     try {
       final bank = banks.firstWhere(
-        (b) => b.id == savedId,
+            (b) => b.id == savedId,
         orElse: () => cashBank,
       );
 
@@ -197,12 +212,6 @@ class ExpenseProvider extends ChangeNotifier {
         .fold(0.0, (s, d) => s + d.total);
   }
 
-  double getYearIncome(List<IncomeEntry> incomes) {
-    return incomes
-        .where((i) => i.year == _selectedYear)
-        .fold(0.0, (s, i) => s + i.amount);
-  }
-
   Future<bool> validateAndPrepareBankTransaction({
     required BuildContext context,
     required String bankId,
@@ -210,36 +219,32 @@ class ExpenseProvider extends ChangeNotifier {
     required double expenseAmount,
     required String bankName,
   }) async {
-    final bankRef = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('bank')
-        .doc(bankId);
-
     final bankMonthId = DateFormat('yyyy-MM').format(selectedDate);
 
     // 1️⃣ Ensure month exists (returns result)
     final monthReady = await context
         .read<BankProvider>()
         .ensureBankMonthExistsWithDialog(
-          context: context,
-          bankId: bankId,
-          monthId: bankMonthId,
-        );
+      context: context,
+      bankId: bankId,
+      monthId: bankMonthId,
+    );
 
     if (!monthReady) return false;
 
     // 🔧 FIXED: Read from the specific month document instead of the parent bank doc
-    final bankMonthRef = bankRef.collection('monthAmount').doc(bankMonthId);
-    final bankMonthSnap = await bankMonthRef.get();
+    final available = await _repository.getBankMonthBalance(
+      uid: uid,
+      bankId: bankId,
+      monthId: bankMonthId,
+    );
 
-    if (!bankMonthSnap.exists) return false;
-
-    final available = (bankMonthSnap.data()?['currentAmount'] ?? 0).toDouble();
+    if (available == null) return false;
 
     // 3️⃣ Final balance check
     if (available < expenseAmount) {
-      await showInsufficientBalanceDialog(
+      AppLoader.hide();
+      await InsufficientBalanceDialog.show(
         context,
         available: available,
         requiredAmount: expenseAmount,
@@ -253,8 +258,13 @@ class ExpenseProvider extends ChangeNotifier {
 
   // 🔹 Add Expense
   Future<void> addExpense(BuildContext context) async {
+    AppLoader.show(context, message: 'Saving expense...');
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      AppLoader.hide();
+      return;
+    }
 
     final title = titleController.text.trim();
     final amount = double.tryParse(
@@ -262,8 +272,14 @@ class ExpenseProvider extends ChangeNotifier {
     );
     final desc = descriptionController.text.trim();
 
-    if (title.isEmpty || amount == null || amount <= 0) return;
-    // 🔒 HARD BANK VALIDATION
+    if (title.isEmpty || amount == null || amount <= 0) {
+      AppLoader.hide();
+      return;
+
+    }
+
+    // 🔒 HARD BANK VALIDATION (UX pre-check; authoritative check happens
+    // again inside the repository's transaction)
     if (!isCashTransaction) {
       final canProceed = await validateAndPrepareBankTransaction(
         context: context,
@@ -274,261 +290,48 @@ class ExpenseProvider extends ChangeNotifier {
       );
 
       // ❌ STOP if bank / month / balance invalid
-      if (!canProceed) return;
+      if (!canProceed) {
+        AppLoader.hide();
+        return;
+      }
     }
-    bool _ = true;
 
     try {
-      final userRef = _firestore.collection('users').doc(uid);
-      // 🔧 FIXED: Use currentDateId instead of dateId
-      final dateRef = userRef.collection('expenses').doc(currentDateId);
-      final year = currentDateId.substring(0, 4);
-      final month = currentDateId.substring(0, 7);
-
-      final batch = _firestore.batch();
-      final yearRef = userRef.collection('year_stats').doc(year);
-      final monthRef = yearRef.collection('months').doc(month);
-
-      // 1️⃣ Update date total
-      batch.set(dateRef, {
-        'date': currentDateId,
-        'total': FieldValue.increment(amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      // 2️⃣ Add expense item
-      batch.set(dateRef.collection('items').doc(), {
-        'title': title,
-        'amount': amount,
-        'description': desc,
-        'type': _selectedType.name,
-        'transactionType': _selectedTransaction?.id,
-        'createdAt': Timestamp.fromDate(
-          DateTime(
-            _selectedDate.year,
-            _selectedDate.month,
-            _selectedDate.day,
-            DateTime.now().hour,
-            DateTime.now().minute,
-          ),
+      await _repository.addExpense(
+        uid: uid,
+        dateId: currentDateId,
+        title: title,
+        amount: amount,
+        description: desc,
+        expenseTypeName: _selectedType.name,
+        transactionTypeId: _selectedTransaction?.id,
+        itemCreatedAt: DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          DateTime.now().hour,
+          DateTime.now().minute,
         ),
-      });
-
-      // 3️⃣ Update grand total
-      batch.set(userRef, {
-        'grandTotal': FieldValue.increment(amount),
-      }, SetOptions(merge: true));
-
-      // 4️⃣ Year grand total
-      batch.set(yearRef, {
-        'grandTotal': FieldValue.increment(amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      // 5️⃣ Month type totals + month total
-      batch.set(monthRef, {
-        'month': month,
-        _selectedType.name: FieldValue.increment(amount),
-        'grandTotal': FieldValue.increment(amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      if (!isCashTransaction) {
-        final bankId = _selectedTransaction!.id;
-
-        final bankRef = _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('bank')
-            .doc(bankId);
-
-        final bankMonthId = DateFormat('yyyy-MM').format(_selectedDate);
-
-        final bankMonthRef = bankRef.collection('monthAmount').doc(bankMonthId);
-
-        try {
-          await _firestore.runTransaction((tx) async {
-            // 🔁 MUST read inside transaction
-            final bankSnap = await tx.get(bankRef);
-            final bankMonthSnap = await tx.get(bankMonthRef);
-
-            // ❌ Bank deleted → HARD STOP
-            if (!bankSnap.exists) {
-              throw Exception('Bank not found during deduction');
-            }
-
-            // ❌ Month missing → HARD STOP
-            if (!bankMonthSnap.exists) {
-              throw Exception('Bank month not found during deduction');
-            }
-
-            final currentBalance = (bankMonthSnap.data()?['currentAmount'] ?? 0)
-                .toDouble();
-
-            // ❌ Balance changed meanwhile → HARD STOP
-            if (currentBalance < amount) {
-              throw Exception('Insufficient balance during transaction');
-            }
-
-            tx.update(bankMonthRef, {
-              'currentAmount': FieldValue.increment(-amount),
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-          });
-        } catch (e) {
-          debugPrint('❌ Bank deduction failed: $e');
-          return; // ⛔ DO NOT COMMIT EXPENSE BATCH
-        }
-      }
-
-      await batch.commit();
+      );
 
       clearForm();
+
+      AppLoader.hide();
 
       if (kDebugMode) {
         print("⚡ Expense added instantly for $currentDateId");
       }
     } catch (e) {
+      AppLoader.hide();
       debugPrint("❌ Add expense failed: $e");
     }
   }
 
-  Future<void> showInsufficientBalanceDialog(
-    BuildContext context, {
-    required double available,
-    required double requiredAmount,
-    required String bankName,
-  }) async {
-    if (_isBalanceDialogOpen) return; // 🚫 prevent stacking
-    _isBalanceDialogOpen = true;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-
-        title: Row(
-          children: const [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 28,
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Aukat Alert 🚨',
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            const Text(
-              'Bhai ruk ja 😶‍🌫️\n'
-              'Yeh expense thoda zyada ho raha hai.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF3C3C3C)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    bankName,
-                    style: const TextStyle(
-                      color: Color(0xFF64FFDA),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Wallet mein: ₹${available.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.greenAccent,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'Kharcha chahiye: ₹${requiredAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-            const Text(
-              '😌 Tip: Cash use kar le ya amount kam kar.',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-        ),
-
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF64FFDA),
-                foregroundColor: const Color(0xFF121212),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop(); // ✅ ALWAYS WORKS
-              },
-              child: const Text(
-                'Samajh gaya 😅',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    _isBalanceDialogOpen = false; // ✅ reset after close
-  }
 
   Future<void> fetchCategories() async {
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('categories')
-          .orderBy('createdAt')
-          .get();
-
-      cachedCategories = snapshot.docs
-          .map((doc) => (doc.data()['title'] as String).trim())
-          .where((t) => t.isNotEmpty)
-          .toSet()
-          .toList();
+      cachedCategories = await _repository.getCategories(uid: uid);
 
       if (kDebugMode) {
         print("📂 Categories loaded: $cachedCategories");
@@ -558,137 +361,21 @@ class ExpenseProvider extends ChangeNotifier {
 
     final newType = _selectedType;
     final newBank = _selectedTransaction; // may be cash
-    final diff = newAmount - oldAmount;
-
-    final dateId = getDateId(oldDate);
-    final year = DateFormat('yyyy').format(oldDate);
-    final monthId = DateFormat('yyyy-MM').format(oldDate);
-
-    final userRef = _firestore.collection('users').doc(uid);
-    final dateRef = userRef.collection('expenses').doc(dateId);
-    final itemRef = dateRef.collection('items').doc(docId);
-    final yearRef = userRef.collection('year_stats').doc(year);
-    final monthRef = yearRef.collection('months').doc(monthId);
 
     try {
-      final batch = _firestore.batch();
-
-      batch.update(itemRef, {
-        'title': title,
-        'amount': newAmount,
-        'description': desc,
-        'type': newType.name,
-        'transactionType': newBank?.id,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      if (diff != 0) {
-        batch.set(dateRef, {
-          'total': FieldValue.increment(diff),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        batch.set(userRef, {
-          'grandTotal': FieldValue.increment(diff),
-        }, SetOptions(merge: true));
-
-        batch.set(yearRef, {
-          'grandTotal': FieldValue.increment(diff),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      if (oldType == newType) {
-        if (diff != 0) {
-          batch.set(monthRef, {
-            newType.name: FieldValue.increment(diff),
-            'grandTotal': FieldValue.increment(diff),
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        }
-      } else {
-        batch.set(monthRef, {
-          oldType.name: FieldValue.increment(-oldAmount),
-          newType.name: FieldValue.increment(newAmount),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      await batch.commit();
-
-      await _firestore.runTransaction((tx) async {
-        // 🟡 SAME BANK
-        if (oldTransactionTypeId == newBank?.id &&
-            oldTransactionTypeId != null &&
-            oldTransactionTypeId != 'cash') {
-          if (diff == 0) return;
-
-          final monthRef = userRef
-              .collection('bank')
-              .doc(oldTransactionTypeId)
-              .collection('monthAmount')
-              .doc(monthId);
-
-          final monthSnap = await tx.get(monthRef);
-          if (!monthSnap.exists) return;
-
-          final current = (monthSnap.data()?['currentAmount'] ?? 0).toDouble();
-
-          if (diff > 0 && current < diff) {
-            throw Exception('Insufficient balance during edit');
-          }
-
-          tx.update(monthRef, {
-            'currentAmount': FieldValue.increment(-diff),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-        // 🔵 BANK CHANGED
-        else {
-          // ➕ RETURN TO OLD BANK
-          if (oldTransactionTypeId != null && oldTransactionTypeId != 'cash') {
-            final oldMonthRef = userRef
-                .collection('bank')
-                .doc(oldTransactionTypeId)
-                .collection('monthAmount')
-                .doc(monthId);
-
-            final oldMonthSnap = await tx.get(oldMonthRef);
-            if (oldMonthSnap.exists) {
-              tx.update(oldMonthRef, {
-                'currentAmount': FieldValue.increment(oldAmount),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-            }
-          }
-
-          // ➖ DEDUCT FROM NEW BANK
-          if (newBank?.id != null && newBank!.id != 'cash') {
-            final newMonthRef = userRef
-                .collection('bank')
-                .doc(newBank.id)
-                .collection('monthAmount')
-                .doc(monthId);
-
-            final newMonthSnap = await tx.get(newMonthRef);
-            if (!newMonthSnap.exists) {
-              throw Exception('Target bank month missing');
-            }
-
-            final current = (newMonthSnap.data()?['currentAmount'] ?? 0)
-                .toDouble();
-
-            if (current < newAmount) {
-              throw Exception('Insufficient balance in new bank');
-            }
-
-            tx.update(newMonthRef, {
-              'currentAmount': FieldValue.increment(-newAmount),
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-          }
-        }
-      });
+      await _repository.editExpense(
+        uid: uid,
+        docId: docId,
+        oldAmount: oldAmount,
+        oldTypeName: oldType.name,
+        oldDate: oldDate,
+        oldTransactionTypeId: oldTransactionTypeId,
+        title: title,
+        newAmount: newAmount,
+        description: desc,
+        newTypeName: newType.name,
+        newTransactionTypeId: newBank?.id,
+      );
 
       clearForm();
 
@@ -700,50 +387,6 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-  void hideLoadingDialog(BuildContext context) {
-    if (Navigator.of(context, rootNavigator: true).canPop()) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
-  }
-
-  Future<void> showLoadingDialog(
-    BuildContext context, {
-    String message = 'Processing...',
-  }) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // ❌ user cannot close
-      builder: (_) => WillPopScope(
-        onWillPop: () async => false,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Row(
-            children: [
-              const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: Color(0xFF64FFDA),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void clearForm() {
     titleController.clear();
     amountController.clear();
@@ -751,99 +394,6 @@ class ExpenseProvider extends ChangeNotifier {
     _autoCompleteKey++; // Force rebuild
     _selectedType = ExpenseType.luxury; // Reset to default
     notifyListeners();
-  }
-
-  Future<void> addIncome({
-    required double amount,
-    required String source,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || amount <= 0) return;
-
-    try {
-      final userRef = _firestore.collection('users').doc(uid);
-      final monthRef = userRef.collection('incomes').doc(currentMonth);
-
-      final batch = _firestore.batch();
-
-      // 1️⃣ Add income item
-      batch.set(monthRef.collection('items').doc(), {
-        'amount': amount,
-        'source': source,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // 2️⃣ Update monthly total
-      batch.set(monthRef, {
-        'month': currentMonth,
-        'total': FieldValue.increment(amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      await batch.commit();
-
-      if (kDebugMode) {
-        print("💰 Income added: ₹$amount");
-      }
-    } catch (e) {
-      debugPrint("❌ Add income failed: $e");
-    }
-  }
-
-  Future<void> deleteIncome({
-    required String monthId,
-    required String itemId,
-    required double amount,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      final userRef = _firestore.collection('users').doc(uid);
-      final monthRef = userRef.collection('incomes').doc(monthId);
-      final itemRef = monthRef.collection('items').doc(itemId);
-
-      final batch = _firestore.batch();
-
-      // 1️⃣ Delete income item
-      batch.delete(itemRef);
-
-      // 2️⃣ Decrement monthly total
-      batch.set(monthRef, {
-        'total': FieldValue.increment(-amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      await batch.commit();
-
-      if (kDebugMode) {
-        print("🗑️ Income deleted: ₹$amount from $monthId");
-      }
-    } catch (e) {
-      debugPrint("❌ Delete income failed: $e");
-    }
-  }
-
-  Future<double> getYearIncomeFromFirestore(String year) async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('incomes')
-          .get();
-
-      double total = 0;
-
-      for (final doc in snapshot.docs) {
-        if (doc.id.startsWith(year)) {
-          total += (doc.data()['total'] ?? 0).toDouble();
-        }
-      }
-
-      return total;
-    } catch (e) {
-      return 0;
-    }
   }
 
   void _initStream() {
@@ -870,47 +420,31 @@ class ExpenseProvider extends ChangeNotifier {
       print("   Date: $currentDateId");
     }
 
-    _expenseSubscription = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .doc(currentDateId)
-        .collection('items')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
+    _expenseSubscription = _repository
+        .watchExpenses(uid: uid, dateId: currentDateId)
         .listen(
-          (snapshot) {
-            _cachedExpenses = snapshot.docs
-                .map(
-                  (doc) => ExpenseItem.fromFirestore(
-                    doc.id,
-                    doc.data(),
-                    currentDateId,
-                  ),
-                )
-                .toList();
+          (items) {
+        _cachedExpenses = items;
 
-            _isLoading = false;
+        _isLoading = false;
 
-            if (kDebugMode) {
-              print(
-                "✅ Loaded ${_cachedExpenses.length} expenses for $currentDateId",
-              );
-            }
+        if (kDebugMode) {
+          print(
+            "✅ Loaded ${_cachedExpenses.length} expenses for $currentDateId",
+          );
+        }
 
-            notifyListeners();
-          },
-          onError: (error) {
-            if (kDebugMode) {
-              print("❌ Stream error: $error");
-            }
-            _isLoading = false;
-            notifyListeners();
-          },
-        );
+        notifyListeners();
+      },
+      onError: (error) {
+        if (kDebugMode) {
+          print("❌ Stream error: $error");
+        }
+        _isLoading = false;
+        notifyListeners();
+      },
+    );
   }
-
-  // Update selected date and refresh stream
 
   // Calculate total from cached data
   double get totalExpense {
@@ -941,67 +475,14 @@ class ExpenseProvider extends ChangeNotifier {
     required String? bankId, // 👈 IMPORTANT
   }) async {
     try {
-      final userRef = _firestore.collection('users').doc(uid);
-      final dateRef = userRef.collection('expenses').doc(dateId);
-
-      final year = dateId.substring(0, 4);
-      final month = dateId.substring(0, 7);
-
-      final yearRef = userRef.collection('year_stats').doc(year);
-      final monthRef = yearRef.collection('months').doc(month);
-
-      // 🔹 STEP 1: Delete expense + stats (BATCH)
-      final batch = _firestore.batch();
-
-      batch.delete(dateRef.collection('items').doc(docId));
-
-      batch.set(dateRef, {
-        'total': FieldValue.increment(-amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      batch.set(userRef, {
-        'grandTotal': FieldValue.increment(-amount),
-      }, SetOptions(merge: true));
-
-      batch.set(yearRef, {
-        'grandTotal': FieldValue.increment(-amount),
-      }, SetOptions(merge: true));
-
-      batch.set(monthRef, {
-        type.name: FieldValue.increment(-amount),
-        'grandTotal': FieldValue.increment(-amount),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      await batch.commit();
-
-      // 🔹 STEP 2: Restore bank balance (TRANSACTION)
-      if (bankId != null && bankId != 'cash') {
-        final bankRef = userRef.collection('bank').doc(bankId);
-        final bankMonthRef = bankRef.collection('monthAmount').doc(month);
-
-        await _firestore.runTransaction((tx) async {
-          final bankSnap = await tx.get(bankRef);
-          final bankMonthSnap = await tx.get(bankMonthRef);
-
-          // ❌ Bank not found → skip
-          if (!bankSnap.exists) return;
-
-          // ❌ Month not found → skip
-          if (!bankMonthSnap.exists) return;
-
-          // 🔺 Delete expense = money BACK
-          // tx.update(bankRef, {
-          //   'currentAmount': FieldValue.increment(amount),
-          // });
-
-          tx.update(bankMonthRef, {
-            'currentAmount': FieldValue.increment(amount),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        });
-      }
+      await _repository.deleteExpense(
+        uid: uid,
+        docId: docId,
+        amount: amount,
+        typeName: type.name,
+        dateId: dateId,
+        bankId: bankId,
+      );
 
       if (kDebugMode) {
         print("🗑️ Expense deleted & bank restored: $docId");
@@ -1012,25 +493,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   Future<List<ExpenseDay>> getAllExpenseDays() async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .get();
-
-      return snapshot.docs.map((doc) {
-        return ExpenseDay(
-          dateId: doc.id,
-          total: (doc.data()['total'] ?? 0).toDouble(),
-        );
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Error getting expense days: $e");
-      }
-      return [];
-    }
+    return _repository.getAllExpenseDays(uid: uid);
   }
 
   Map<String, List<ExpenseDay>> groupByMonthAllYears(List<ExpenseDay> days) {
@@ -1045,138 +508,45 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   Future<Map<String, List<ExpenseItem>>> fetchMonthExpenses(
-    String monthKey,
-    // yyyy-MM format (e.g., '2025-01')
-  ) async {
-    final Map<String, List<ExpenseItem>> grouped = {};
+      String monthKey,
+      // yyyy-MM format (e.g., '2025-01')
+      ) async {
+    final grouped = await _repository.getMonthExpenses(
+      uid: uid,
+      monthKey: monthKey,
+    );
 
-    try {
-      // Get all expense dates for this month
-      final expensesSnapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: '$monthKey-01')
-          .where(
-            FieldPath.documentId,
-            isLessThan: '$monthKey-32',
-          ) // Covers all days
-          .get();
-
-      // Fetch items for each date
-      for (final dateDoc in expensesSnapshot.docs) {
-        final dateId = dateDoc.id;
-
-        final itemsSnapshot = await dateDoc.reference.collection('items').get();
-
-        if (itemsSnapshot.docs.isEmpty) continue;
-
-        final items = itemsSnapshot.docs.map((itemDoc) {
-          return ExpenseItem.fromFirestore(itemDoc.id, itemDoc.data(), dateId);
-        }).toList();
-
-        grouped[dateId] = items;
-      }
-
-      if (kDebugMode) {
-        print("📊 Fetched expenses for $monthKey: ${grouped.length} dates");
-      }
-
-      return grouped;
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Error fetching month expenses: $e");
-      }
-      return {};
+    if (kDebugMode) {
+      print("📊 Fetched expenses for $monthKey: ${grouped.length} dates");
     }
+
+    return grouped;
   }
 
   Future<YearStats?> getYearStats() async {
-    try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('year_stats')
-          .doc(selectedYear)
-          .get();
-
-      if (!doc.exists) return null;
-
-      return YearStats.fromFirestore(doc.id, doc.data()!);
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Failed to fetch year stats: $e");
-      }
-      return null;
-    }
+    return _repository.getYearStats(uid: uid, year: selectedYear);
   }
 
   Future<List<MonthStats>> getMonthStatsForSelectedYear() async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('year_stats')
-          .doc(selectedYear)
-          .collection('months')
-          .orderBy('month')
-          .get();
-
-      return snapshot.docs
-          .map((doc) => MonthStats.fromFirestore(doc.id, doc.data()))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Failed to fetch month stats: $e");
-      }
-      return [];
-    }
+    return _repository.getMonthStatsForYear(uid: uid, year: selectedYear);
   }
 
   Future<MonthStats?> getMonthStatsByMonth(String month) async {
-    try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('year_stats')
-          .doc(selectedYear)
-          .collection('months')
-          .doc(month)
-          .get();
-
-      if (!doc.exists) return null;
-
-      return MonthStats.fromFirestore(doc.id, doc.data()!);
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Failed to fetch month stats ($month): $e");
-      }
-      return null;
-    }
+    return _repository.getMonthStatsByMonth(
+      uid: uid,
+      year: selectedYear,
+      month: month,
+    );
   }
 
   Future<double> getTotalForDate(String dateId) async {
-    try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .doc(dateId)
-          .get();
+    final total = await _repository.getTotalForDate(uid: uid, dateId: dateId);
 
-      final total = (doc.data()?['total'] ?? 0).toDouble();
-
-      if (kDebugMode) {
-        print("💰 Total for $dateId: $total");
-      }
-
-      return total;
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Error getting total for $dateId: $e");
-      }
-      return 0;
+    if (kDebugMode) {
+      print("💰 Total for $dateId: $total");
     }
+
+    return total;
   }
 
   Map<String, List<String>> groupDatesByMonth(List<String> dates) {
@@ -1191,42 +561,12 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   Future<Map<String, List<ExpenseDay>>> getExpensesGroupedByMonthForType(
-    ExpenseType type,
-  ) async {
-    final Map<String, List<ExpenseDay>> grouped = {};
-
-    final datesSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .get();
-
-    for (final dateDoc in datesSnapshot.docs) {
-      final dateId = dateDoc.id;
-      final monthKey = dateId.substring(0, 7);
-
-      final itemsSnapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .doc(dateId)
-          .collection('items')
-          .where('type', isEqualTo: type.name)
-          .get();
-
-      if (itemsSnapshot.docs.isEmpty) continue;
-
-      final total = itemsSnapshot.docs.fold<double>(
-        0,
-        (s, d) => s + (d.data()['amount'] as num).toDouble(),
-      );
-
-      final day = ExpenseDay(dateId: dateId, total: total);
-
-      grouped.putIfAbsent(monthKey, () => []).add(day);
-    }
-
-    return grouped;
+      ExpenseType type,
+      ) async {
+    return _repository.getExpensesGroupedByMonthForType(
+      uid: uid,
+      expenseTypeName: type.name,
+    );
   }
 
   @override
@@ -1239,156 +579,27 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   Future<void> showAddCategoryDialog(BuildContext context) async {
-    final TextEditingController controller = TextEditingController();
-
-    showDialog(
+    await CategoryDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Add Category',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return SizedBox(
-              width: double.maxFinite,
-              height: 320,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Food, Travel, Rent',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      filled: true,
-                      fillColor: const Color(0xFF2C2C2C),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
+      categories: cachedCategories,
+      onAdd: (title) async {
+        await _repository.addCategory(
+          uid: uid,
+          title: title,
+        );
 
-                  const SizedBox(height: 16),
-
-                  if (cachedCategories.isNotEmpty) ...[
-                    const Text(
-                      'Existing Categories',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: cachedCategories.length,
-                        itemBuilder: (context, index) {
-                          final category = cachedCategories[index];
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2C2C2C),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    category,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                    size: 20,
-                                  ),
-                                  onPressed: () async {
-                                    await deleteCategory(category);
-                                    setState(() {});
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF64FFDA),
-              foregroundColor: const Color(0xFF121212),
-            ),
-            onPressed: () async {
-              final title = controller.text.trim();
-              if (title.isEmpty) return;
-
-              try {
-                await _firestore
-                    .collection('users')
-                    .doc(uid)
-                    .collection('categories')
-                    .add({
-                      'title': title,
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-
-                await fetchCategories();
-
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-              } catch (e) {
-                debugPrint('❌ Failed to add category: $e');
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+        await fetchCategories();
+      },
+      onDelete: (title) async {
+        await deleteCategory(title);
+        await fetchCategories();
+      },
     );
   }
 
   Future<void> deleteCategory(String categoryTitle) async {
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('categories')
-          .where('title', isEqualTo: categoryTitle)
-          .get();
-
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      await batch.commit();
+      await _repository.deleteCategory(uid: uid, categoryTitle: categoryTitle);
 
       await fetchCategories(); // refresh cache
 

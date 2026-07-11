@@ -566,6 +566,28 @@ class ExpenseFirestoreDatasource {
     return grouped;
   }
 
+  /// Returns the current balance for a bank's month document, or `null` if
+  /// the month document doesn't exist. Used by the Provider's pre-flight
+  /// balance check (validateAndPrepareBankTransaction) so it doesn't need
+  /// to touch Firestore directly. This is a plain read — the authoritative,
+  /// race-safe balance check still happens inside addExpense()'s
+  /// transaction via _validateBank().
+  Future<double?> getBankMonthBalance({
+    required String uid,
+    required String bankId,
+    required String monthId,
+  }) async {
+    final doc = await _bankMonthRef(
+      uid: uid,
+      bankId: bankId,
+      monthId: monthId,
+    ).get();
+
+    if (!doc.exists) return null;
+
+    return (doc.data()?['currentAmount'] ?? 0).toDouble();
+  }
+
   // ===========================================================================
   // PRIVATE — REFERENCE BUILDERS
   // ===========================================================================
