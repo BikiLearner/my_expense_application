@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../shared/widgets/app_text_fields.dart';
+import '../../../../shared/widgets/auto_complete_text_fields.dart';
+import '../../../../shared/widgets/expense_type_selector_generic.dart';
 import '../provider/expence_provider.dart';
-import 'app_text_fields.dart';
-import 'auto_complete_text_fields.dart';
-import 'expense_type_selector.dart';
 
 class EditExpenseForm extends StatelessWidget {
   const EditExpenseForm({super.key});
@@ -55,7 +55,7 @@ class EditExpenseForm extends StatelessWidget {
               //   },
               // ),
               const SizedBox(height: 16),
-              TitleAutoCompleteField(controller: provider.titleController),
+              TitleAutoCompleteField(provider: provider),
               const SizedBox(height: 16),
               AppTextField(
                 controller: provider.amountController,
@@ -76,7 +76,7 @@ class EditExpenseForm extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        ExpenseTypeSelector(),
+        ExpenseTypeSelector(provider: provider),
       ],
     );
   }

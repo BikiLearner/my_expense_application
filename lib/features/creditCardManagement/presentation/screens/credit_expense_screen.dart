@@ -1,18 +1,18 @@
-import 'package:expence_app/features/expense/presentation/widgets/add_expense_form.dart';
 import 'package:expence_app/features/expense/presentation/screens/expense_particular_day_overView.dart';
-import 'package:expence_app/shared/providers/category_provider.dart';
+import 'package:expence_app/features/expense/presentation/widgets/add_expense_form.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/theme/app_color.dart';
+import '../../../expense/data/model/expense_items.dart';
+import '../../../expense/presentation/provider/expence_provider.dart';
+import '../../../expense/presentation/widgets/expense_tiles_new.dart';
 import '../../../history/presentation/screens/history_screen.dart';
-import '../../../../core/services/audio_player.dart';
-import '../../data/model/expense_items.dart';
-import '../provider/expence_provider.dart';
-import '../widgets/expense_tiles_new.dart';
+import '../provider/credit_expense_provider.dart';
 
-class ExpenseScreen extends StatelessWidget {
-  const ExpenseScreen({super.key});
+class CreditExpenseScreen extends StatelessWidget {
+  const CreditExpenseScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,18 +25,18 @@ class ExpenseScreen extends StatelessWidget {
     final isDesktop = screenWidth > 1200;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppColor.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColor.surface,
         elevation: 0,
         title: Row(
           children: [
-            const Icon(Icons.account_balance_wallet, color: Color(0xFF64FFDA)),
+            Icon(Icons.payment_rounded, color: AppColor.creditPrimary),
             const SizedBox(width: 12),
             Text(
               DateFormat('dd MMM yyyy').format(selectedDate),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppColor.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -46,34 +46,29 @@ class ExpenseScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(
-              Icons.generating_tokens_sharp,
-              color: Color(0xFF64FFDA),
+              Icons.credit_card_rounded,
+              color: AppColor.creditPrimary,
             ),
-            tooltip: 'History',
+            tooltip: 'Credit History',
             onPressed: () async {
-              final audioService = AudioPlayerService();
-              // await audioService.play('audio/fahhhhh.mp3', isAsset: true);
               if (context.mounted) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const HistoryScreen(),
+                  ),
                 );
               }
             },
           ),
           IconButton(
-            icon: const Icon(Icons.calendar_today, color: Color(0xFF64FFDA)),
+            icon: const Icon(
+              Icons.calendar_month_rounded,
+              color: AppColor.textSecondary,
+            ),
             tooltip: 'Select Date',
             onPressed: () => _selectDate(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFF64FFDA)),
-            tooltip: 'Add Category',
-            onPressed: () {
-              context.read<CategoryProvider>().showAddCategoryDialog(context);
-            },
-          ),
-          const SizedBox(width: 8),
         ],
       ),
       body: isDesktop
@@ -82,17 +77,36 @@ class ExpenseScreen extends StatelessWidget {
     );
   }
 
+
   Future<void> _selectDate(BuildContext context) async {
-    final provider = context.read<ExpenseProvider>();
+    final provider = context.read<CreditExpenseProvider>();
+
+    final card = provider.selectedCreditCard;
+    if (card == null) return;
+
+    final cycle = card.billingCycle;
+
+    bool isSelectable(DateTime date) {
+      final inCurrent =
+          !date.isBefore(cycle.currentStart) &&
+              !date.isAfter(cycle.currentEnd);
+
+      final inPrevious =
+          !date.isBefore(cycle.previousStart) &&
+              !date.isAfter(cycle.previousEnd);
+
+      return inCurrent || inPrevious;
+    }
 
     final picked = await showDatePicker(
       context: context,
       initialDate: provider.selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      firstDate: cycle.previousStart,
+      lastDate: cycle.currentEnd,
+      selectableDayPredicate: isSelectable,
     );
 
-    if (picked != null && picked != provider.selectedDate) {
+    if (picked != null) {
       provider.setSelectedDate(picked);
     }
   }
@@ -118,10 +132,10 @@ class ExpenseScreen extends StatelessWidget {
         // Right: Input Form
         Container(
           width: 400,
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E1E),
+          decoration: BoxDecoration(
+            color: AppColor.surface,
             border: Border(
-              left: BorderSide(color: Color(0xFF2C2C2C), width: 1),
+              left: BorderSide(color: AppColor.background, width: 1),
             ),
           ),
           child: AddExpenseForm(isDesktop: true),
@@ -137,7 +151,7 @@ class ExpenseScreen extends StatelessWidget {
       builder: (_, isLoading, __) {
         if (isLoading) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
+            child: CircularProgressIndicator(color: AppColor.primary),
           );
         }
 
@@ -183,8 +197,8 @@ class ExpenseScreen extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1E3A5F), Color(0xFF2A5298)],
+                        gradient: LinearGradient(
+                          colors: [AppColor.surface, AppColor.background],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

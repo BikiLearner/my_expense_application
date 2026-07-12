@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../../../shared/enums/expense_type.dart';
-import '../provider/expence_provider.dart';
+import '../enums/expense_type.dart';
+import '../providers/expense_type_selector_provider.dart';
 
 class TypeButton extends StatelessWidget {
+  final ExpenseTypeProvider provider;
   final ExpenseType type;
   final bool selected;
 
-  const TypeButton({super.key, required this.type, required this.selected});
+  const TypeButton({
+    super.key,
+    required this.provider,
+    required this.type,
+    required this.selected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<ExpenseProvider>();
-
     return GestureDetector(
       onTap: () => provider.setExpenseType(type),
       child: AnimatedContainer(

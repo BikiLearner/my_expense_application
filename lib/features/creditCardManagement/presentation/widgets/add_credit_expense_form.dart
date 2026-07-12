@@ -1,22 +1,25 @@
+import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:expence_app/features/expense/presentation/widgets/bank_selector_drop_down.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/utils/indian_number_formatter.dart';
-import '../../../../shared/widgets/app_text_fields.dart';
 import '../../../../shared/widgets/auto_complete_text_fields.dart';
 import '../../../../shared/widgets/expense_type_selector_generic.dart';
-import '../provider/expence_provider.dart';
+import '../../../expense/presentation/widgets/expense_type_selector.dart';
 
-class AddExpenseForm extends StatelessWidget {
+import '../../../../shared/widgets/app_text_fields.dart';
+
+
+class AddCreditExpenseForm extends StatelessWidget {
   final bool isDesktop;
 
-  const AddExpenseForm({super.key, required this.isDesktop});
+  const AddCreditExpenseForm({super.key, required this.isDesktop});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<ExpenseProvider>();
+    final provider = context.read<CreditExpenseProvider>();
 
     return Container(
       color: isDesktop ? const Color(0xFF1E1E1E) : const Color(0xFF1A1A1A),
@@ -50,7 +53,9 @@ class AddExpenseForm extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      TitleAutoCompleteField(provider: provider),
+                      TitleAutoCompleteField(
+                        provider: provider,
+                      ),
                       const SizedBox(height: 8),
 
                       /// 💰 AMOUNT FIELD (INDIAN FORMAT – VISUAL ONLY)
@@ -82,7 +87,7 @@ class AddExpenseForm extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 /// RIGHT SIDE
-                ExpenseTypeSelector(provider: provider),
+                 ExpenseTypeSelector(provider: provider,),
               ],
             ),
           ),
@@ -95,7 +100,7 @@ class AddExpenseForm extends StatelessWidget {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                provider.addExpense(context);
+                // provider.addExpense(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF64FFDA),

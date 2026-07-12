@@ -1,27 +1,9 @@
-// 🔧 CORRECTED: Changed dateId getter to currentDateId for clarity
-// This prevents confusion between current selected date and expense dates
-//
-// 🏗️ CLEAN ARCHITECTURE REFACTOR:
-// All direct Firestore access has been extracted into
-// ExpenseFirestoreDatasource (via ExpenseRepository). This Provider now
-// only holds UI state, controllers, dialogs and delegates data operations
-// to _repository. Business logic, field names, and behavior are unchanged.
-//
-// Income methods (addIncome / deleteIncome / getYearIncomeFromFirestore /
-// getYearIncome) were removed — Income is a separate, currently unusable
-// feature.
-//
-// This Provider no longer imports cloud_firestore at all. The bank-balance
-// pre-flight check in validateAndPrepareBankTransaction() now goes through
-// _repository.getBankMonthBalance() instead of a raw Firestore read. Note
-// that read technically belongs to the Bank feature's data, not Expense's —
-// it was added to ExpenseFirestoreDatasource as a pragmatic exception so
-// this file could be fully Firestore-free. If a BankRepository is
-// introduced later, getBankMonthBalance() should move there instead.
+
 
 import 'dart:async';
 
 import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
+import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/dialogs/app_loader_dialog.dart';
 import '../../../../shared/dialogs/category_dialog.dart';
 import '../../../../shared/dialogs/insufficient_balance_dialog.dart';
+import '../../../../shared/providers/auto_complete_key_provider.dart';
 import '../../../bank/data/model/bank_model.dart';
 
 import '../../../../shared/enums/expense_type.dart';
@@ -41,7 +24,7 @@ import '../../data/model/expense_items.dart';
 import '../../data/model/expense_model.dart';
 import '../../domain/repository/expense_repository.dart';
 
-class ExpenseProvider extends ChangeNotifier {
+class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,ExpenseTypeProvider {
   // 🔹 Controllers
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
@@ -181,12 +164,9 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
-  List<String> cachedCategories = [];
+
 
   Future<void> _init() async {
-    if (FirebaseAuth.instance.currentUser != null) {
-      await fetchCategories();
-    }
     _initStream();
   }
 
@@ -329,19 +309,7 @@ class ExpenseProvider extends ChangeNotifier {
 
 
 
-  Future<void> fetchCategories() async {
-    try {
-      cachedCategories = await _repository.getCategories(uid: uid);
 
-      if (kDebugMode) {
-        print("📂 Categories loaded: $cachedCategories");
-      }
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint("❌ Failed to fetch categories: $e");
-    }
-  }
 
   Future<void> editExpense({
     required BuildContext context,
@@ -576,38 +544,5 @@ class ExpenseProvider extends ChangeNotifier {
     descriptionController.dispose();
     _expenseSubscription?.cancel();
     super.dispose();
-  }
-
-  Future<void> showAddCategoryDialog(BuildContext context) async {
-    await CategoryDialog.show(
-      context: context,
-      categories: cachedCategories,
-      onAdd: (title) async {
-        await _repository.addCategory(
-          uid: uid,
-          title: title,
-        );
-
-        await fetchCategories();
-      },
-      onDelete: (title) async {
-        await deleteCategory(title);
-        await fetchCategories();
-      },
-    );
-  }
-
-  Future<void> deleteCategory(String categoryTitle) async {
-    try {
-      await _repository.deleteCategory(uid: uid, categoryTitle: categoryTitle);
-
-      await fetchCategories(); // refresh cache
-
-      if (kDebugMode) {
-        print('🗑️ Category deleted: $categoryTitle');
-      }
-    } catch (e) {
-      debugPrint('❌ Failed to delete category: $e');
-    }
   }
 }

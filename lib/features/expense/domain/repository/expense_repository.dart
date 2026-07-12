@@ -62,14 +62,7 @@ abstract class ExpenseRepository {
 
   Future<double> getTotalForDate({required String uid, required String dateId});
 
-  Future<void> addCategory({required String uid, required String title});
 
-  Future<void> deleteCategory({
-    required String uid,
-    required String categoryTitle,
-  });
-
-  Future<List<String>> getCategories({required String uid});
 
   /// Balance of a bank's month document, or `null` if it doesn't exist.
   /// Used for the Provider's pre-flight balance check.

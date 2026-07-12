@@ -117,23 +117,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     return _datasource.getTotalForDate(uid: uid, dateId: dateId);
   }
 
-  @override
-  Future<void> addCategory({required String uid, required String title}) {
-    return _datasource.addCategory(uid: uid, title: title);
-  }
 
-  @override
-  Future<void> deleteCategory({
-    required String uid,
-    required String categoryTitle,
-  }) {
-    return _datasource.deleteCategory(uid: uid, categoryTitle: categoryTitle);
-  }
-
-  @override
-  Future<List<String>> getCategories({required String uid}) {
-    return _datasource.getCategories(uid: uid);
-  }
 
   @override
   Future<double?> getBankMonthBalance({
