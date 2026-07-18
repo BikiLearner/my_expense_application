@@ -3,23 +3,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'billing_cycle_model_for_ui.dart';
 
 class CreditCardModel {
-  final String id;
+  final String creditCardId;
   final String cardName;
   final String bankName;
   final double creditLimit;
-  final double currentUsed;
-  final int statementDay;
-  final int dueDay;
+  final int statementDay; // 1-31
+  final int dueDay;// 1-31
   final bool isActive;
   final DateTime createdAt;
 
 
   const CreditCardModel({
-    required this.id,
+    required this.creditCardId,
     required this.cardName,
     required this.bankName,
     required this.creditLimit,
-    required this.currentUsed,
     required this.statementDay,
     required this.dueDay,
     required this.isActive,
@@ -27,15 +25,14 @@ class CreditCardModel {
   });
 
   factory CreditCardModel.fromFirestore(
-      String id,
+      String creditCardId,
       Map<String, dynamic> data,
       ) {
     return CreditCardModel(
-      id: id,
+      creditCardId: creditCardId,
       cardName: data['cardName'] ?? '',
       bankName: data['bankName'] ?? '',
       creditLimit: (data['creditLimit'] as num?)?.toDouble() ?? 0.0,
-      currentUsed: (data['currentUsed'] as num?)?.toDouble() ?? 0.0,
       statementDay: data['statementDay'] ?? 1,
       dueDay: data['dueDay'] ?? 15,
       isActive: data['isActive'] ?? true,
@@ -45,10 +42,10 @@ class CreditCardModel {
 
   Map<String, dynamic> toFirestore() {
     return {
+      'creditCardId': creditCardId,
       'cardName': cardName,
       'bankName': bankName,
       'creditLimit': creditLimit,
-      'currentUsed': currentUsed,
       'statementDay': statementDay,
       'dueDay': dueDay,
       'isActive': isActive,
@@ -58,11 +55,10 @@ class CreditCardModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'creditCardId': creditCardId,
       'cardName': cardName,
       'bankName': bankName,
       'creditLimit': creditLimit,
-      'currentUsed': currentUsed,
       'statementDay': statementDay,
       'dueDay': dueDay,
       'isActive': isActive,
@@ -72,11 +68,10 @@ class CreditCardModel {
 
   factory CreditCardModel.fromJson(Map<String, dynamic> json) {
     return CreditCardModel(
-      id: json['id'],
+      creditCardId: json['creditCardId'],
       cardName: json['cardName'],
       bankName: json['bankName'],
       creditLimit: (json['creditLimit'] as num?)?.toDouble() ?? 0.0,
-      currentUsed: (json['currentUsed'] as num?)?.toDouble() ?? 0.0,
       statementDay: json['statementDay'] ?? 1,
       dueDay: json['dueDay'] ?? 15,
       isActive: json['isActive'] ?? true,
@@ -84,7 +79,9 @@ class CreditCardModel {
     );
   }
 
+
   CreditCardModel copyWith({
+    String? creditCardId,
     String? cardName,
     String? bankName,
     double? creditLimit,
@@ -95,11 +92,10 @@ class CreditCardModel {
     DateTime? createdAt,
   }) {
     return CreditCardModel(
-      id: id,
+      creditCardId: creditCardId ?? this.creditCardId,
       cardName: cardName ?? this.cardName,
       bankName: bankName ?? this.bankName,
       creditLimit: creditLimit ?? this.creditLimit,
-      currentUsed: currentUsed ?? this.currentUsed,
       statementDay: statementDay ?? this.statementDay,
       dueDay: dueDay ?? this.dueDay,
       isActive: isActive ?? this.isActive,
@@ -145,6 +141,4 @@ class CreditCardModel {
       "${currentStart.year}-${currentStart.month.toString().padLeft(2, '0')}",
     );
   }
-
-  double get availableLimit => creditLimit - currentUsed;
 }

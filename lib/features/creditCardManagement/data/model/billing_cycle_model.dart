@@ -16,7 +16,7 @@ class BillingCycleModel {
     required this.id,
     required this.startDate,
     required this.endDate,
-    required this.status,
+    required this.status, // active or complete
     required this.totalAmount,
     required this.createdAt,
   });

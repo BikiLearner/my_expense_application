@@ -1,6 +1,10 @@
 import 'package:expence_app/features/bank/data/datasource/bank_datasource.dart';
 import 'package:expence_app/features/bank/data/repository/bank_repository_impl.dart';
 import 'package:expence_app/features/bank/domain/repository/bank_repository.dart';
+import 'package:expence_app/features/creditCardManagement/data/datasource/credit_firestore_datasource.dart';
+import 'package:expence_app/features/creditCardManagement/data/repository/credit_repo_impl.dart';
+import 'package:expence_app/features/creditCardManagement/domain/repository/credit_repo.dart';
+import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:get_it/get_it.dart';
 
 // Imports from your project
@@ -43,6 +47,9 @@ class ServiceLocator {
     sl.registerLazySingleton<BankDatasource>(
           () => BankDatasource(),
     );
+    sl.registerLazySingleton<CreditFirestoreDatasource>(
+          () => CreditFirestoreDatasource(),
+    );
   }
 
   static void _registerRepositories() {
@@ -54,6 +61,10 @@ class ServiceLocator {
     );
     sl.registerLazySingleton<BankRepository>(
         () => BankRepositoryImpl(datasource: sl()),
+    );
+
+    sl.registerLazySingleton<CreditRepository>(
+          () => CreditRepositoryImpl(datasource: sl()),
     );
   }
 
@@ -67,6 +78,7 @@ class ServiceLocator {
     sl.registerFactory(() => MonthExpensesProvider());
     sl.registerFactory(() => AllExpensesProvider());
     sl.registerFactory(() => BankProvider(repository: sl()));
+    sl.registerFactory(() => CreditExpenseProvider(repository: sl()));
     sl.registerFactory(() => YearStatsProvider());
   }
 }

@@ -9,7 +9,13 @@ import '../../../../shared/enums/expense_type.dart';
 import '../../data/model/credit_card.dart';
 import '../../domain/repository/credit_repo.dart';
 
-class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,ExpenseTypeProvider{
+class CreditExpenseProvider extends ChangeNotifier
+    implements AutoCompleteProvider, ExpenseTypeProvider {
+
+
+  List<CreditCardModel> _creditCards = [];
+  List<CreditCardModel> get creditCards => _creditCards;
+
 
   CreditCardModel? _selectedCreditCard;
 
@@ -21,26 +27,19 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
   final TextEditingController descriptionController = TextEditingController();
 
 
-  String get currentBillingCycleId {
-    if (_selectedCreditCard == null) {
-      throw StateError('No credit card selected');
-    }
-
-    return _selectedCreditCard!.billingCycle.currentBillingCycleId;
-  }
-
   @override
   // The autocomplete key override as implemented AutoCompleteProvider
   int get autoCompleteKey => throw UnimplementedError();
 
   //selected type
   ExpenseType _selectedType = ExpenseType.luxury;
+
+  @override
   ExpenseType get selectedType => _selectedType;
 
-
   DateTime _selectedDate = DateTime.now();
-  DateTime get selectedDate => _selectedDate;
 
+  DateTime get selectedDate => _selectedDate;
 
   List<CreditExpenseItem> _cachedExpenses = [];
 
@@ -51,40 +50,58 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
   StreamSubscription<List<CreditExpenseItem>>? _expenseSubscription;
 
   bool _isLoading = false;
+
   bool get isLoading => _isLoading;
 
-
-
-  CreditExpenseProvider({
-    required CreditRepository repository,
-  }) : _repository = repository {
+  CreditExpenseProvider({required CreditRepository repository})
+    : _repository = repository {
     _init();
   }
 
+  void setLoading(){
+    _isLoading=!_isLoading;
+    notifyListeners();
+  }
 
+  Future<void> addCreditCard({
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+    required BuildContext context,
+  }) async {
+    setLoading();
+    await _repository.createCreditCard(
+      cardName: cardName,
+      bankName: bankName,
+      creditLimit: creditLimit,
+      statementDay: statementDay,
+      dueDay: dueDay,
+    );
+    await fetchCreditCards();
+    setLoading();
+    notifyListeners();
+  }
 
+  Future<void> fetchCreditCards() async {
+    _isLoading = true;
+
+    notifyListeners();
+
+    try {
+      _creditCards = await _repository.fetchCreditCards();
+    } catch (e, stackTrace) {
+
+      debugPrint('❌ Failed to fetch credit cards: $e');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
   Future<void> _init() async {
-    _initStream();
-  }
-
-  void _initStream() {
-    _subscribeToExpenses();
-  }
-
-  void setSelectedCreditCard(CreditCardModel card) {
-    if (_selectedCreditCard?.id == card.id) return;
-
-    _selectedCreditCard = card;
-    _subscribeToExpenses();
-    notifyListeners();
-  }
-
-  void setSelectedDate(DateTime date) {
-    if (_selectedDate == date) return;
-
-    _selectedDate = date;
-    _subscribeToExpenses();
-    notifyListeners();
+    await fetchCreditCards();
   }
 
   @override
@@ -92,39 +109,6 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
     if (_selectedType == type) return;
     _selectedType = type;
     notifyListeners();
-  }
-
-  void _subscribeToExpenses() {
-    if (_selectedCreditCard == null) {
-      _cachedExpenses = [];
-      notifyListeners();
-      return;
-    }
-
-    _expenseSubscription?.cancel();
-
-    _isLoading = true;
-    notifyListeners();
-
-    _expenseSubscription = _repository.watchCreditExpenses(
-      creditCardId: _selectedCreditCard!.id,
-      billingCycleId: currentBillingCycleId,
-      selectedDate: _selectedDate,
-    ).listen(
-          (items) {
-        _cachedExpenses = items;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (_) {
-        _cachedExpenses = [];
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
-  }
-  Future<void> refresh() async {
-    _subscribeToExpenses();
   }
 
   @override
@@ -135,5 +119,4 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
     _expenseSubscription?.cancel();
     super.dispose();
   }
-
 }

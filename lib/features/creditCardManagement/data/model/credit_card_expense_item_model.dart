@@ -7,9 +7,8 @@ class CreditExpenseItem {
   final double amount;
   final ExpenseType type;
   final String description;
-  final DateTime purchaseDate;
+  final DateTime purchaseDate; //optional same date as entry
 
-  final bool isPaid;
   final DateTime createdAt;
 
   CreditExpenseItem({
@@ -19,8 +18,6 @@ class CreditExpenseItem {
     required this.type,
     required this.description,
     required this.purchaseDate,
-
-    required this.isPaid,
 
     required this.createdAt,
   });
@@ -37,7 +34,6 @@ class CreditExpenseItem {
       description: data['description'] ?? '',
       purchaseDate: (data['purchaseDate'] as Timestamp).toDate(),
 
-      isPaid: data['isPaid'] ?? false,
 
       createdAt: (data['createdAt'] as Timestamp).toDate(),
     );
@@ -51,7 +47,6 @@ class CreditExpenseItem {
       'description': description,
       'purchaseDate': Timestamp.fromDate(purchaseDate),
 
-      'isPaid': isPaid,
 
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -65,7 +60,6 @@ class CreditExpenseItem {
       'type': type.name,
       'description': description,
       'purchaseDate': purchaseDate.toIso8601String(),
-      'isPaid': isPaid,
 
       'createdAt': createdAt.toIso8601String(),
     };
@@ -83,7 +77,6 @@ class CreditExpenseItem {
       description: json['description'] ?? '',
       purchaseDate: DateTime.parse(json['purchaseDate']),
 
-      isPaid: json['isPaid'],
 
       createdAt: DateTime.parse(json['createdAt']),
     );
@@ -111,7 +104,6 @@ class CreditExpenseItem {
       description: description ?? this.description,
       purchaseDate: purchaseDate ?? this.purchaseDate,
 
-      isPaid: isPaid ?? this.isPaid,
 
       createdAt: createdAt ?? this.createdAt,
     );

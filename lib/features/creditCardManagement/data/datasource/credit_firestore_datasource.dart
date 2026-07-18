@@ -1,16 +1,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expence_app/core/constants/collection_name_constant.dart';
+import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../../core/services/session_maganger.dart';
 import '../model/credit_card_expense_item_model.dart';
 
 class CreditFirestoreDatasource {
-  CreditFirestoreDatasource._();
+  CreditFirestoreDatasource({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  static final CreditFirestoreDatasource instance =
-      CreditFirestoreDatasource._();
+  final FirebaseFirestore _firestore;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  DocumentReference userReference = SessionManager.instance.userRef;
+
+  // all reference generator methods
+  CollectionReference<Map<String, dynamic>> _creditCardCollection() {
+    return userReference.collection(CollectionName.creditCards);
+  }
+
+  DocumentReference<Map<String, dynamic>> _creditCardRef({
+    String? creditCardId,
+  }) => userReference.collection(CollectionName.creditCards).doc(creditCardId);
+
+  // CollectionReference<Map<String, dynamic>> _monthAmount({
+  //   required DocumentReference bankRef,
+  // }) {
+  //   return bankRef.collection(CollectionName.monthAmount);
+  // }
+  //
+  // DocumentReference<Map<String, dynamic>> _monthAmountdocRef({
+  //   required String monthId,
+  //   required DocumentReference bankRef,
+  // }) {
+  //   return _monthAmount(bankRef: bankRef).doc(monthId);
+  // }
 
   Future<void> addCreditExpense({
     required String title,
@@ -119,6 +143,60 @@ class CreditFirestoreDatasource {
               .map((doc) => CreditExpenseItem.fromFirestore(doc.id, doc.data()))
               .toList(),
         );
+  }
+
+  Future<void> createCreditCard({
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+  }) async {
+    try {
+      final docRef = _creditCardCollection().doc();
+
+      final creditCardModel = CreditCardModel(
+        creditCardId: docRef.id,
+        cardName: cardName,
+        bankName: bankName,
+        creditLimit: creditLimit,
+        statementDay: statementDay,
+        dueDay: dueDay,
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+
+      await docRef.set(creditCardModel.toFirestore());
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase Error: ${e.code} - ${e.message}');
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('Error creating credit card: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<List<CreditCardModel>> fetchCreditCards() async {
+    try {
+      final snapshot = await _creditCardCollection().get();
+
+      return snapshot.docs
+          .map((doc) => CreditCardModel.fromFirestore(doc.id, doc.data()))
+          .toList();
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase Error: ${e.code} - ${e.message}');
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching credit cards: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> updateCreditCard() {
+    // TODO: implement updateCreditCard
+    throw UnimplementedError();
   }
 
   //

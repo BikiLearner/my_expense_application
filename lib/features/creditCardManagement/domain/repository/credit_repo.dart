@@ -1,6 +1,19 @@
+import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
+
 import '../../data/model/credit_card_expense_item_model.dart';
 
 abstract class CreditRepository {
+
+  Future<void> createCreditCard({
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+});
+  Future<void> updateCreditCard();
+  Future<List<CreditCardModel>> fetchCreditCards();
+
   Future<void> addCreditExpense({
     required String title,
     required double amount,
@@ -16,4 +29,5 @@ abstract class CreditRepository {
     required String billingCycleId,
     required DateTime selectedDate,
   });
+
 }

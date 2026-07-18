@@ -5,14 +5,14 @@ class CreditPaymentModel {
 
   final String billingCycleId;
   final String bankId;
-  final String bankName;
+  final String bankName; // Bank i paid from
   final double expenseAmount;
   final double interest;
   final double lateFee;
   final double gst;
   final double otherCharges;
   final double totalPaid;
-  final String expenseId;
+  final String expenseId; // for the expense that will be create in main screen
   final DateTime paymentDate;
   final DateTime createdAt;
 
