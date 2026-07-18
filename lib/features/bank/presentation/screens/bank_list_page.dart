@@ -5,7 +5,7 @@ import '../../data/model/bank_model.dart';
 import '../../data/model/bank_month_model.dart';
 import '../provider/bank_provider.dart';
 import 'bank_form_page.dart';
-import 'bank_month_page.dart';
+import 'bank_account_details_screen.dart';
 
 class BankPage extends StatefulWidget {
   const BankPage({super.key});
@@ -15,13 +15,7 @@ class BankPage extends StatefulWidget {
 }
 
 class _BankPageState extends State<BankPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BankProvider>().listenBanks();
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +249,7 @@ class _BankCard extends StatelessWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => BankAccountPage(bank: bank)),
+            MaterialPageRoute(builder: (_) => BankAccountDetailScreen(bank: bank)),
           );
         },
         child: Padding(

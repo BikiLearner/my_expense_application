@@ -20,9 +20,11 @@
 // usable here.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expence_app/core/constants/collection_name_constant.dart';
 
 import '../../../../shared/models/month_stats.dart';
 import '../../../../shared/models/year_stats.dart';
+import '../model/daily_expense_summary.dart';
 import '../model/expense_items.dart';
 import '../model/expense_model.dart';
 
@@ -331,8 +333,21 @@ class ExpenseFirestoreDatasource {
     });
   }
 
-  /// Streams the expense items for a given date, ordered by createdAt
-  /// descending (matches the provider's live subscription behavior).
+
+  Stream<DailyExpenseSummary?> watchDailySummary({
+    required String uid,
+    required String dateId,
+  }) {
+    return _userRef(uid)
+        .collection('expenses')
+        .doc(dateId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return null;
+      return DailyExpenseSummary.fromFirestore(snapshot);
+    });
+  }
+
   Stream<List<ExpenseItem>> watchExpenses({
     required String uid,
     required String dateId,
@@ -353,9 +368,9 @@ class ExpenseFirestoreDatasource {
   }
 
   /// Returns every expense-day document (dateId + total) for the user.
-  Future<List<ExpenseDay>> getAllExpenseDays({required String uid}) async {
+  Future<List<ExpenseDay>> getAllExpenseForEveryMonth({required String uid}) async {
     try {
-      final snapshot = await _userRef(uid).collection('expenses').get();
+      final snapshot = await _userRef(uid).collection(CollectionName.expenses).get();
 
       return snapshot.docs.map((doc) {
         return ExpenseDay(
@@ -377,7 +392,7 @@ class ExpenseFirestoreDatasource {
 
     try {
       final expensesSnapshot = await _userRef(uid)
-          .collection('expenses')
+          .collection(CollectionName.expenses)
           .where(FieldPath.documentId, isGreaterThanOrEqualTo: '$monthKey-01')
           .where(FieldPath.documentId, isLessThan: '$monthKey-32')
           .get();
@@ -386,7 +401,7 @@ class ExpenseFirestoreDatasource {
         final dateId = dateDoc.id;
 
         final itemsSnapshot = await dateDoc.reference
-            .collection('items')
+            .collection(CollectionName.items)
             .get();
 
         if (itemsSnapshot.docs.isEmpty) continue;
@@ -523,31 +538,7 @@ class ExpenseFirestoreDatasource {
     return grouped;
   }
 
-  /// Returns the current balance for a bank's month document, or `null` if
-  /// the month document doesn't exist. Used by the Provider's pre-flight
-  /// balance check (validateAndPrepareBankTransaction) so it doesn't need
-  /// to touch Firestore directly. This is a plain read — the authoritative,
-  /// race-safe balance check still happens inside addExpense()'s
-  /// transaction via _validateBank().
-  Future<double?> getBankMonthBalance({
-    required String uid,
-    required String bankId,
-    required String monthId,
-  }) async {
-    final doc = await _bankMonthRef(
-      uid: uid,
-      bankId: bankId,
-      monthId: monthId,
-    ).get();
 
-    if (!doc.exists) return null;
-
-    return (doc.data()?['currentAmount'] ?? 0).toDouble();
-  }
-
-  // ===========================================================================
-  // PRIVATE — REFERENCE BUILDERS
-  // ===========================================================================
 
   bool _isCash(String? transactionTypeId) =>
       transactionTypeId == null || transactionTypeId == 'cash';

@@ -1,3 +1,4 @@
+import 'package:expence_app/core/constants/date_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,31 +19,6 @@ class BankMonthlyBreakdownScreen extends StatefulWidget {
 
 class _BankMonthlyBreakdownScreenState
     extends State<BankMonthlyBreakdownScreen> {
-  String _getMonthName(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-    return months[month - 1];
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    final provider = context.read<BankProvider>();
-    provider.listenBanks();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,7 +28,7 @@ class _BankMonthlyBreakdownScreenState
         backgroundColor: const Color(0xFF0A0E27),
         iconTheme: const IconThemeData(color: Color(0xFFE8EAED)),
         title: Text(
-          '${_getMonthName(DateTime.now().month)} ${widget.year}',
+          '${DateConstants.monthName(DateTime.now().month)} ${widget.year}',
           style: const TextStyle(
             color: Color(0xFFE8EAED),
             fontSize: 20,
@@ -95,12 +71,9 @@ class _BankMonthlyBreakdownScreenState
               // Bank cards
               ...List.generate(
                 banks.length,
-                    (i) => Padding(
+                (i) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: _BankAccountCard(
-                    bank: banks[i],
-                    year: widget.year,
-                  ),
+                  child: _BankAccountCard(bank: banks[i], year: widget.year),
                 ),
               ),
             ],
@@ -122,21 +95,27 @@ class _FinancialOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<BankProvider>(
-      builder: (context, provider, _) {
-        final thisMonthTotal = provider.getTotalMonthAmountOfThisMonth();
-        final totalSurplus = provider.getTotalThisMonthSurplus();
-        final currentAmount = provider.getTotalCurrentAmountMonthAmountOfThisMonth() ?? 0;
+    return Selector<
+      BankProvider,
+      ({double totalAdded, double totalSurplus, double currentAmount})
+    >(
+      selector: (_, provider) => (
+        totalAdded: provider.getTotalMonthAmountOfThisMonth(),
+        totalSurplus: provider.getTotalThisMonthSurplus(),
+        currentAmount:
+            provider.getTotalCurrentAmountMonthAmountOfThisMonth() ?? 0,
+      ),
+      builder: (context, data, _) {
+        final thisMonthTotal = data.totalAdded;
+        final totalSurplus = data.totalSurplus;
+        final currentAmount = data.currentAmount;
 
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: const Color(0xFF1C2333),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFF2D3748),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFF2D3748), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,10 +274,7 @@ class _MetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF2D3748).withOpacity(0.4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF374151),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF374151), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,10 +319,7 @@ class _BankAccountCard extends StatefulWidget {
   final BankModel bank;
   final String year;
 
-  const _BankAccountCard({
-    required this.bank,
-    required this.year,
-  });
+  const _BankAccountCard({required this.bank, required this.year});
 
   @override
   State<_BankAccountCard> createState() => _BankAccountCardState();
@@ -354,19 +327,6 @@ class _BankAccountCard extends StatefulWidget {
 
 class _BankAccountCardState extends State<_BankAccountCard> {
   bool _isExpanded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final monthId =
-        '${widget.year}-${DateTime.now().month.toString().padLeft(2, '0')}';
-
-    context.read<BankProvider>().listenBankMonths(widget.bank.id);
-    context.read<BankProvider>().listenMonthEntries(
-      bankId: widget.bank.id,
-      monthId: monthId,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -391,10 +351,7 @@ class _BankAccountCardState extends State<_BankAccountCard> {
           decoration: BoxDecoration(
             color: const Color(0xFF1C2333),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFF2D3748),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFF2D3748), width: 1),
           ),
           child: Column(
             children: [
@@ -462,36 +419,31 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Selector<BankProvider, double>(
-                            selector: (_, p) => p.getSurplus(
-                              bankId: widget.bank.id,
-                              monthId: month.id,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            builder: (context, surplus, _) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: (surplus >= 0
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFFEF4444))
+                            decoration: BoxDecoration(
+                              color:
+                                  (month.surplusPreviousMonth >= 0
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFEF4444))
                                       .withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  surplus >= 0 ? '+₹${surplus.toStringAsFixed(0)}' : '₹${surplus.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: surplus >= 0
-                                        ? const Color(0xFF10B981)
-                                        : const Color(0xFEF4444),
-                                  ),
-                                ),
-                              );
-                            },
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              month.surplusPreviousMonth >= 0
+                                  ? '+₹${month.surplusPreviousMonth.toStringAsFixed(0)}'
+                                  : '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: month.surplusPreviousMonth >= 0
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFEF4444),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -512,10 +464,7 @@ class _BankAccountCardState extends State<_BankAccountCard> {
 
               // Divider
               if (_isExpanded)
-                Container(
-                  height: 1,
-                  color: const Color(0xFF2D3748),
-                ),
+                Container(height: 1, color: const Color(0xFF2D3748)),
 
               // Month Details (Expandable)
               if (_isExpanded)
@@ -548,7 +497,8 @@ class _BankAccountCardState extends State<_BankAccountCard> {
                       _MonthStatRow(
                         icon: Icons.savings_rounded,
                         label: 'Previous Surplus',
-                        value: '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
+                        value:
+                            '₹${month.surplusPreviousMonth.toStringAsFixed(0)}',
                         valueColor: const Color(0xFF60A5FA),
                       ),
                       const SizedBox(height: 20),
@@ -595,15 +545,6 @@ class _BankAccountCardState extends State<_BankAccountCard> {
       },
     );
   }
-
-  @override
-  void dispose() {
-    context.read<BankProvider>().stopListeningMonthEntries(
-      widget.bank.id,
-      '${widget.year}-${DateTime.now().month.toString().padLeft(2, '0')}',
-    );
-    super.dispose();
-  }
 }
 
 class _MonthStatRow extends StatelessWidget {
@@ -634,10 +575,7 @@ class _MonthStatRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF9AA0A6),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
             ),
           ),
           Text(
@@ -662,10 +600,7 @@ class _TransactionsList extends StatelessWidget {
   final String bankId;
   final String monthId;
 
-  const _TransactionsList({
-    required this.bankId,
-    required this.monthId,
-  });
+  const _TransactionsList({required this.bankId, required this.monthId});
 
   @override
   Widget build(BuildContext context) {
@@ -682,10 +617,7 @@ class _TransactionsList extends StatelessWidget {
             child: const Center(
               child: Text(
                 'No transactions yet',
-                style: TextStyle(
-                  color: Color(0xFF9AA0A6),
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
               ),
             ),
           );

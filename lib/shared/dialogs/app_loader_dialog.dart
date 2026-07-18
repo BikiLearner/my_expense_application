@@ -32,8 +32,11 @@ class AppLoader {
 
   static OverlayEntry? _entry;
   static final ValueNotifier<String?> _messageNotifier = ValueNotifier(null);
+  static final ValueNotifier<bool> _pausedNotifier = ValueNotifier(false);
+  static bool _wasShowingBeforePause = false;
 
   static bool get isShowing => _entry != null;
+  static bool get isPaused => _pausedNotifier.value;
 
   /// Shows the loader as a full-screen overlay above everything.
   static void show(
@@ -50,6 +53,7 @@ class AppLoader {
     _entry = OverlayEntry(
       builder: (_) => _FullScreenLoaderBarrier(
         messageListenable: _messageNotifier,
+        pausedListenable: _pausedNotifier,
         blockInteraction: blockInteraction,
       ),
     );
@@ -62,11 +66,28 @@ class AppLoader {
     _messageNotifier.value = message;
   }
 
+  /// Pauses the loader — hides it and stops blocking interaction
+  /// so other dialogs can open on top. Call [resume] when done.
+  static void pause() {
+    if (_entry == null || _pausedNotifier.value) return;
+    _wasShowingBeforePause = true;
+    _pausedNotifier.value = true;
+  }
+
+  /// Resumes the loader after a [pause].
+  static void resume() {
+    if (!_wasShowingBeforePause) return;
+    _wasShowingBeforePause = false;
+    _pausedNotifier.value = false;
+  }
+
   /// Hides the loader.
   static void hide() {
     _entry?.remove();
     _entry = null;
     _messageNotifier.value = null;
+    _pausedNotifier.value = false;
+    _wasShowingBeforePause = false;
   }
 
   /// Convenience wrapper to auto-show/hide around a Future.
@@ -124,10 +145,12 @@ class BankingLoaderWidget extends StatelessWidget {
 class _FullScreenLoaderBarrier extends StatefulWidget {
   const _FullScreenLoaderBarrier({
     required this.messageListenable,
+    required this.pausedListenable,
     required this.blockInteraction,
   });
 
   final ValueNotifier<String?> messageListenable;
+  final ValueNotifier<bool> pausedListenable;
   final bool blockInteraction;
 
   @override
@@ -150,41 +173,47 @@ class _FullScreenLoaderBarrierState extends State<_FullScreenLoaderBarrier>
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !widget.blockInteraction,
-      child: AnimatedBuilder(
-        animation: _fadeCtrl,
-        builder: (context, child) {
-          return Stack(
-            children: [
-              // Dark blur/tint background
-              Positioned.fill(
-                child: Opacity(
-                  opacity: _fadeCtrl.value,
-                  child: Container(
-                    color: Colors.black.withOpacity(0.65),
-                  ),
-                ),
-              ),
-              // Centered Widget
-              Center(
-                child: Opacity(
-                  opacity: _fadeCtrl.value,
-                  child: Transform.scale(
-                    scale: 0.9 + (0.1 * _fadeCtrl.value),
-                    child: ValueListenableBuilder<String?>(
-                      valueListenable: widget.messageListenable,
-                      builder: (context, msg, _) {
-                        return BankingLoaderWidget(message: msg);
-                      },
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.pausedListenable,
+      builder: (context, paused, _) {
+        if (paused) {
+          return const SizedBox.shrink();
+        }
+        return IgnorePointer(
+          ignoring: !widget.blockInteraction,
+          child: AnimatedBuilder(
+            animation: _fadeCtrl,
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: _fadeCtrl.value,
+                      child: Container(
+                        color: Colors.black.withOpacity(0.65),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+                  Center(
+                    child: Opacity(
+                      opacity: _fadeCtrl.value,
+                      child: Transform.scale(
+                        scale: 0.9 + (0.1 * _fadeCtrl.value),
+                        child: ValueListenableBuilder<String?>(
+                          valueListenable: widget.messageListenable,
+                          builder: (context, msg, _) {
+                            return BankingLoaderWidget(message: msg);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

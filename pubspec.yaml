@@ -58,6 +58,7 @@ dependencies:
   syncfusion_flutter_pdf: ^32.2.3
   file_picker: ^10.3.10
   textify: ^0.5.1
+  get_it:
 
 
 dev_dependencies:

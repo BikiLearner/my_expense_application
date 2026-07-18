@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card_expense_item_model.dart';
 import 'package:expence_app/shared/providers/auto_complete_key_provider.dart';
 import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../../../../shared/enums/expense_type.dart';
@@ -16,9 +15,12 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
 
   CreditCardModel? get selectedCreditCard => _selectedCreditCard;
 
-  final TextEditingController titleController = TextEditingController();
+  @override
+  TextEditingController get titleController => throw UnimplementedError();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+
+
   String get currentBillingCycleId {
     if (_selectedCreditCard == null) {
       throw StateError('No credit card selected');
@@ -27,11 +29,14 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
     return _selectedCreditCard!.billingCycle.currentBillingCycleId;
   }
 
+  @override
+  // The autocomplete key override as implemented AutoCompleteProvider
+  int get autoCompleteKey => throw UnimplementedError();
+
+  //selected type
   ExpenseType _selectedType = ExpenseType.luxury;
   ExpenseType get selectedType => _selectedType;
 
-  int _autoCompleteKey = 0;
-  int get autoCompleteKey => _autoCompleteKey;
 
   DateTime _selectedDate = DateTime.now();
   DateTime get selectedDate => _selectedDate;
@@ -82,6 +87,13 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
     notifyListeners();
   }
 
+  @override
+  void setExpenseType(ExpenseType type) {
+    if (_selectedType == type) return;
+    _selectedType = type;
+    notifyListeners();
+  }
+
   void _subscribeToExpenses() {
     if (_selectedCreditCard == null) {
       _cachedExpenses = [];
@@ -124,8 +136,4 @@ class CreditExpenseProvider extends ChangeNotifier implements AutoCompleteProvid
     super.dispose();
   }
 
-  @override
-  void setExpenseType(ExpenseType type) {
-
-  }
 }

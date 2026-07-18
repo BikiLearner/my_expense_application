@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../../../../core/utils/indian_number_formatter.dart';
 import '../../../../shared/widgets/auto_complete_text_fields.dart';
 import '../../../../shared/widgets/expense_type_selector_generic.dart';
-import '../../../expense/presentation/widgets/expense_type_selector.dart';
 
 import '../../../../shared/widgets/app_text_fields.dart';
 

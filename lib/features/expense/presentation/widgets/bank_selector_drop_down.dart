@@ -13,7 +13,6 @@ class BankSelectorDropdown extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bankProvider = context.read<BankProvider>();
       final expenseProvider = context.read<ExpenseProvider>();
-      context.read<BankProvider>().listenBanks();
       if (bankProvider.banks.isNotEmpty &&
           expenseProvider.selectedTransaction == null) {
         expenseProvider.restoreTransactionTypeFromBanks(
@@ -40,7 +39,7 @@ class BankSelectorDropdown extends StatelessWidget {
       },
       builder: (_, state, __) {
         return DropdownButtonFormField<BankModel>(
-          value: state.selectedBank,
+          initialValue: state.selectedBank,
           isExpanded: true,
           dropdownColor: const Color(0xFF2C2C2C),
 

@@ -1,7 +1,7 @@
-
-
 import 'dart:async';
 
+import 'package:expence_app/core/services/session_maganger.dart';
+import 'package:expence_app/features/bank/domain/repository/bank_repository.dart';
 import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
 import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,20 +12,18 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../shared/dialogs/app_loader_dialog.dart';
-import '../../../../shared/dialogs/category_dialog.dart';
 import '../../../../shared/dialogs/insufficient_balance_dialog.dart';
+import '../../../../shared/enums/expense_type.dart';
 import '../../../../shared/providers/auto_complete_key_provider.dart';
 import '../../../bank/data/model/bank_model.dart';
-
-import '../../../../shared/enums/expense_type.dart';
-import '../../../../shared/models/month_stats.dart';
-import '../../../../shared/models/year_stats.dart';
 import '../../data/model/expense_items.dart';
 import '../../data/model/expense_model.dart';
 import '../../domain/repository/expense_repository.dart';
 
-class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,ExpenseTypeProvider {
+class ExpenseProvider extends ChangeNotifier
+    implements AutoCompleteProvider, ExpenseTypeProvider {
   // 🔹 Controllers
+  @override
   final TextEditingController titleController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -39,10 +37,12 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
 
   ExpenseType _selectedType = ExpenseType.luxury;
 
+  @override
   ExpenseType get selectedType => _selectedType;
 
   int _autoCompleteKey = 0;
 
+  @override
   int get autoCompleteKey => _autoCompleteKey;
 
   String get currentYear => DateFormat('yyyy').format(DateTime.now());
@@ -75,6 +75,7 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
 
   // 🔹 Repository (ONLY this talks to data — no FirebaseFirestore here)
   final ExpenseRepository _repository;
+  final BankRepository _bankRepository;
 
   // 🔧 FIXED: Renamed to currentDateId for clarity
   String get currentDateId => DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -111,8 +112,11 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
 
   bool get isLoading => _isLoading;
 
-  ExpenseProvider({required ExpenseRepository repository})
-      : _repository = repository {
+  ExpenseProvider({
+    required ExpenseRepository repository,
+    required BankRepository bankRepository,
+  }) : _repository = repository,
+       _bankRepository = bankRepository {
     _init();
   }
 
@@ -142,7 +146,7 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
 
     try {
       final bank = banks.firstWhere(
-            (b) => b.id == savedId,
+        (b) => b.id == savedId,
         orElse: () => cashBank,
       );
 
@@ -164,12 +168,11 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
     }
   }
 
-
-
   Future<void> _init() async {
     _initStream();
   }
 
+  @override
   void setExpenseType(ExpenseType type) {
     _selectedType = type;
     notifyListeners();
@@ -192,6 +195,10 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
         .fold(0.0, (s, d) => s + d.total);
   }
 
+  String getMonthId(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  }
+
   Future<bool> validateAndPrepareBankTransaction({
     required BuildContext context,
     required String bankId,
@@ -199,31 +206,21 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
     required double expenseAmount,
     required String bankName,
   }) async {
-    final bankMonthId = DateFormat('yyyy-MM').format(selectedDate);
-
     // 1️⃣ Ensure month exists (returns result)
     final monthReady = await context
         .read<BankProvider>()
-        .ensureBankMonthExistsWithDialog(
-      context: context,
-      bankId: bankId,
-      monthId: bankMonthId,
-    );
+        .ensureBankMonthExistsWithDialog(context: context, bankId: bankId);
 
     if (!monthReady) return false;
-
+    final available = await _bankRepository.getBankMonthBalance(bankId: bankId);
     // 🔧 FIXED: Read from the specific month document instead of the parent bank doc
-    final available = await _repository.getBankMonthBalance(
-      uid: uid,
-      bankId: bankId,
-      monthId: bankMonthId,
-    );
 
     if (available == null) return false;
 
     // 3️⃣ Final balance check
     if (available < expenseAmount) {
       AppLoader.hide();
+      if (!context.mounted) return false;
       await InsufficientBalanceDialog.show(
         context,
         available: available,
@@ -240,7 +237,7 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
   Future<void> addExpense(BuildContext context) async {
     AppLoader.show(context, message: 'Saving expense...');
 
-    final user = FirebaseAuth.instance.currentUser;
+    final user = SessionManager.instance.user;
     if (user == null) {
       AppLoader.hide();
       return;
@@ -255,11 +252,12 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
     if (title.isEmpty || amount == null || amount <= 0) {
       AppLoader.hide();
       return;
-
     }
 
-    // 🔒 HARD BANK VALIDATION (UX pre-check; authoritative check happens
-    // again inside the repository's transaction)
+    if (!isCurrentMonth) {
+      setTransactionType(cashBank);
+    }
+
     if (!isCashTransaction) {
       final canProceed = await validateAndPrepareBankTransaction(
         context: context,
@@ -296,20 +294,15 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
 
       clearForm();
 
-      AppLoader.hide();
-
       if (kDebugMode) {
         print("⚡ Expense added instantly for $currentDateId");
       }
     } catch (e) {
-      AppLoader.hide();
       debugPrint("❌ Add expense failed: $e");
+    } finally {
+      AppLoader.hide();
     }
   }
-
-
-
-
 
   Future<void> editExpense({
     required BuildContext context,
@@ -392,40 +385,31 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
         .watchExpenses(uid: uid, dateId: currentDateId)
         .listen(
           (items) {
-        _cachedExpenses = items;
+            _cachedExpenses = items;
 
-        _isLoading = false;
+            _isLoading = false;
 
-        if (kDebugMode) {
-          print(
-            "✅ Loaded ${_cachedExpenses.length} expenses for $currentDateId",
-          );
-        }
+            if (kDebugMode) {
+              print(
+                "✅ Loaded ${_cachedExpenses.length} expenses for $currentDateId",
+              );
+            }
 
-        notifyListeners();
-      },
-      onError: (error) {
-        if (kDebugMode) {
-          print("❌ Stream error: $error");
-        }
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+            notifyListeners();
+          },
+          onError: (error) {
+            if (kDebugMode) {
+              print("❌ Stream error: $error");
+            }
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   // Calculate total from cached data
   double get totalExpense {
     return _cachedExpenses.fold(0.0, (sum, item) => sum + item.amount);
-  }
-
-  // Get expense by ID from cache
-  ExpenseItem? getExpenseById(String id) {
-    try {
-      return _cachedExpenses.firstWhere((item) => item.id == id);
-    } catch (e) {
-      return null;
-    }
   }
 
   // Manually refresh (for edge cases)
@@ -461,80 +445,7 @@ class ExpenseProvider extends ChangeNotifier implements AutoCompleteProvider,Exp
   }
 
   Future<List<ExpenseDay>> getAllExpenseDays() async {
-    return _repository.getAllExpenseDays(uid: uid);
-  }
-
-  Map<String, List<ExpenseDay>> groupByMonthAllYears(List<ExpenseDay> days) {
-    final Map<String, List<ExpenseDay>> map = {};
-
-    for (final d in days) {
-      final monthKey = d.dateId.substring(0, 7); // yyyy-MM
-      map.putIfAbsent(monthKey, () => []).add(d);
-    }
-
-    return map;
-  }
-
-  Future<Map<String, List<ExpenseItem>>> fetchMonthExpenses(
-      String monthKey,
-      // yyyy-MM format (e.g., '2025-01')
-      ) async {
-    final grouped = await _repository.getMonthExpenses(
-      uid: uid,
-      monthKey: monthKey,
-    );
-
-    if (kDebugMode) {
-      print("📊 Fetched expenses for $monthKey: ${grouped.length} dates");
-    }
-
-    return grouped;
-  }
-
-  Future<YearStats?> getYearStats() async {
-    return _repository.getYearStats(uid: uid, year: selectedYear);
-  }
-
-  Future<List<MonthStats>> getMonthStatsForSelectedYear() async {
-    return _repository.getMonthStatsForYear(uid: uid, year: selectedYear);
-  }
-
-  Future<MonthStats?> getMonthStatsByMonth(String month) async {
-    return _repository.getMonthStatsByMonth(
-      uid: uid,
-      year: selectedYear,
-      month: month,
-    );
-  }
-
-  Future<double> getTotalForDate(String dateId) async {
-    final total = await _repository.getTotalForDate(uid: uid, dateId: dateId);
-
-    if (kDebugMode) {
-      print("💰 Total for $dateId: $total");
-    }
-
-    return total;
-  }
-
-  Map<String, List<String>> groupDatesByMonth(List<String> dates) {
-    final Map<String, List<String>> grouped = {};
-
-    for (final date in dates) {
-      final monthKey = date.substring(0, 7);
-      grouped.putIfAbsent(monthKey, () => []).add(date);
-    }
-
-    return grouped;
-  }
-
-  Future<Map<String, List<ExpenseDay>>> getExpensesGroupedByMonthForType(
-      ExpenseType type,
-      ) async {
-    return _repository.getExpensesGroupedByMonthForType(
-      uid: uid,
-      expenseTypeName: type.name,
-    );
+    return _repository.getAllExpenseForEveryMonth(uid: uid);
   }
 
   @override

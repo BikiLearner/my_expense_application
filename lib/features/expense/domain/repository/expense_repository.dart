@@ -53,7 +53,8 @@ abstract class ExpenseRepository {
     required String dateId,
   });
 
-  Future<List<ExpenseDay>> getAllExpenseDays({required String uid});
+  //Expense of everything in single list in the history screen
+  Future<List<ExpenseDay>> getAllExpenseForEveryMonth({required String uid});
 
   Future<Map<String, List<ExpenseItem>>> getMonthExpenses({
     required String uid,
@@ -63,14 +64,6 @@ abstract class ExpenseRepository {
   Future<double> getTotalForDate({required String uid, required String dateId});
 
 
-
-  /// Balance of a bank's month document, or `null` if it doesn't exist.
-  /// Used for the Provider's pre-flight balance check.
-  Future<double?> getBankMonthBalance({
-    required String uid,
-    required String bankId,
-    required String monthId,
-  });
 
   // Extended (see note in ExpenseFirestoreDatasource):
   Future<YearStats?> getYearStats({required String uid, required String year});

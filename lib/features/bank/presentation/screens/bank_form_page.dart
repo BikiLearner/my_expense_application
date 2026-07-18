@@ -52,7 +52,7 @@ class _BankFormPageState extends State<BankFormPage> {
         final cleanAmount = _amountController.text.replaceAll(',', '');
         await provider.addBank(
           bankName: _bankNameController.text.trim(),
-          amount: double.parse(cleanAmount),
+          amount: double.parse(cleanAmount), context: context,
         );
       } else {
         await provider.updateBank(

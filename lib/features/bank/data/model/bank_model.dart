@@ -28,6 +28,7 @@ class BankModel {
   String toString() {
     return 'BankModel{id: $id, bankName: $bankName, addedDate: $addedDate}';
   }
+
 }
 
 

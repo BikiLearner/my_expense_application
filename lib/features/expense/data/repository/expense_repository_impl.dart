@@ -97,8 +97,8 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
-  Future<List<ExpenseDay>> getAllExpenseDays({required String uid}) {
-    return _datasource.getAllExpenseDays(uid: uid);
+  Future<List<ExpenseDay>> getAllExpenseForEveryMonth({required String uid}) {
+    return _datasource.getAllExpenseForEveryMonth(uid: uid);
   }
 
   @override
@@ -119,18 +119,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
 
 
-  @override
-  Future<double?> getBankMonthBalance({
-    required String uid,
-    required String bankId,
-    required String monthId,
-  }) {
-    return _datasource.getBankMonthBalance(
-      uid: uid,
-      bankId: bankId,
-      monthId: monthId,
-    );
-  }
+
 
   @override
   Future<YearStats?> getYearStats({

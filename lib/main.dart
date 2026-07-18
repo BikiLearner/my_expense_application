@@ -11,6 +11,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
+import 'core/services/service_loader_getIt.dart';
 import 'core/services/session_maganger.dart';
 import 'features/expense/data/datasource/expense_firestore_datasource.dart';
 import 'features/expense/data/repository/expense_repository_impl.dart';
@@ -35,6 +36,10 @@ void main() async
       isInDebugMode: true, // set false in release
     );
   }
+
+
+  ServiceLocator.init();
+
   runApp(const MyApp());
 }
 
@@ -47,29 +52,15 @@ class MyApp extends StatelessWidget
   {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(
-          create: (_) => ExpenseProvider(
-            repository: ExpenseRepositoryImpl(
-              datasource: ExpenseFirestoreDatasource(),
-            ),
-          ),
-        ),
-
-        ChangeNotifierProvider(
-          create: (_) => CategoryProvider(
-            repository: CategoryRepoImpl(
-              datasource: CategoryDateSource(),
-            ),
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => ExportProvider()),
-
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => MonthExpensesProvider()),
-        ChangeNotifierProvider(create: (_) => AllExpensesProvider()),
-        ChangeNotifierProvider(create: (_) => BankProvider()),
-        ChangeNotifierProvider(create: (_) => YearStatsProvider()),
+        ChangeNotifierProvider(create: (_) => sl<AuthProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<ExpenseProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<CategoryProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<ExportProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<SettingsProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<MonthExpensesProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<AllExpensesProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<BankProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<YearStatsProvider>()),
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,
