@@ -4,6 +4,7 @@ import 'package:expence_app/features/creditCardManagement/data/model/credit_card
 import 'package:flutter/cupertino.dart';
 
 import '../../../../core/services/session_maganger.dart';
+import '../model/billing_cycle_model.dart';
 import '../model/credit_card_expense_item_model.dart';
 
 class CreditFirestoreDatasource {
@@ -23,79 +24,81 @@ class CreditFirestoreDatasource {
     String? creditCardId,
   }) => userReference.collection(CollectionName.creditCards).doc(creditCardId);
 
-  // CollectionReference<Map<String, dynamic>> _monthAmount({
-  //   required DocumentReference bankRef,
-  // }) {
-  //   return bankRef.collection(CollectionName.monthAmount);
-  // }
-  //
-  // DocumentReference<Map<String, dynamic>> _monthAmountdocRef({
-  //   required String monthId,
-  //   required DocumentReference bankRef,
-  // }) {
-  //   return _monthAmount(bankRef: bankRef).doc(monthId);
-  // }
+  DocumentReference<Map<String, dynamic>> _billingCycleRef({
+    String? creditCardId,
+    String? billingCycleId,
+  }) => userReference
+      .collection(CollectionName.creditCards)
+      .doc(creditCardId)
+      .collection(CollectionName.billingCycle)
+      .doc(billingCycleId);
 
   Future<void> addCreditExpense({
+    required CreditCardModel card,
     required String title,
     required double amount,
     required String description,
     required String expenseTypeName,
-    required String creditCardId,
     required DateTime purchaseDate,
-    required String billingCycleId,
   }) async {
-    final userRef = SessionManager.instance.userRef;
-
-    final cardRef = userRef
-        .collection(CollectionName.credit)
-        .doc(CollectionName.credit)
-        .collection(CollectionName.creditCards)
-        .doc(creditCardId);
-
-    final billingCycleRef = cardRef
-        .collection(CollectionName.billingCycle)
-        .doc(billingCycleId);
-
-    final expenseRef = billingCycleRef
-        .collection(CollectionName.creditExpenses)
-        .doc();
+    final cardRef = _creditCardRef(creditCardId: card.creditCardId);
 
     await _firestore.runTransaction((transaction) async {
       final cardSnapshot = await transaction.get(cardRef);
-
       if (!cardSnapshot.exists) {
         throw Exception('Credit card not found.');
       }
+      final cardData = CreditCardModel.fromFirestore(
+        cardSnapshot.id,
+        cardSnapshot.data()!,
+      );
+      final creditLimit = cardData.creditLimit;
 
-      final billingCycleSnapshot = await transaction.get(billingCycleRef);
+      final billingCycle = BillingCycleModel.calculate(
+        statementDay: card.statementDay,
+        expenseDate: purchaseDate,
+      );
 
-      if (!billingCycleSnapshot.exists) {
-        throw Exception('Billing cycle not found.');
+      final billingCycleRef = _billingCycleRef(
+        creditCardId: card.creditCardId,
+        billingCycleId: billingCycle.billingCycleId,
+      );
+
+      final billingSnapshot = await transaction.get(billingCycleRef);
+      double currentUsed = 0;
+
+      if (billingSnapshot.exists) {
+        final existingCycle = BillingCycleModel.fromFirestore(
+          billingSnapshot.id,
+          billingSnapshot.data()!,
+        );
+
+        currentUsed = existingCycle.totalAmount;
+      } else {
+        transaction.set(billingCycleRef, billingCycle.toFirestore());
+        if (cardData.currentBillingCycleId != billingCycle.billingCycleId) {
+          transaction.update(cardRef, {
+            'currentBillingCycleId': billingCycle.billingCycleId,
+          });
+        }
       }
-
-      final cardData = cardSnapshot.data()!;
-
-      final creditLimit = (cardData['creditLimit'] as num?)?.toDouble() ?? 0.0;
-
-      final currentUsed = (cardData['currentUsed'] as num?)?.toDouble() ?? 0.0;
 
       if (currentUsed + amount > creditLimit) {
         throw Exception('Credit limit exceeded.');
       }
 
+      final expenseRef = billingCycleRef
+          .collection(CollectionName.creditExpenses)
+          .doc();
+
       transaction.set(expenseRef, {
+        'id':expenseRef.id,
         'title': title,
         'amount': amount,
         'type': expenseTypeName,
         'description': description,
         'purchaseDate': Timestamp.fromDate(purchaseDate),
-        'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      transaction.update(cardRef, {
-        'currentUsed': FieldValue.increment(amount),
       });
 
       transaction.update(billingCycleRef, {
@@ -103,18 +106,34 @@ class CreditFirestoreDatasource {
       });
     });
   }
-
-  // Future<void> editCreditExpense();
-  //
-  // Future<void> deleteCreditExpense();
-  //
   Stream<List<CreditExpenseItem>> watchCreditExpenses({
+    required String creditCardId,
+    required String billingCycleId,
+  }) {
+    return _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    )
+        .collection(CollectionName.creditExpenses)
+        .orderBy('purchaseDate', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+          .map(
+            (doc) => CreditExpenseItem.fromFirestore(
+          doc.id,
+          doc.data(),
+        ),
+      )
+          .toList(),
+    );
+  }
+
+  Stream<List<CreditExpenseItem>> watchCreditExpensesByDate({
     required String creditCardId,
     required String billingCycleId,
     required DateTime selectedDate,
   }) {
-    final userRef = SessionManager.instance.userRef;
-
     final startOfDay = DateTime(
       selectedDate.year,
       selectedDate.month,
@@ -123,28 +142,146 @@ class CreditFirestoreDatasource {
 
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    return userRef
-        .collection(CollectionName.credit)
-        .doc(CollectionName.credit)
-        .collection(CollectionName.creditCards)
-        .doc(creditCardId)
-        .collection(CollectionName.billingCycle)
-        .doc(billingCycleId)
+    return _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    )
         .collection(CollectionName.creditExpenses)
         .where(
-          'purchaseDate',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-        )
-        .where('purchaseDate', isLessThan: Timestamp.fromDate(endOfDay))
+      'purchaseDate',
+      isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+    )
+        .where(
+      'purchaseDate',
+      isLessThan: Timestamp.fromDate(endOfDay),
+    )
         .orderBy('purchaseDate', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-              .map((doc) => CreditExpenseItem.fromFirestore(doc.id, doc.data()))
-              .toList(),
-        );
+          .map(
+            (doc) => CreditExpenseItem.fromFirestore(
+          doc.id,
+          doc.data(),
+        ),
+      )
+          .toList(),
+    );
   }
+  Future<void> editCreditExpense({
+    required String creditCardId,
+    required String billingCycleId,
+    required String expenseId,
+    required String title,
+    required double amount,
+    required String description,
+    required String expenseTypeName,
+    required DateTime purchaseDate,
+  }) async {
+    final cardRef = _creditCardRef(creditCardId: creditCardId);
 
+    final billingCycleRef = _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    );
+
+    final expenseRef = billingCycleRef
+        .collection(CollectionName.creditExpenses)
+        .doc(expenseId);
+
+    await _firestore.runTransaction((transaction) async {
+      final cardSnapshot = await transaction.get(cardRef);
+      if (!cardSnapshot.exists) {
+        throw Exception('Credit card not found.');
+      }
+
+      final card = CreditCardModel.fromFirestore(
+        cardSnapshot.id,
+        cardSnapshot.data()!,
+      );
+
+      final expenseSnapshot = await transaction.get(expenseRef);
+      if (!expenseSnapshot.exists) {
+        throw Exception('Expense not found.');
+      }
+
+      final oldExpense = CreditExpenseItem.fromFirestore(
+        expenseSnapshot.id,
+        expenseSnapshot.data()!,
+      );
+
+      final difference = amount - oldExpense.amount;
+
+      final billingSnapshot = await transaction.get(billingCycleRef);
+      if (!billingSnapshot.exists) {
+        throw Exception('Billing cycle not found.');
+      }
+
+      final billingCycle = BillingCycleModel.fromFirestore(
+        billingSnapshot.id,
+        billingSnapshot.data()!,
+      );
+
+      final newTotal = billingCycle.totalAmount + difference;
+
+      if (newTotal > card.creditLimit) {
+        throw Exception('Credit limit exceeded.');
+      }
+
+      transaction.update(expenseRef, {
+        'title': title,
+        'amount': amount,
+        'type': expenseTypeName,
+        'description': description,
+        'purchaseDate': Timestamp.fromDate(purchaseDate),
+      });
+
+      if (difference != 0) {
+        transaction.update(billingCycleRef, {
+          'totalAmount': FieldValue.increment(difference),
+        });
+      }
+    });
+  }
+  Future<void> deleteCreditExpense({
+    required String creditCardId,
+    required String billingCycleId,
+    required String expenseId,
+  }) async {
+    final billingCycleRef = _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    );
+
+    final expenseRef = billingCycleRef
+        .collection(CollectionName.creditExpenses)
+        .doc(expenseId);
+
+    await _firestore.runTransaction((transaction) async {
+      final expenseSnapshot = await transaction.get(expenseRef);
+
+      if (!expenseSnapshot.exists) {
+        throw Exception('Expense not found.');
+      }
+
+      final expense = CreditExpenseItem.fromFirestore(
+        expenseSnapshot.id,
+        expenseSnapshot.data()!,
+      );
+
+      final billingSnapshot = await transaction.get(billingCycleRef);
+
+      if (!billingSnapshot.exists) {
+        throw Exception('Billing cycle not found.');
+      }
+
+      transaction.update(billingCycleRef, {
+        'totalAmount': FieldValue.increment(-expense.amount),
+      });
+
+      transaction.delete(expenseRef);
+    });
+  }
   Future<void> createCreditCard({
     required String cardName,
     required String bankName,
@@ -199,8 +336,61 @@ class CreditFirestoreDatasource {
     throw UnimplementedError();
   }
 
-  //
-  // Future<List<CreditExpenseItem>> getExpensesByBillingCycle();
-  //
-  // Future<List<CreditExpenseItem>> getExpensesByCard();
+  Future<BillingCycleModel> createBillingCycleIfNeeded(
+    CreditCardModel card,
+    DateTime expenseDate,
+  ) async {
+    final billingCycle = BillingCycleModel.calculate(
+      statementDay: card.statementDay,
+      expenseDate: expenseDate,
+    );
+
+    final billingCycleRef = _billingCycleRef(
+      creditCardId: card.creditCardId,
+      billingCycleId: billingCycle.billingCycleId,
+    );
+
+    final snapshot = await billingCycleRef.get();
+
+    // Billing cycle already exists
+    if (snapshot.exists) {
+      // Ensure the card points to the current billing cycle
+      if (card.currentBillingCycleId != billingCycle.billingCycleId) {
+        await _creditCardRef(
+          creditCardId: card.creditCardId,
+        ).update({'currentBillingCycleId': billingCycle.billingCycleId});
+      }
+
+      return BillingCycleModel.fromFirestore(snapshot.id, snapshot.data()!);
+    }
+
+    // Create the billing cycle and update the card atomically
+    final batch = _firestore.batch();
+
+    batch.set(billingCycleRef, billingCycle.toFirestore());
+
+    batch.update(_creditCardRef(creditCardId: card.creditCardId), {
+      'currentBillingCycleId': billingCycle.billingCycleId,
+    });
+
+    await batch.commit();
+
+    return billingCycle;
+  }
+
+  Stream<BillingCycleModel?> watchBillingCycle({
+    required String creditCardId,
+    required String billingCycleId,
+  }) {
+    return _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    ).snapshots().map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        return null;
+      }
+
+      return BillingCycleModel.fromFirestore(snapshot.id, snapshot.data()!);
+    });
+  }
 }

@@ -1,15 +1,14 @@
 import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
-import 'package:expence_app/features/expense/presentation/widgets/bank_selector_drop_down.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/theme/app_color.dart';
 import '../../../../core/utils/indian_number_formatter.dart';
+import '../../../../shared/widgets/app_text_fields.dart';
 import '../../../../shared/widgets/auto_complete_text_fields.dart';
 import '../../../../shared/widgets/expense_type_selector_generic.dart';
-
-import '../../../../shared/widgets/app_text_fields.dart';
-
+import 'credit_card_selector_drop_down.dart';
 
 class AddCreditExpenseForm extends StatelessWidget {
   final bool isDesktop;
@@ -21,7 +20,7 @@ class AddCreditExpenseForm extends StatelessWidget {
     final provider = context.read<CreditExpenseProvider>();
 
     return Container(
-      color: isDesktop ? const Color(0xFF1E1E1E) : const Color(0xFF1A1A1A),
+      color: isDesktop ? AppColor.creditSurface : AppColor.creditDark,
       padding: EdgeInsets.all(isDesktop ? 24 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,15 +29,15 @@ class AddCreditExpenseForm extends StatelessWidget {
             const Text(
               'Add New Expense',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColor.textPrimary,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Fill in the details below',
-              style: TextStyle(color: Colors.grey[500]),
+              style: TextStyle(color: AppColor.textSecondary),
             ),
             const SizedBox(height: 24),
           ],
@@ -52,9 +51,7 @@ class AddCreditExpenseForm extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      TitleAutoCompleteField(
-                        provider: provider,
-                      ),
+                      TitleAutoCompleteField(provider: provider),
                       const SizedBox(height: 8),
 
                       /// 💰 AMOUNT FIELD (INDIAN FORMAT – VISUAL ONLY)
@@ -78,7 +75,7 @@ class AddCreditExpenseForm extends StatelessWidget {
                         icon: Icons.notes,
                       ),
                       const SizedBox(height: 8),
-                      const BankSelectorDropdown(),
+                      const CreditCardSelectorDropDown(),
                     ],
                   ),
                 ),
@@ -86,7 +83,7 @@ class AddCreditExpenseForm extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 /// RIGHT SIDE
-                 ExpenseTypeSelector(provider: provider,),
+                ExpenseTypeSelector(provider: provider),
               ],
             ),
           ),
@@ -99,11 +96,11 @@ class AddCreditExpenseForm extends StatelessWidget {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                // provider.addExpense(context);
+                provider.addCreditExpense(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF64FFDA),
-                foregroundColor: const Color(0xFF121212),
+                backgroundColor: AppColor.creditAccent,
+                foregroundColor: AppColor.creditDark,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -121,7 +118,7 @@ class AddCreditExpenseForm extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
         ],
       ),
     );

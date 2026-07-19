@@ -1,3 +1,4 @@
+import 'package:expence_app/features/creditCardManagement/presentation/screens/credit_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -49,7 +50,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // User is logged in - show expense screen
-        return const ExpenseScreen();
+        return const CreditExpenseScreen();
       },
     );
   }
