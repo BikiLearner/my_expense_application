@@ -1,15 +1,12 @@
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card_expense_item_model.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/widgets/credit_expense_item_tile.dart';
 import 'package:expence_app/features/expense/presentation/screens/expense_particular_day_overView.dart';
-import 'package:expence_app/features/expense/presentation/widgets/add_expense_form.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_color.dart';
-import '../../../expense/data/model/expense_items.dart';
-import '../../../expense/presentation/provider/expence_provider.dart';
-import '../../../expense/presentation/widgets/expense_tiles_new.dart';
+import '../../../../shared/providers/home_navigation_provider.dart';
 import '../../../history/presentation/screens/history_screen.dart';
 import '../provider/credit_expense_provider.dart';
 import '../widgets/add_credit_expense_form.dart';
@@ -20,7 +17,7 @@ class CreditExpenseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedDate = context.select<CreditExpenseProvider, DateTime>(
-          (p) => p.selectedDate,
+      (p) => p.selectedDate,
     );
 
     // Responsive breakpoints
@@ -34,7 +31,12 @@ class CreditExpenseScreen extends StatelessWidget {
         elevation: 0,
         title: Row(
           children: [
-            const Icon(Icons.payment_rounded, color: AppColor.creditAccent),
+            InkWell(
+              onTap: () {
+                context.read<HomeNavigationProvider>().switchToScreen(0);
+              },
+              child: Icon(Icons.payment_rounded, color: AppColor.creditAccent),
+            ),
             const SizedBox(width: 12),
             Text(
               DateFormat('dd MMM yyyy').format(selectedDate),
@@ -49,7 +51,7 @@ class CreditExpenseScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(
-              Icons.credit_card_rounded,
+              Icons.history_edu,
               color: AppColor.creditAccent,
             ),
             tooltip: 'Credit History',
@@ -57,9 +59,7 @@ class CreditExpenseScreen extends StatelessWidget {
               if (context.mounted) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const HistoryScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const HistoryScreen()),
                 );
               }
             },
@@ -187,7 +187,7 @@ class CreditExpenseScreen extends StatelessWidget {
                         gradient: const LinearGradient(
                           colors: [
                             AppColor.creditGradientStart,
-                            AppColor.creditGradientEnd
+                            AppColor.creditGradientEnd,
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -230,7 +230,7 @@ class CreditExpenseScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                  const ExpensesOverviewPageParticularDay(),
+                                      const ExpensesOverviewPageParticularDay(),
                                 ),
                               );
                             },

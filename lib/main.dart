@@ -7,6 +7,7 @@ import 'package:expence_app/shared/backend_parts/datasources/category_datesource
 import 'package:expence_app/shared/backend_parts/repo/category_repo.dart';
 import 'package:expence_app/shared/backend_parts/repoImpl/category_repo_impl.dart';
 import 'package:expence_app/shared/providers/category_provider.dart';
+import 'package:expence_app/shared/providers/home_navigation_provider.dart';
 import 'package:expence_app/shared/providers/year_stat_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -63,6 +64,8 @@ class MyApp extends StatelessWidget
         ChangeNotifierProvider(create: (_) => sl<BankProvider>()),
         ChangeNotifierProvider(create: (_) => sl<YearStatsProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CreditExpenseProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<HomeNavigationProvider>()),
+
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,

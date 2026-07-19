@@ -5,6 +5,7 @@ import 'package:expence_app/features/creditCardManagement/data/datasource/credit
 import 'package:expence_app/features/creditCardManagement/data/repository/credit_repo_impl.dart';
 import 'package:expence_app/features/creditCardManagement/domain/repository/credit_repo.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
+import 'package:expence_app/shared/providers/home_navigation_provider.dart';
 import 'package:get_it/get_it.dart';
 
 // Imports from your project
@@ -80,5 +81,6 @@ class ServiceLocator {
     sl.registerFactory(() => BankProvider(repository: sl()));
     sl.registerFactory(() => CreditExpenseProvider(repository: sl()));
     sl.registerFactory(() => YearStatsProvider());
+    sl.registerFactory(() => HomeNavigationProvider());
   }
 }

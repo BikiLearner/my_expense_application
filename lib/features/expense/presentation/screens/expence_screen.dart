@@ -1,12 +1,13 @@
-import 'package:expence_app/features/expense/presentation/widgets/add_expense_form.dart';
 import 'package:expence_app/features/expense/presentation/screens/expense_particular_day_overView.dart';
+import 'package:expence_app/features/expense/presentation/widgets/add_expense_form.dart';
 import 'package:expence_app/shared/providers/category_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../history/presentation/screens/history_screen.dart';
 import '../../../../core/services/audio_player.dart';
+import '../../../../shared/providers/home_navigation_provider.dart';
+import '../../../history/presentation/screens/history_screen.dart';
 import '../../data/model/expense_items.dart';
 import '../provider/expence_provider.dart';
 import '../widgets/expense_tiles_new.dart';
@@ -31,7 +32,17 @@ class ExpenseScreen extends StatelessWidget {
         elevation: 0,
         title: Row(
           children: [
-            const Icon(Icons.account_balance_wallet, color: Color(0xFF64FFDA)),
+            InkWell(
+              onTap: () {
+                context.read<HomeNavigationProvider>().switchToScreen(
+                  1,
+                ); // jump to Credit Cards
+              },
+              child: const Icon(
+                Icons.account_balance_wallet,
+                color: Color(0xFF64FFDA),
+              ),
+            ),
             const SizedBox(width: 12),
             Text(
               DateFormat('dd MMM yyyy').format(selectedDate),
