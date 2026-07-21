@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../enums/expense_type.dart';
-import '../providers/expense_type_selector_provider.dart';
 
 class TypeButton extends StatelessWidget {
-  final ExpenseTypeProvider provider;
   final ExpenseType type;
   final bool selected;
+  final VoidCallback onTap;
 
   const TypeButton({
     super.key,
-    required this.provider,
     required this.type,
     required this.selected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => provider.setExpenseType(type),
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: selected
-              ? type.color.withOpacity(0.2)
+              ? type.color.withValues(alpha: 0.2)
               : const Color(0xFF2C2C2C),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -33,6 +32,7 @@ class TypeButton extends StatelessWidget {
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               type.icon,

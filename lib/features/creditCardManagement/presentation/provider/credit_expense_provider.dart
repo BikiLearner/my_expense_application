@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card_expense_item_model.dart';
-import 'package:expence_app/shared/providers/auto_complete_key_provider.dart';
 import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -13,8 +12,7 @@ import '../../../../shared/enums/expense_type.dart';
 import '../../data/model/credit_card.dart';
 import '../../domain/repository/credit_repo.dart';
 
-class CreditExpenseProvider extends ChangeNotifier
-    implements AutoCompleteProvider, ExpenseTypeProvider {
+class CreditExpenseProvider extends ChangeNotifier {
   List<CreditCardModel> _creditCards = [];
 
   List<CreditCardModel> get creditCards => _creditCards;
@@ -46,21 +44,16 @@ class CreditExpenseProvider extends ChangeNotifier
     return !day.isBefore(cycle.startDate) && !day.isAfter(cycle.endDate);
   }
 
-  @override
-  final TextEditingController titleController = TextEditingController();
+  String _title = "";
+  String get title => _title;
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
-  int _autoCompleteKey = 0;
 
-  @override
-  // The autocomplete key override as implemented AutoCompleteProvider
-  int get autoCompleteKey => _autoCompleteKey;
 
   //selected type
   ExpenseType _selectedType = ExpenseType.luxury;
 
-  @override
   ExpenseType get selectedType => _selectedType;
 
   DateTime _selectedDate = DateTime.now();
@@ -88,8 +81,6 @@ class CreditExpenseProvider extends ChangeNotifier
     _init();
   }
 
-
-
   void setLoading() {
     _isLoading = !_isLoading;
     notifyListeners();
@@ -103,12 +94,18 @@ class CreditExpenseProvider extends ChangeNotifier
 
     notifyListeners();
   }
-
+  /// Amount already used on this card in its current billing cycle.
+  double usedAmountForCard(String creditCardId) {
+    return _currentBillingCyclePerCreditCard[creditCardId]?.totalAmount ?? 0;
+  }
   void setSelectedDate(DateTime picked) {
     _selectedDate = picked;
     notifyListeners();
   }
-
+  void setTitle(String value) {
+    _title = value;
+    notifyListeners();
+  }
   Future<void> addCreditExpense(BuildContext context) async {
     debugPrint("Started expense process");
     AppLoader.show(context, message: 'Saving expense...');
@@ -120,7 +117,7 @@ class CreditExpenseProvider extends ChangeNotifier
     }
 
     debugPrint("Started expense process 2");
-    final title = titleController.text.trim();
+    final title = _title.trim();
     final amount = double.tryParse(
       amountController.text.replaceAll(',', '').trim(),
     );
@@ -168,10 +165,9 @@ class CreditExpenseProvider extends ChangeNotifier
   }
 
   void clearForm() {
-    titleController.clear();
+    _title="";
     amountController.clear();
     descriptionController.clear();
-    _autoCompleteKey++; // Force rebuild
     _selectedType = ExpenseType.luxury; // Reset to default
     notifyListeners();
   }
@@ -241,7 +237,8 @@ class CreditExpenseProvider extends ChangeNotifier
     _expenseSubscription = _repository
         .watchCreditExpensesByDate(
           creditCardId: card.creditCardId,
-          billingCycleId: billingCycle.billingCycleId, selectedDate: selectedDate,
+          billingCycleId: billingCycle.billingCycleId,
+          selectedDate: selectedDate,
         )
         .listen(
           (expenses) {
@@ -293,7 +290,6 @@ class CreditExpenseProvider extends ChangeNotifier
     }
   }
 
-
   Future<void> editExpense({
     required BuildContext context,
     required String docId,
@@ -301,7 +297,7 @@ class CreditExpenseProvider extends ChangeNotifier
     AppLoader.show(context, message: 'Updating expense...');
 
     try {
-      final title = titleController.text.trim();
+      final title = _title.trim();
       final amount = double.tryParse(
         amountController.text.replaceAll(',', '').trim(),
       );
@@ -382,7 +378,6 @@ class CreditExpenseProvider extends ChangeNotifier
     await fetchCreditCards();
   }
 
-  @override
   void setExpenseType(ExpenseType type) {
     if (_selectedType == type) return;
     _selectedType = type;
@@ -391,7 +386,6 @@ class CreditExpenseProvider extends ChangeNotifier
 
   @override
   void dispose() {
-    titleController.dispose();
     amountController.dispose();
     descriptionController.dispose();
     _expenseSubscription?.cancel();

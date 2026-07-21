@@ -1,135 +1,208 @@
-import 'package:expence_app/shared/providers/category_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/auto_complete_key_provider.dart';
+import '../providers/category_provider.dart';
 
-class TitleAutoCompleteField extends StatelessWidget {
-  final AutoCompleteProvider provider;
-
+class TitleAutoCompleteField extends StatefulWidget {
   const TitleAutoCompleteField({
     super.key,
-    required this.provider,
+    this.initialValue = '',
+    this.focusNode,
+    this.onChanged,
+    this.onSelected,
+    this.decoration,
+    this.textStyle,
+    this.dropdownColor = const Color(0xFF2C2C2C),
+    this.suggestionTextStyle = const TextStyle(color: Colors.white),
+    this.maxHeight = 200,
+    this.maxWidth = 350,
+    this.borderRadius = 12,
+    this.elevation = 8,
+    this.caseSensitive = false,
+    this.autofocus = false,
   });
+
+  final String initialValue;
+
+  final FocusNode? focusNode;
+
+  final ValueChanged<String>? onChanged;
+
+  final ValueChanged<String>? onSelected;
+
+  final InputDecoration? decoration;
+
+  final TextStyle? textStyle;
+
+  final TextStyle suggestionTextStyle;
+
+  final Color dropdownColor;
+
+  final double maxHeight;
+
+  final double maxWidth;
+
+  final double borderRadius;
+
+  final double elevation;
+
+  final bool caseSensitive;
+
+  final bool autofocus;
+
+  @override
+  State<TitleAutoCompleteField> createState() =>
+      _TitleAutoCompleteFieldState();
+}
+
+class _TitleAutoCompleteFieldState extends State<TitleAutoCompleteField> {
+  late final TextEditingController _controller;
+
+  late final FocusNode _focusNode;
+
+  bool _ownsFocusNode = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = TextEditingController(
+      text: widget.initialValue,
+    );
+
+    if (widget.focusNode != null) {
+      _focusNode = widget.focusNode!;
+    } else {
+      _focusNode = FocusNode();
+      _ownsFocusNode = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TitleAutoCompleteField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.initialValue != widget.initialValue &&
+        widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+
+    if (_ownsFocusNode) {
+      _focusNode.dispose();
+    }
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: provider,
-      builder: (context, _) {
-        return Selector<CategoryProvider, List<String>>(
-          selector: (_, p) => p.categories,
-          builder: (context, cachedCategories, __) {
-            return Autocomplete<String>(
-              key: ValueKey(provider.autoCompleteKey),
-              initialValue: TextEditingValue(
-                text: provider.titleController.text,
+    return Selector<CategoryProvider, List<String>>(
+      selector: (_, provider) => provider.categories,
+      builder: (context, categories, _) {
+        return RawAutocomplete<String>(
+          textEditingController: _controller,
+          focusNode: _focusNode,
+
+          optionsBuilder: (value) {
+            final text = value.text.trim();
+
+            if (text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
+
+            final query = widget.caseSensitive
+                ? text
+                : text.toLowerCase();
+
+            return categories.where((category) {
+              final source = widget.caseSensitive
+                  ? category
+                  : category.toLowerCase();
+
+              return source.contains(query);
+            });
+          },
+
+          onSelected: (value) {
+            _controller.text = value;
+
+            _controller.selection = TextSelection.collapsed(
+              offset: value.length,
+            );
+
+            widget.onSelected?.call(value);
+
+            _focusNode.unfocus();
+          },
+
+          fieldViewBuilder: (
+              context,
+              controller,
+              focusNode,
+              onFieldSubmitted,
+              ) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              autofocus: widget.autofocus,
+              style: widget.textStyle,
+              decoration: widget.decoration,
+              onChanged: widget.onChanged,
+            );
+          },
+
+          optionsViewBuilder: (
+              context,
+              onSelected,
+              options,
+              ) {
+            final list = options.toList();
+
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                color: widget.dropdownColor,
+                elevation: widget.elevation,
+                borderRadius:
+                BorderRadius.circular(widget.borderRadius),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: widget.maxHeight,
+                    maxWidth: widget.maxWidth,
+                  ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: list.length,
+                    itemBuilder: (_, index) {
+                      final option = list[index];
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => onSelected(option),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Text(
+                            option,
+                            style: widget.suggestionTextStyle,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
-              optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text.isEmpty) {
-                  return const Iterable<String>.empty();
-                }
-
-                return cachedCategories.where(
-                      (option) => option.toLowerCase().contains(
-                    textEditingValue.text.toLowerCase(),
-                  ),
-                );
-              },
-              fieldViewBuilder:
-                  (context, textController, focusNode, onFieldSubmitted) {
-                // Sync with provider controller
-                textController.text = provider.titleController.text;
-                textController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: textController.text.length),
-                );
-
-                textController.addListener(() {
-                  if (provider.titleController.text != textController.text) {
-                    provider.titleController.text = textController.text;
-                  }
-                });
-
-                return TextField(
-                  controller: textController,
-                  focusNode: focusNode,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Title',
-                    hintText: 'e.g., Groceries, Fuel',
-                    labelStyle: TextStyle(color: Colors.grey[500]),
-                    hintStyle: TextStyle(color: Colors.grey[700]),
-                    prefixIcon: const Icon(
-                      Icons.title,
-                      color: Color(0xFF64FFDA),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF2C2C2C),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF3C3C3C),
-                        width: 1,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF64FFDA),
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                  ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    color: const Color(0xFF2C2C2C),
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 8,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxHeight: 200,
-                        maxWidth: 300,
-                      ),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: options.length,
-                        itemBuilder: (_, index) {
-                          final option = options.elementAt(index);
-
-                          return InkWell(
-                            onTap: () => onSelected(option),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              child: Text(
-                                option,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
             );
           },
         );

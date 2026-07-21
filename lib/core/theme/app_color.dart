@@ -95,26 +95,27 @@ class AppColor {
   static Color grey700 = Colors.grey[700]!;
   static Color grey800 = Colors.grey[800]!;
 
-  // ============================================================
+// ============================================================
   // Premium Credit Theme (screen chrome — app bar, FAB, banner)
+  // Monochrome black & white / graphite palette
   // ============================================================
-  static const creditPrimary = Color(0xFF1B2A4A);   // Deep navy
-  static const creditDark = Color(0xFF0F1B33);       // Near-black navy
-  static const creditLight = Color(0xFF6C8CC7);      // Soft steel blue
+  static const creditPrimary = Color(0xFF1A1A1A);   // Near-black charcoal
+  static const creditDark = Color(0xFF000000);       // Pure black
+  static const creditLight = Color(0xFFD9D9D9);      // Soft light grey
 
-  static const creditSurface = Color(0xFF15192B);    // Screen background tint
-  static const creditCard = Color(0xFF1C2340);        // Card surface fallback
-  static const creditBorder = Color(0x33D4AF37);      // Faint gold hairline
+  static const creditSurface = Color(0xFF121212);    // Screen background tint
+  static const creditCard = Color(0xFF1E1E1E);        // Card surface fallback
+  static const creditBorder = Color(0x33FFFFFF);      // Faint white hairline
 
   // Banner / FAB gradient
-  static const creditGradientStart = Color(0xFF0F1B33);
-  static const creditGradientEnd = Color(0xFF2A4270);
+  static const creditGradientStart = Color(0xFF000000);
+  static const creditGradientEnd = Color(0xFF3A3A3A);
 
   // Accent
-  static const creditAccent = Color(0xFFD4AF37);      // Champagne gold
-  static const creditSoft = Color(0xFF8FE3C7);        // Mint (active/success glow)
+  static const creditAccent = Color(0xFFE8E8E8);      // Platinum silver-white
+  static const creditSoft = Color(0xFFF5F5F5);         // Off-white (active/success glow)
 
-  // Status
+  // Status (kept as functional/semantic color-coding for readability)
   static const creditDue = Color(0xFFEF4444);         // Red
   static const creditPaid = Color(0xFF22C55E);        // Green
   static const creditEMI = Color(0xFFF59E0B);         // Amber
@@ -123,41 +124,40 @@ class AppColor {
   // ------------------------------------------------------------
   // Rotating premium card palettes — used so each credit card in
   // the list gets a distinct, bank-card-like look instead of one
-  // repeated flat gradient.
+  // repeated flat gradient. Now monochrome black/white/graphite.
   // ------------------------------------------------------------
   static const List<CreditCardPalette> creditCardPalettes = [
     CreditCardPalette(
-      name: 'Sapphire Nights',
-      gradient: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-      accent: Color(0xFFF5C542), // gold chip
-      glow: Color(0xFF2C5364),
+      name: 'Obsidian',
+      gradient: [Color(0xFF000000), Color(0xFF161616), Color(0xFF262626)],
+      accent: Color(0xFFE8E8E8), // silver-white chip
+      glow: Color(0xFF262626),
     ),
     CreditCardPalette(
-      name: 'Emerald Executive',
-      gradient: [Color(0xFF07332B), Color(0xFF0B5D45), Color(0xFF117A5D)],
-      accent: Color(0xFFD4AF37),
-      glow: Color(0xFF0B5D45),
+      name: 'Graphite',
+      gradient: [Color(0xFF1C1C1C), Color(0xFF2E2E2E), Color(0xFF3D3D3D)],
+      accent: Color(0xFFF0F0F0),
+      glow: Color(0xFF2E2E2E),
     ),
     CreditCardPalette(
-      name: 'Midnight Gold',
-      gradient: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
-      accent: Color(0xFFFFD700),
-      glow: Color(0xFF302B63),
+      name: 'Platinum Frost',
+      gradient: [Color(0xFF2A2A2A), Color(0xFF4A4A4A), Color(0xFF616161)],
+      accent: Color(0xFFFFFFFF),
+      glow: Color(0xFF4A4A4A),
     ),
     CreditCardPalette(
-      name: 'Graphite Platinum',
-      gradient: [Color(0xFF232526), Color(0xFF3A3D40), Color(0xFF1C1C1C)],
-      accent: Color(0xFFE5E5E5),
-      glow: Color(0xFF3A3D40),
+      name: 'Onyx Steel',
+      gradient: [Color(0xFF0D0D0D), Color(0xFF232323), Color(0xFF3A3A3A)],
+      accent: Color(0xFFDADADA),
+      glow: Color(0xFF232323),
     ),
     CreditCardPalette(
-      name: 'Velvet Wine',
-      gradient: [Color(0xFF2B0B1E), Color(0xFF5C1A3B), Color(0xFF3A1029)],
-      accent: Color(0xFFE8B4B8),
-      glow: Color(0xFF5C1A3B),
+      name: 'Pearl Noir',
+      gradient: [Color(0xFF050505), Color(0xFF1A1A1A), Color(0xFF2C2C2C)],
+      accent: Color(0xFFFAFAFA),
+      glow: Color(0xFF1A1A1A),
     ),
   ];
-
   /// Deterministically picks a palette for a card so the same card
   /// always renders with the same look across rebuilds.
   static CreditCardPalette paletteFor(String seed) {

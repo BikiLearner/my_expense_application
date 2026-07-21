@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:expence_app/core/services/session_maganger.dart';
 import 'package:expence_app/features/bank/domain/repository/bank_repository.dart';
 import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
-import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,17 +13,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/dialogs/app_loader_dialog.dart';
 import '../../../../shared/dialogs/insufficient_balance_dialog.dart';
 import '../../../../shared/enums/expense_type.dart';
-import '../../../../shared/providers/auto_complete_key_provider.dart';
 import '../../../bank/data/model/bank_model.dart';
 import '../../data/model/expense_items.dart';
 import '../../data/model/expense_model.dart';
 import '../../domain/repository/expense_repository.dart';
 
-class ExpenseProvider extends ChangeNotifier
-    implements AutoCompleteProvider, ExpenseTypeProvider {
+class ExpenseProvider extends ChangeNotifier {
   // 🔹 Controllers
-  @override
-  final TextEditingController titleController = TextEditingController();
+  String _title = "";
+
+  String get title => _title;
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
@@ -37,13 +35,7 @@ class ExpenseProvider extends ChangeNotifier
 
   ExpenseType _selectedType = ExpenseType.luxury;
 
-  @override
   ExpenseType get selectedType => _selectedType;
-
-  int _autoCompleteKey = 0;
-
-  @override
-  int get autoCompleteKey => _autoCompleteKey;
 
   String get currentYear => DateFormat('yyyy').format(DateTime.now());
 
@@ -133,6 +125,11 @@ class ExpenseProvider extends ChangeNotifier
     await prefs.setString(_kTransactionTypeKey, type.id);
   }
 
+  void setTitle(String value) {
+    _title = value;
+    notifyListeners();
+  }
+
   Future<void> restoreTransactionTypeFromBanks(List<BankModel> banks) async {
     final prefs = await SharedPreferences.getInstance();
     final savedId = prefs.getString(_kTransactionTypeKey);
@@ -172,7 +169,6 @@ class ExpenseProvider extends ChangeNotifier
     _initStream();
   }
 
-  @override
   void setExpenseType(ExpenseType type) {
     _selectedType = type;
     notifyListeners();
@@ -243,7 +239,7 @@ class ExpenseProvider extends ChangeNotifier
       return;
     }
 
-    final title = titleController.text.trim();
+    final title = _title.trim();
     final amount = double.tryParse(
       amountController.text.replaceAll(',', '').trim(),
     );
@@ -312,7 +308,7 @@ class ExpenseProvider extends ChangeNotifier
     required DateTime oldDate,
     required String? oldTransactionTypeId,
   }) async {
-    final title = titleController.text.trim();
+    final title = _title.trim();
     final newAmount = double.tryParse(
       amountController.text.replaceAll(',', '').trim(),
     );
@@ -349,10 +345,9 @@ class ExpenseProvider extends ChangeNotifier
   }
 
   void clearForm() {
-    titleController.clear();
+    _title = "";
     amountController.clear();
     descriptionController.clear();
-    _autoCompleteKey++; // Force rebuild
     _selectedType = ExpenseType.luxury; // Reset to default
     notifyListeners();
   }
@@ -450,7 +445,6 @@ class ExpenseProvider extends ChangeNotifier
 
   @override
   void dispose() {
-    titleController.dispose();
     amountController.dispose();
     descriptionController.dispose();
     _expenseSubscription?.cancel();

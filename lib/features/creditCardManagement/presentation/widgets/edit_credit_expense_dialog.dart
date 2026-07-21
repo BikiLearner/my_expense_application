@@ -5,14 +5,14 @@ import 'package:provider/provider.dart';
 
 import 'edit_credit_expense_form.dart';
 
-
 class EditCreditExpenseDialog extends StatefulWidget {
   final CreditExpenseItem expense;
 
   const EditCreditExpenseDialog({super.key, required this.expense});
 
   @override
-  State<EditCreditExpenseDialog> createState() => _EditCreditExpenseDialogState();
+  State<EditCreditExpenseDialog> createState() =>
+      _EditCreditExpenseDialogState();
 }
 
 class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
@@ -27,7 +27,7 @@ class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
       final provider = context.read<CreditExpenseProvider>();
 
       // Set all values
-      provider.titleController.text = widget.expense.title;
+      provider.setTitle(widget.expense.title);
       provider.amountController.text = widget.expense.amount.toString();
       provider.descriptionController.text = widget.expense.description;
       provider.setExpenseType(widget.expense.type);
@@ -55,9 +55,7 @@ class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
           width: 100,
           height: 100,
           child: Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFF64FFDA),
-            ),
+            child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
           ),
         ),
       );
@@ -67,7 +65,9 @@ class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
       builder: (context, provider, _) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Edit Expense',
             style: TextStyle(color: Colors.white),
@@ -82,10 +82,7 @@ class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
                 provider.clearForm();
                 Navigator.pop(context);
               },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {

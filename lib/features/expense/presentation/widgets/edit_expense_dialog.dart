@@ -27,7 +27,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> {
       final provider = context.read<ExpenseProvider>();
 
       // Set all values
-      provider.titleController.text = widget.expense.title;
+      provider.setTitle(widget.expense.title);
       provider.amountController.text = widget.expense.amount.toString();
       provider.descriptionController.text = widget.expense.description;
       provider.setExpenseType(widget.expense.type);

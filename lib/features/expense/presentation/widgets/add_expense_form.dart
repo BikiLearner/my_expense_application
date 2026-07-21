@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/utils/indian_number_formatter.dart';
+import '../../../../shared/enums/expense_type.dart';
 import '../../../../shared/widgets/app_text_fields.dart';
 import '../../../../shared/widgets/auto_complete_text_fields.dart';
 import '../../../../shared/widgets/expense_type_selector_generic.dart';
@@ -50,7 +51,62 @@ class AddExpenseForm extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      TitleAutoCompleteField(provider: provider),
+                      TitleAutoCompleteField(
+                        initialValue: provider.title,
+
+                        decoration: InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'e.g., Groceries, Fuel',
+                          labelStyle: TextStyle(color: Colors.grey[500]),
+                          hintStyle: TextStyle(color: Colors.grey[700]),
+                          prefixIcon: const Icon(
+                            Icons.title,
+                            color: Color(0xFF64FFDA),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFF2C2C2C),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF3C3C3C),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF64FFDA),
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+
+                        textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+
+                        dropdownColor: const Color(0xFF2C2C2C),
+
+                        suggestionTextStyle: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+
+                        maxHeight: 200,
+                        maxWidth: 300,
+
+                        onChanged: provider.setTitle,
+                        onSelected: provider.setTitle,
+                      ),
                       const SizedBox(height: 8),
 
                       /// 💰 AMOUNT FIELD (INDIAN FORMAT – VISUAL ONLY)
@@ -80,9 +136,16 @@ class AddExpenseForm extends StatelessWidget {
                 ),
 
                 const SizedBox(width: 12),
-
+                Selector<ExpenseProvider, ExpenseType>(
+                  selector: (_, p) => p.selectedType,
+                  builder: (_, selectedType, __) {
+                    return ExpenseTypeSelector(
+                      selectedType: selectedType,
+                      onChanged: provider.setExpenseType,
+                    );
+                  },
+                )
                 /// RIGHT SIDE
-                ExpenseTypeSelector(provider: provider),
               ],
             ),
           ),

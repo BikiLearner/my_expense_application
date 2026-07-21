@@ -10,6 +10,7 @@ import '../../../../shared/providers/home_navigation_provider.dart';
 import '../../../history/presentation/screens/history_screen.dart';
 import '../provider/credit_expense_provider.dart';
 import '../widgets/add_credit_expense_form.dart';
+import 'credit_expense_overview_screen.dart';
 
 class CreditExpenseScreen extends StatelessWidget {
   const CreditExpenseScreen({super.key});
@@ -153,13 +154,13 @@ class CreditExpenseScreen extends StatelessWidget {
                     Icon(
                       Icons.receipt_long_outlined,
                       size: 80,
-                      color: AppColor.grey700,
+                      color: AppColor.creditBorder,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No expenses yet',
                       style: TextStyle(
-                        color: AppColor.grey500,
+                        color: AppColor.creditLight,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
@@ -167,7 +168,10 @@ class CreditExpenseScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'Add your first expense below',
-                      style: TextStyle(color: AppColor.grey600, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColor.creditLight.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -230,7 +234,7 @@ class CreditExpenseScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const ExpensesOverviewPageParticularDay(),
+                                      const CreditExpensesOverviewPage(),
                                 ),
                               );
                             },
@@ -278,4 +282,5 @@ class CreditExpenseScreen extends StatelessWidget {
       },
     );
   }
+
 }

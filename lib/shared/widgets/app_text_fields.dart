@@ -6,6 +6,7 @@ class AppTextField extends StatelessWidget {
   final String label;
   final String hint;
   final IconData icon;
+  final Color iconColor;
   final TextInputType keyboardType;
   final int maxLines;
   final List<TextInputFormatter>? inputFormatters;
@@ -19,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.maxLines = 1,
     this.inputFormatters,
+    this.iconColor = const Color(0xFF64FFDA),
   });
 
   @override
@@ -34,7 +36,7 @@ class AppTextField extends StatelessWidget {
         hintText: hint,
         labelStyle: TextStyle(color: Colors.grey[500]),
         hintStyle: TextStyle(color: Colors.grey[700]),
-        prefixIcon: Icon(icon, color: const Color(0xFF64FFDA)),
+        prefixIcon: Icon(icon, color: iconColor),
         filled: true,
         fillColor: const Color(0xFF2C2C2C),
         border: OutlineInputBorder(
