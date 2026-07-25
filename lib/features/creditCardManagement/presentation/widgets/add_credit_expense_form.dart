@@ -115,13 +115,22 @@ class AddCreditExpenseForm extends StatelessWidget {
                         controller: provider.amountController,
                         label: 'Amount',
                         hint: 'Enter amount',
-                        iconColor: AppColor.creditAccent,
                         icon: Icons.currency_rupee,
                         keyboardType: TextInputType.number,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           IndianNumberFormatter(),
                         ],
+
+                        // Same colors as TitleAutoCompleteField
+                        iconColor: AppColor.creditAccent,
+                        fillColor: AppColor.creditCard,
+                        enabledBorderColor: AppColor.creditBorder,
+                        focusedBorderColor: AppColor.creditAccent,
+
+                        textColor: Colors.white,
+                        labelColor: Colors.grey,
+                        hintColor: const Color(0xFF616161),
                       ),
 
                       const SizedBox(height: 8),
@@ -129,8 +138,16 @@ class AddCreditExpenseForm extends StatelessWidget {
                         controller: provider.descriptionController,
                         label: 'Description (Optional)',
                         hint: 'Add details...',
-                        iconColor: AppColor.creditAccent,
                         icon: Icons.notes,
+                        // Same colors as TitleAutoCompleteField
+                        iconColor: AppColor.creditAccent,
+                        fillColor: AppColor.creditCard,
+                        enabledBorderColor: AppColor.creditBorder,
+                        focusedBorderColor: AppColor.creditAccent,
+
+                        textColor: Colors.white,
+                        labelColor: Colors.grey,
+                        hintColor: const Color(0xFF616161),
                       ),
                       const SizedBox(height: 8),
                       const CreditCardSelectorDropDown(),

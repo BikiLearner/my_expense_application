@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:expence_app/core/constants/date_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,12 +22,14 @@ class CreditExpensesOverviewPage extends StatelessWidget {
         backgroundColor: AppColor.creditDark,
         elevation: 0,
         foregroundColor: AppColor.textPrimary,
-        title: const Text(
-          'All Credit Transactions',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+        title: Selector<CreditExpenseProvider, DateTime>(
+          selector: (_, p) => p.selectedDate,
+          builder: (context, date, _) {
+            return Text(
+              DateConstants.ddMMMyyyy(date),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+            );
+          },
         ),
         centerTitle: true,
       ),
@@ -55,8 +60,9 @@ class CreditExpensesOverviewPage extends StatelessWidget {
                       : 0.0;
                   final limit = card?.creditLimit ?? 0.0;
                   final left = (limit - used).clamp(0, limit);
-                  final usageRatio =
-                  limit > 0 ? (used / limit).clamp(0.0, 1.0) : 0.0;
+                  final usageRatio = limit > 0
+                      ? (used / limit).clamp(0.0, 1.0)
+                      : 0.0;
                   final palette = card != null
                       ? AppColor.paletteFor(card.creditCardId)
                       : null;
@@ -98,26 +104,20 @@ class CreditExpensesOverviewPage extends StatelessWidget {
 
                       // Divider
                       SliverToBoxAdapter(
-                        child: Divider(
-                          height: 1,
-                          color: AppColor.creditBorder,
-                        ),
+                        child: Divider(height: 1, color: AppColor.creditBorder),
                       ),
 
                       // 📜 EXPENSE LIST (same scroll as banner + summary)
                       SliverPadding(
                         padding: const EdgeInsets.all(16),
                         sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                                (context, i) {
-                              final expense = expenses[i];
-                              return CreditExpenseItemTile(
-                                expenseItem: expense,
-                                toShow: true,
-                              );
-                            },
-                            childCount: expenses.length,
-                          ),
+                          delegate: SliverChildBuilderDelegate((context, i) {
+                            final expense = expenses[i];
+                            return CreditExpenseItemTile(
+                              expenseItem: expense,
+                              toShow: true,
+                            );
+                          }, childCount: expenses.length),
                         ),
                       ),
                     ],
@@ -147,11 +147,8 @@ class CreditExpensesOverviewPage extends StatelessWidget {
   }
 }
 
-/// Card name, limit, and usage — same content as the credit expense
-/// screen's banner, reused here so the user still sees which card
-/// these transactions belong to, just as part of the scrollable body.
 class _CardDetailsBanner extends StatelessWidget {
-  final CreditCardModel card;
+  final CreditCardModel card; // Ensure your model is imported
   final double used;
   final double left;
   final double usageRatio;
@@ -169,96 +166,130 @@ class _CardDetailsBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = palette?.accent ?? AppColor.creditAccent;
 
+    final List<Color> glassGradient = palette != null
+        ? palette!.gradient.map((c) => c.withOpacity(0.4)).toList()
+        : [
+            AppColor.creditGradientStart.withOpacity(0.4),
+            AppColor.creditGradientEnd.withOpacity(0.2),
+          ];
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      // Outer shadow to give the glass card depth floating above the background
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            AppColor.creditGradientStart,
-            AppColor.creditGradientEnd,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColor.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColor.black.withOpacity(0.4),
+            blurRadius: 16,
+            spreadRadius: -2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: accent.withOpacity(0.35)),
-                    ),
-                    child: Icon(
-                      Icons.credit_card_rounded,
-                      size: 16,
-                      color: accent,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${card.cardName} • ${card.bankName}',
-                    style: const TextStyle(
-                      color: AppColor.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+      // ClipRRect is crucial so the BackdropFilter doesn't bleed outside the rounded corners
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: glassGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              Text(
-                'Limit ₹${card.creditLimit.toStringAsFixed(0)}',
-                style: TextStyle(
-                  color: AppColor.textSecondary.withOpacity(0.8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+              // Frosted glass border (light reflection on the edges)
+              border: Border.all(
+                color: AppColor.white.withOpacity(0.15),
+                width: 1.0,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        // Icon Container with inner glass feel
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: accent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: accent.withOpacity(0.35),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.credit_card_rounded,
+                            size: 16,
+                            color: accent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${card.cardName} • ${card.bankName}',
+                          style: const TextStyle(
+                            color: AppColor.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Limit ₹${card.creditLimit.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: AppColor.textSecondary.withOpacity(0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: usageRatio,
-              minHeight: 6,
-              backgroundColor: AppColor.white.withOpacity(0.08),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                usageRatio >= 0.85
-                    ? AppColor.creditDue
-                    : usageRatio >= 0.6
-                    ? AppColor.creditEMI
-                    : AppColor.creditPaid,
-              ),
+                const SizedBox(height: 12),
+
+                // Progress Bar Container
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: usageRatio,
+                    minHeight: 6,
+                    // Slightly more transparent background for the glass theme
+                    backgroundColor: AppColor.white.withOpacity(0.05),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      usageRatio >= 0.85
+                          ? AppColor.creditDue
+                          : usageRatio >= 0.6
+                          ? AppColor.creditEMI
+                          : AppColor.creditPaid,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Details Text
+                Text(
+                  '₹${left.toStringAsFixed(0)} left of ₹${card.creditLimit.toStringAsFixed(0)} • Used ₹${used.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: AppColor.textSecondary.withOpacity(0.8),
+                    fontSize: 11,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '₹${left.toStringAsFixed(0)} left of ₹${card.creditLimit.toStringAsFixed(0)} • Used ₹${used.toStringAsFixed(0)}',
-            style: TextStyle(
-              color: AppColor.textSecondary.withOpacity(0.7),
-              fontSize: 11,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -268,10 +299,7 @@ class _TypeSummaryCard extends StatelessWidget {
   final ExpenseType type;
   final double amount;
 
-  const _TypeSummaryCard({
-    required this.type,
-    required this.amount,
-  });
+  const _TypeSummaryCard({required this.type, required this.amount});
 
   @override
   Widget build(BuildContext context) {
@@ -280,10 +308,7 @@ class _TypeSummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            type.color.withOpacity(0.35),
-            type.color.withOpacity(0.15),
-          ],
+          colors: [type.color.withOpacity(0.35), type.color.withOpacity(0.15)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

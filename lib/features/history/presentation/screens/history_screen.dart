@@ -6,7 +6,7 @@ import '../widgets/month_list_page.dart';
 import '../../../expense/presentation/provider/expence_provider.dart';
 import '../provider/history_page_provider.dart';
 
-import '../widgets/grand_total_banner.dart';
+import '../widgets/grandTotalWidgets/grand_total_banner.dart';
 import '../widgets/history_app_bar.dart';
 
 class HistoryScreen extends StatelessWidget {

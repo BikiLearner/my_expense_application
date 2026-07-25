@@ -1,6 +1,6 @@
+import 'package:expence_app/core/constants/date_constant.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card_expense_item_model.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/widgets/credit_expense_item_tile.dart';
-import 'package:expence_app/features/expense/presentation/screens/expense_particular_day_overView.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -40,7 +40,7 @@ class CreditExpenseScreen extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              DateFormat('dd MMM yyyy').format(selectedDate),
+              DateConstants.ddMMMyyyy(selectedDate),
               style: const TextStyle(
                 color: AppColor.white,
                 fontSize: 18,

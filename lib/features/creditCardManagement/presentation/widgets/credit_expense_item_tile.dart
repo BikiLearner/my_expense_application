@@ -1,12 +1,11 @@
+import 'package:expence_app/core/constants/date_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_color.dart';
 import '../../../../shared/enums/expense_type.dart';
 import '../../data/model/credit_card_expense_item_model.dart';
 import 'delete_credit_expense_dialog.dart';
 import 'edit_credit_expense_dialog.dart';
-
 
 class CreditExpenseItemTile extends StatelessWidget {
   final CreditExpenseItem expenseItem;
@@ -67,7 +66,7 @@ class CreditExpenseItemTile extends StatelessWidget {
                   ),
                 if (toShow)
                   Text(
-                    DateFormat('dd MMM yyyy').format(expenseItem.purchaseDate),
+                    DateConstants.ddMMyyyy(expenseItem.purchaseDate),
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColor.textGrey,
