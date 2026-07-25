@@ -2,33 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/services/audio_player.dart';
-import '../widgets/month_list_page.dart';
-import '../../../expense/presentation/provider/expence_provider.dart';
 import '../provider/history_page_provider.dart';
-
 import '../widgets/grandTotalWidgets/grand_total_banner.dart';
 import '../widgets/history_app_bar.dart';
+import '../widgets/month_list_page.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final expense = context.read<ExpenseProvider>();
-
-    return ChangeNotifierProvider(
-      create: (_) => HistoryPageProvider(
-        uid: expense.uid,
-        selectedYear: expense.selectedYear,
-        selectedMonth: expense.selectedMonth,
-      )..fetchHistoryData(),
-      child: const _HistoryView(),
-    );
-  }
-}
-
-class _HistoryView extends StatelessWidget {
-  const _HistoryView();
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +17,10 @@ class _HistoryView extends StatelessWidget {
       appBar: HistoryAppBar(),
       body: Consumer<HistoryPageProvider>(
         builder: (context, history, _) {
-
           // 🔄 Loading
           if (history.isLoading) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64FFDA),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF64FFDA)),
             );
           }
 
@@ -55,27 +32,14 @@ class _HistoryView extends StatelessWidget {
             );
           }
 
-          // 🟡 Empty
-          if (history.yearExpenseDays.isEmpty) {
-            return const _EmptyHistoryView();
-          }
+
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-
                 /// 🔥 GRAND TOTAL BANNER
-                GrandTotalBanner(
-                  grandTotal: history.yearExpense,
-                  yearExpense: history.yearExpense,
-                  totalDays: history.totalDays,
-                  monthTotal: history.monthTotal,
-                  saving: history.saving,
-                  luxury: history.luxury,
-                  needed: history.needed,
-                  onRefresh: history.fetchHistoryData,
-                ),
+                GrandTotalBanner(),
 
                 /// 📊 QUICK STATS
                 _QuickStatsRow(
@@ -99,14 +63,12 @@ class _HistoryView extends StatelessWidget {
     );
   }
 }
+
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorView({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorView({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -127,15 +89,13 @@ class _ErrorView extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: onRetry,
-            child: const Text("Retry"),
-          ),
+          ElevatedButton(onPressed: onRetry, child: const Text("Retry")),
         ],
       ),
     );
   }
 }
+
 class _EmptyHistoryView extends StatelessWidget {
   const _EmptyHistoryView();
 
@@ -161,14 +121,12 @@ class _EmptyHistoryView extends StatelessWidget {
     );
   }
 }
+
 class _QuickStatsRow extends StatelessWidget {
   final double avg;
   final double highest;
 
-  const _QuickStatsRow({
-    required this.avg,
-    required this.highest,
-  });
+  const _QuickStatsRow({required this.avg, required this.highest});
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +156,7 @@ class _QuickStatsRow extends StatelessWidget {
     );
   }
 }
+
 class _MonthNavigationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -210,9 +169,7 @@ class _MonthNavigationTile extends StatelessWidget {
           await audioService.play('audio/fahhhhh.mp3', isAsset: true);
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => MonthlyExpensePageHolidingList(),
-            ),
+            MaterialPageRoute(builder: (_) => MonthlyExpensePageHolidingList()),
           );
         },
         child: Container(
@@ -239,7 +196,6 @@ class _MonthNavigationTile extends StatelessWidget {
     );
   }
 }
-
 
 class _QuickStatCard extends StatelessWidget {
   final IconData icon;

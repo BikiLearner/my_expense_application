@@ -2,6 +2,7 @@ import 'package:expence_app/features/creditCardManagement/presentation/provider/
 import 'package:expence_app/features/history/presentation/provider/all_expense_provider.dart';
 import 'package:expence_app/features/bank/presentation/provider/bank_provider.dart';
 import 'package:expence_app/features/export/presentation/provider/export_provider.dart';
+import 'package:expence_app/features/history/presentation/provider/history_page_provider.dart';
 import 'package:expence_app/features/history/presentation/provider/month_expense_provider.dart';
 import 'package:expence_app/shared/backend_parts/datasources/category_datesource.dart';
 import 'package:expence_app/shared/backend_parts/repo/category_repo.dart';
@@ -65,6 +66,7 @@ class MyApp extends StatelessWidget
         ChangeNotifierProvider(create: (_) => sl<YearStatsProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CreditExpenseProvider>()),
         ChangeNotifierProvider(create: (_) => sl<HomeNavigationProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<HistoryPageProvider>()),
 
       ],
       child: const MaterialApp(
