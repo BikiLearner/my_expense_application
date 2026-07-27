@@ -8,6 +8,11 @@ class BillingCycleModel {
   final double totalAmount;
   final DateTime createdAt;
 
+  // Expense type totals
+  final double? saving;
+  final double? needed;
+  final double? luxury;
+
   const BillingCycleModel({
     required this.billingCycleId,
     required this.startDate,
@@ -15,12 +20,15 @@ class BillingCycleModel {
     required this.status,
     required this.totalAmount,
     required this.createdAt,
+    this.saving,
+    this.needed,
+    this.luxury,
   });
 
   factory BillingCycleModel.fromFirestore(
-      String billingCycleId,
-      Map<String, dynamic> data,
-      ) {
+    String billingCycleId,
+    Map<String, dynamic> data,
+  ) {
     return BillingCycleModel(
       billingCycleId: billingCycleId,
       startDate: (data['startDate'] as Timestamp).toDate(),
@@ -28,17 +36,23 @@ class BillingCycleModel {
       status: data['status'] ?? 'active',
       totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? 0,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      saving: (data['saving'] as num?)?.toDouble() ?? 0,
+      needed: (data['needed'] as num?)?.toDouble() ?? 0,
+      luxury: (data['luxury'] as num?)?.toDouble() ?? 0,
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
-      'billingCycleId':billingCycleId,
+      'billingCycleId': billingCycleId,
       'startDate': Timestamp.fromDate(startDate),
       'endDate': Timestamp.fromDate(endDate),
       'status': status,
       'totalAmount': totalAmount,
       'createdAt': Timestamp.fromDate(createdAt),
+      'saving': saving ?? 0,
+      'needed': needed ?? 0,
+      'luxury': luxury ?? 0,
     };
   }
 
@@ -51,11 +65,7 @@ class BillingCycleModel {
     late DateTime endDate;
 
     if (expenseDate.day >= statementDay) {
-      startDate = DateTime(
-        expenseDate.year,
-        expenseDate.month,
-        statementDay,
-      );
+      startDate = DateTime(expenseDate.year, expenseDate.month, statementDay);
 
       endDate = DateTime(
         expenseDate.year,

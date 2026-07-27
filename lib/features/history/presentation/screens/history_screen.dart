@@ -1,17 +1,40 @@
+import 'package:expence_app/shared/providers/home_navigation_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/services/audio_player.dart';
+import '../../../../core/theme/app_color.dart';
+import '../../../../shared/widgets/linked_flip_card.dart';
 import '../provider/history_page_provider.dart';
 import '../widgets/grandTotalWidgets/grand_total_banner.dart';
+import '../widgets/grandTotalWidgets/grand_total_credit_card_one.dart';
 import '../widgets/history_app_bar.dart';
 import '../widgets/month_list_page.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      context.read<HistoryPageProvider>().refresh();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final showCredit = context.select<HomeNavigationProvider, bool>(
+      (provider) => provider.showCredit,
+    );
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: HistoryAppBar(),
@@ -32,19 +55,29 @@ class HistoryScreen extends StatelessWidget {
             );
           }
 
-
-
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
                 /// 🔥 GRAND TOTAL BANNER
-                GrandTotalBanner(),
+                LinkedFlipCard(
+                  showBack: showCredit,
+                  front: const GrandTotalBanner(),
+                  back: const GrandTotalCreditCardOne(),
+                ),
 
                 /// 📊 QUICK STATS
-                _QuickStatsRow(
-                  avg: history.avgPerDay,
-                  highest: history.highestDay,
+                LinkedFlipCard(
+                  showBack: showCredit,
+                  front: _QuickStatsRow(
+                    avg: history.avgPerDay,
+                    highest: history.highestDay,
+                  ),
+                  back: _QuickStatsRow(
+                    isCredit: true,
+                    avg: history.avgPerDay,
+                    highest: history.highestDay,
+                  ),
                 ),
 
                 /// 📅 GO TO MONTH LIST
@@ -53,7 +86,11 @@ class HistoryScreen extends StatelessWidget {
                     horizontal: 16,
                     vertical: 8,
                   ),
-                  child: _MonthNavigationTile(),
+                  child: LinkedFlipCard(
+                    showBack: showCredit,
+                    front: _MonthNavigationTile(),
+                    back: _MonthNavigationTile(isCredit: true),
+                  ),
                 ),
               ],
             ),
@@ -96,37 +133,16 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-class _EmptyHistoryView extends StatelessWidget {
-  const _EmptyHistoryView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[600]),
-          const SizedBox(height: 16),
-          const Text(
-            "No expenses yet",
-            style: TextStyle(color: Colors.grey, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Start tracking your expenses",
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuickStatsRow extends StatelessWidget {
   final double avg;
   final double highest;
+  final bool isCredit;
 
-  const _QuickStatsRow({required this.avg, required this.highest});
+  const _QuickStatsRow({
+    required this.avg,
+    required this.highest,
+    this.isCredit = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +155,8 @@ class _QuickStatsRow extends StatelessWidget {
               icon: Icons.trending_up,
               label: "Avg",
               value: "₹${avg.toStringAsFixed(0)}",
-              color: Colors.blueAccent,
+              color: isCredit ? AppColor.creditLimit : Colors.blueAccent,
+              isCredit: isCredit,
             ),
           ),
           const SizedBox(width: 12),
@@ -148,7 +165,8 @@ class _QuickStatsRow extends StatelessWidget {
               icon: Icons.arrow_upward,
               label: "Highest",
               value: "₹${highest.toStringAsFixed(0)}",
-              color: Colors.orangeAccent,
+              color: isCredit ? AppColor.creditEMI : Colors.orangeAccent,
+              isCredit: isCredit,
             ),
           ),
         ],
@@ -158,6 +176,10 @@ class _QuickStatsRow extends StatelessWidget {
 }
 
 class _MonthNavigationTile extends StatelessWidget {
+  final bool isCredit;
+
+  const _MonthNavigationTile({this.isCredit = false});
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -175,20 +197,44 @@ class _MonthNavigationTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
+            gradient: isCredit
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColor.creditGradientStart,
+                      AppColor.creditPrimary,
+                    ],
+                  )
+                : null,
+            color: isCredit ? null : const Color(0xFF1E1E1E),
             borderRadius: BorderRadius.circular(16),
+            border: isCredit
+                ? Border.all(color: AppColor.creditBorder, width: 1)
+                : null,
           ),
           child: Row(
-            children: const [
-              Icon(Icons.calendar_month, color: Colors.green),
-              SizedBox(width: 12),
+            children: [
+              Icon(
+                Icons.calendar_month,
+                color: isCredit ? AppColor.creditAccent : Colors.green,
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   "Go to monthly expenses",
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(
+                    color: isCredit ? AppColor.creditLight : Colors.white,
+                  ),
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: isCredit
+                    ? AppColor.creditLight.withOpacity(0.7)
+                    : Colors.white70,
+                size: 16,
+              ),
             ],
           ),
         ),
@@ -202,12 +248,14 @@ class _QuickStatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final bool isCredit;
 
   const _QuickStatCard({
     required this.icon,
     required this.label,
     required this.value,
     required this.color,
+    this.isCredit = false,
   });
 
   @override
@@ -215,9 +263,13 @@ class _QuickStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: isCredit
+            ? AppColor.creditDark.withOpacity(0.35)
+            : const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(
+          color: isCredit ? AppColor.creditBorder : color.withOpacity(0.3),
+        ),
       ),
       child: Row(
         children: [
@@ -236,7 +288,12 @@ class _QuickStatCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  style: TextStyle(
+                    color: isCredit
+                        ? AppColor.creditLight.withOpacity(0.6)
+                        : Colors.grey[400],
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

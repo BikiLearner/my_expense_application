@@ -10,11 +10,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///   smooth, animated switch between the two screens (e.g. a bottom
 ///   nav bar, a button inside ExpenseScreen, etc.) without needing
 ///   direct access to the PageView itself.
+/// - Exposes [showCredit] as a derived flag so any widget (like the
+///   grand-total card, quick stats, etc.) can theme itself for the
+///   credit-card screen without keeping its own separate state that
+///   could drift out of sync with [currentIndex].
 class HomeNavigationProvider extends ChangeNotifier {
   static const String _prefKey = 'home_screen_index';
 
-  int _currentIndex = 0;
+  static const int expenseIndex = 0;
+  static const int creditIndex = 1;
+
+  int _currentIndex = expenseIndex;
   int get currentIndex => _currentIndex;
+
+  /// True whenever the Credit Card screen (index 1) is the active one.
+  /// Derived from [currentIndex] — never set independently, so it can
+  /// never disagree with which screen is actually showing.
+  bool get showCredit => _currentIndex == creditIndex;
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -31,7 +43,7 @@ class HomeNavigationProvider extends ChangeNotifier {
 
   Future<void> _loadSavedIndex() async {
     final prefs = await SharedPreferences.getInstance();
-    _currentIndex = prefs.getInt(_prefKey) ?? 0;
+    _currentIndex = prefs.getInt(_prefKey) ?? expenseIndex;
     _pageController = PageController(initialPage: _currentIndex);
     _initialized = true;
     notifyListeners();
@@ -71,6 +83,15 @@ class HomeNavigationProvider extends ChangeNotifier {
     _currentIndex = index;
     await _saveIndex(index);
     notifyListeners();
+  }
+
+  /// Convenience helper for a flip/toggle button — switches between the
+  /// two screens without the caller needing to know the raw indices.
+  Future<void> toggleScreen({bool animate = true}) {
+    return switchToScreen(
+      showCredit ? expenseIndex : creditIndex,
+      animate: animate,
+    );
   }
 
   @override

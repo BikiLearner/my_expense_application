@@ -15,4 +15,5 @@ class CollectionName {
   static const creditCards = 'creditCards';
   static const billingCycle = 'billingCycle';
   static const creditExpenses = 'creditExpenses';
+  static const creditYearlyStats = 'creditYearlyStats';
 }

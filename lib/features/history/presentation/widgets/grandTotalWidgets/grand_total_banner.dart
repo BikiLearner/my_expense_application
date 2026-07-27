@@ -5,6 +5,7 @@ import 'package:expence_app/features/history/presentation/widgets/bank_monthly_b
 import 'package:expence_app/features/history/presentation/widgets/expense_type_breakdown_screen.dart';
 import 'package:expence_app/features/history/presentation/widgets/grandTotalWidgets/year_selector.dart';
 import 'package:expence_app/shared/enums/expense_type.dart';
+import 'package:expence_app/shared/providers/home_navigation_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,7 @@ import '../monthly_expense_page.dart';
 import 'history_quick_stat_card.dart';
 import 'history_stat_item.dart';
 import 'month_selector.dart';
+import 'no_expense_for_month_widget.dart';
 
 class GrandTotalBanner extends StatelessWidget {
   const GrandTotalBanner({super.key});
@@ -121,6 +123,22 @@ class GrandTotalBanner extends StatelessWidget {
                   Row(
                     children: [
                       GestureDetector(
+                        onTap: context.read<HomeNavigationProvider>().toggleScreen,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.flip,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
                         onTap: providerHistory.refresh,
                         child: Container(
                           padding: const EdgeInsets.all(8),
@@ -193,7 +211,7 @@ class GrandTotalBanner extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               if (monthStats == null)
-                _NoExpenseForMonth(
+                NoExpenseForMonth(
                   month: DateConstants.monthName(providerHistory.selectedMonth),
                   year: providerHistory.selectedYear,
                 )
@@ -447,46 +465,6 @@ class GrandTotalBanner extends StatelessWidget {
       width: 1,
       height: 40,
       color: Colors.white.withOpacity(0.2),
-    );
-  }
-}
-
-class _NoExpenseForMonth extends StatelessWidget {
-  final String month;
-  final String year;
-
-  const _NoExpenseForMonth({required this.month, required this.year});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('😢', style: TextStyle(fontSize: 72)),
-
-          const SizedBox(height: 16),
-
-          Text(
-            'No expenses for $month',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'No expense records found for $month $year',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[400], fontSize: 14),
-          ),
-        ],
-      ),
     );
   }
 }

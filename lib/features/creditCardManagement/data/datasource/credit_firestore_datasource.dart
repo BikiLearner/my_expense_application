@@ -19,7 +19,22 @@ class CreditFirestoreDatasource {
   CollectionReference<Map<String, dynamic>> _creditCardCollection() {
     return userReference.collection(CollectionName.creditCards);
   }
+  DocumentReference<Map<String, dynamic>> _creditYearStatsRef({
+    required String year,
+  }) {
+    return userReference
+        .collection(CollectionName.creditYearlyStats)
+        .doc(year);
+  }
 
+  DocumentReference<Map<String, dynamic>> _creditMonthStatsRef({
+    required String year,
+    required String monthId,
+  }) {
+    return _creditYearStatsRef(year: year)
+        .collection(CollectionName.months)
+        .doc(monthId);
+  }
   DocumentReference<Map<String, dynamic>> _creditCardRef({
     String? creditCardId,
   }) => userReference.collection(CollectionName.creditCards).doc(creditCardId);
@@ -42,6 +57,22 @@ class CreditFirestoreDatasource {
     required DateTime purchaseDate,
   }) async {
     final cardRef = _creditCardRef(creditCardId: card.creditCardId);
+
+    final year = purchaseDate.year.toString();
+
+    final monthId =
+        '${purchaseDate.year}-'
+        '${purchaseDate.month.toString().padLeft(2, '0')}';
+
+    final creditYearRef = _creditYearStatsRef(
+      year: year,
+    );
+
+    final creditMonthRef = _creditMonthStatsRef(
+      year: year,
+      monthId: monthId,
+    );
+
 
     await _firestore.runTransaction((transaction) async {
       final cardSnapshot = await transaction.get(cardRef);
@@ -91,6 +122,8 @@ class CreditFirestoreDatasource {
           .collection(CollectionName.creditExpenses)
           .doc();
 
+
+
       transaction.set(expenseRef, {
         'id':expenseRef.id,
         'title': title,
@@ -103,7 +136,32 @@ class CreditFirestoreDatasource {
 
       transaction.update(billingCycleRef, {
         'totalAmount': FieldValue.increment(amount),
+        expenseTypeName: FieldValue.increment(amount)
       });
+
+      transaction.set(
+        creditYearRef,
+        {
+          'year': year,
+          'grandTotal': FieldValue.increment(amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+// Credit MONTH stats
+      transaction.set(
+        creditMonthRef,
+        {
+          'month': monthId,
+          'grandTotal': FieldValue.increment(amount),
+          expenseTypeName: FieldValue.increment(amount),
+          'transactionCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      debugPrint("it here going  : $expenseTypeName");
     });
   }
   Stream<List<CreditExpenseItem>> watchCreditExpenses({
@@ -190,11 +248,11 @@ class CreditFirestoreDatasource {
         .doc(expenseId);
 
     await _firestore.runTransaction((transaction) async {
+      // ---- READS (must happen before any writes) ----
       final cardSnapshot = await transaction.get(cardRef);
       if (!cardSnapshot.exists) {
         throw Exception('Credit card not found.');
       }
-
       final card = CreditCardModel.fromFirestore(
         cardSnapshot.id,
         cardSnapshot.data()!,
@@ -204,30 +262,49 @@ class CreditFirestoreDatasource {
       if (!expenseSnapshot.exists) {
         throw Exception('Expense not found.');
       }
-
       final oldExpense = CreditExpenseItem.fromFirestore(
         expenseSnapshot.id,
         expenseSnapshot.data()!,
       );
 
-      final difference = amount - oldExpense.amount;
-
       final billingSnapshot = await transaction.get(billingCycleRef);
       if (!billingSnapshot.exists) {
         throw Exception('Billing cycle not found.');
       }
-
       final billingCycle = BillingCycleModel.fromFirestore(
         billingSnapshot.id,
         billingSnapshot.data()!,
       );
 
-      final newTotal = billingCycle.totalAmount + difference;
+      final oldType = oldExpense.type.name;
+      final newType = expenseTypeName;
+      final difference = amount - oldExpense.amount;
 
+      final newTotal = billingCycle.totalAmount + difference;
       if (newTotal > card.creditLimit) {
         throw Exception('Credit limit exceeded.');
       }
 
+      // Where the amount was originally counted
+      final oldYear = oldExpense.purchaseDate.year.toString();
+      final oldMonthId =
+          '${oldExpense.purchaseDate.year}-'
+          '${oldExpense.purchaseDate.month.toString().padLeft(2, '0')}';
+
+      // Where it should be counted after the edit
+      final newYear = purchaseDate.year.toString();
+      final newMonthId =
+          '${purchaseDate.year}-'
+          '${purchaseDate.month.toString().padLeft(2, '0')}';
+
+      final oldYearRef = _creditYearStatsRef(year: oldYear);
+      final oldMonthRef = _creditMonthStatsRef(year: oldYear, monthId: oldMonthId);
+      final newYearRef = _creditYearStatsRef(year: newYear);
+      final newMonthRef = _creditMonthStatsRef(year: newYear, monthId: newMonthId);
+
+      // ---- WRITES ----
+
+      // Expense doc itself
       transaction.update(expenseRef, {
         'title': title,
         'amount': amount,
@@ -236,13 +313,99 @@ class CreditFirestoreDatasource {
         'purchaseDate': Timestamp.fromDate(purchaseDate),
       });
 
-      if (difference != 0) {
+      // Billing cycle totals
+      if (oldType == newType) {
         transaction.update(billingCycleRef, {
           'totalAmount': FieldValue.increment(difference),
+          newType: FieldValue.increment(difference),
         });
+      } else {
+        transaction.update(billingCycleRef, {
+          'totalAmount': FieldValue.increment(difference),
+          oldType: FieldValue.increment(-oldExpense.amount),
+          newType: FieldValue.increment(amount),
+        });
+      }
+
+      // Year / month stats
+      if (oldYear == newYear && oldMonthId == newMonthId) {
+        // Same month — adjust in place
+        transaction.set(
+          newYearRef,
+          {
+            'grandTotal': FieldValue.increment(difference),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        if (oldType == newType) {
+          transaction.set(
+            newMonthRef,
+            {
+              'grandTotal': FieldValue.increment(difference),
+              newType: FieldValue.increment(difference),
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        } else {
+          transaction.set(
+            newMonthRef,
+            {
+              'grandTotal': FieldValue.increment(difference),
+              oldType: FieldValue.increment(-oldExpense.amount),
+              newType: FieldValue.increment(amount),
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+      } else {
+        // Purchase date moved to a different month/year — migrate the stats
+        transaction.set(
+          oldYearRef,
+          {
+            'grandTotal': FieldValue.increment(-oldExpense.amount),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        transaction.set(
+          oldMonthRef,
+          {
+            'grandTotal': FieldValue.increment(-oldExpense.amount),
+            oldType: FieldValue.increment(-oldExpense.amount),
+            'transactionCount': FieldValue.increment(-1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        transaction.set(
+          newYearRef,
+          {
+            'year': newYear,
+            'grandTotal': FieldValue.increment(amount),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        transaction.set(
+          newMonthRef,
+          {
+            'month': newMonthId,
+            'grandTotal': FieldValue.increment(amount),
+            newType: FieldValue.increment(amount),
+            'transactionCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
       }
     });
   }
+
   Future<void> deleteCreditExpense({
     required String creditCardId,
     required String billingCycleId,
@@ -259,29 +422,64 @@ class CreditFirestoreDatasource {
 
     await _firestore.runTransaction((transaction) async {
       final expenseSnapshot = await transaction.get(expenseRef);
-
       if (!expenseSnapshot.exists) {
         throw Exception('Expense not found.');
       }
-
       final expense = CreditExpenseItem.fromFirestore(
         expenseSnapshot.id,
         expenseSnapshot.data()!,
       );
 
       final billingSnapshot = await transaction.get(billingCycleRef);
-
       if (!billingSnapshot.exists) {
         throw Exception('Billing cycle not found.');
       }
 
+      // Use the same key consistently for both billing cycle and month stats
+      final expenseTypeName = expense.type.name;
+
+      // Calendar year/month comes from the actual purchase date
+      final year = expense.purchaseDate.year.toString();
+      final monthId =
+          '${expense.purchaseDate.year}-'
+          '${expense.purchaseDate.month.toString().padLeft(2, '0')}';
+
+      final creditYearRef = _creditYearStatsRef(year: year);
+      final creditMonthRef = _creditMonthStatsRef(year: year, monthId: monthId);
+
+      // Billing cycle
       transaction.update(billingCycleRef, {
         'totalAmount': FieldValue.increment(-expense.amount),
+        expenseTypeName: FieldValue.increment(-expense.amount),
       });
 
+      // Year stats
+      transaction.set(
+        creditYearRef,
+        {
+          'grandTotal': FieldValue.increment(-expense.amount),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      // Month stats
+      transaction.set(
+        creditMonthRef,
+        {
+          'grandTotal': FieldValue.increment(-expense.amount),
+          expenseTypeName: FieldValue.increment(-expense.amount),
+          'transactionCount': FieldValue.increment(-1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      // Delete actual expense
       transaction.delete(expenseRef);
     });
   }
+
   Future<void> createCreditCard({
     required String cardName,
     required String bankName,

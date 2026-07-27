@@ -76,6 +76,28 @@ class CreditExpenseProvider extends ChangeNotifier {
     return _selectedBillingCycleModel?.totalAmount ?? 0;
   }
 
+  int get cardsUsedCount {
+    return _currentBillingCyclePerCreditCard.values
+        .where((cycle) => cycle.totalAmount > 0)
+        .length;
+  }
+
+
+  double get totalCreditLimit {
+    return creditCards.fold(
+      0.0,
+          (sum, card) => sum + card.creditLimit,
+    );
+  }
+  double get totalOutstanding {
+    return _currentBillingCyclePerCreditCard.values.fold(
+      0.0,
+          (sum, cycle) => sum + cycle.totalAmount,
+    );
+  }
+  double get totalAvailableCredit {
+    return totalCreditLimit - totalOutstanding;
+  }
   CreditExpenseProvider({required CreditRepository repository})
     : _repository = repository {
     _init();

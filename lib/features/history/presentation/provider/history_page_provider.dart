@@ -21,6 +21,11 @@ class HistoryPageProvider extends ChangeNotifier {
   // Cache data
   YearStats? _yearStats;
   MonthStats? _monthStats;
+
+  // Credit stats
+  YearStats? _creditYearStats;
+  MonthStats? _creditMonthStats;
+
   List<ExpenseDay> _yearExpenseDays = [];
 
   bool _isLoading = false;
@@ -40,6 +45,32 @@ class HistoryPageProvider extends ChangeNotifier {
 
   MonthStats? get monthStats => _monthStats;
 
+  YearStats? get creditYearStats => _creditYearStats;
+
+  MonthStats? get creditMonthStats => _creditMonthStats;
+
+
+  double get creditSavingPercent {
+    final stats = _creditMonthStats;
+    if (stats == null || stats.grandTotal <= 0) return 0;
+
+    return (stats.saving / stats.grandTotal) * 100;
+  }
+
+  double get creditLuxuryPercent {
+    final stats = _creditMonthStats;
+    if (stats == null || stats.grandTotal <= 0) return 0;
+
+    return (stats.luxury / stats.grandTotal) * 100;
+  }
+
+  double get creditNeededPercent {
+    final stats = _creditMonthStats;
+    if (stats == null || stats.grandTotal <= 0) return 0;
+
+    return (stats.needed / stats.grandTotal) * 100;
+  }
+
   bool get isLoading => _isLoading;
 
   String? get error => _error;
@@ -52,7 +83,9 @@ class HistoryPageProvider extends ChangeNotifier {
   int get totalDays {
     final year = int.parse(_selectedYear);
 
-    return DateTime(year, _selectedMonth + 1, 0).day;
+    final daysInMonth = DateTime(year, _selectedMonth + 1, 0).day;
+
+    return daysInMonth - monthExpenseDays.length;
   }
 
   double get avgPerDay => totalDays > 0 ? monthTotal / totalDays : 0.0;
@@ -93,15 +126,27 @@ class HistoryPageProvider extends ChangeNotifier {
           selectedYear: selectedYear,
           selectedMonth: selectedMonth,
         ),
-        _historyRepository.fetchYearStats(
+        _historyRepository.fetchYearStats(uid: uid, selectedYear: selectedYear),
+        _historyRepository.fetchCreditYearStats(
           uid: uid,
           selectedYear: selectedYear,
         ),
-        _fetchYearExpenseDays(),
+        _historyRepository.fetchCreditMonthStats(
+          uid: uid,
+          selectedYear: selectedYear,
+          selectedMonth: selectedMonth,
+        ),
+        _historyRepository.fetchYearExpenseDays(
+          uid: uid,
+          selectedYear: selectedYear,
+        ),
       ]);
 
       _monthStats = results[0] as MonthStats?;
       _yearStats = results[1] as YearStats?;
+      _creditYearStats = results[2] as YearStats?;
+      _creditMonthStats = results[3] as MonthStats?;
+      _yearExpenseDays = (results[4] as List<ExpenseDay>?) ?? [];
 
       _error = null;
 
@@ -119,50 +164,6 @@ class HistoryPageProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  /// Fetch year statistics
-
-  /// Fetch ONLY the expense days for the selected year (NOT all years)
-  Future<void> _fetchYearExpenseDays() async {
-    try {
-      // Query only documents that start with the selected year
-      // This uses Firestore's string comparison for document IDs
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .where(
-            FieldPath.documentId,
-            isGreaterThanOrEqualTo: '$selectedYear-01-01',
-          )
-          .where(
-            FieldPath.documentId,
-            isLessThanOrEqualTo: '$selectedYear-12-31',
-          )
-          .get();
-
-      _yearExpenseDays = snapshot.docs.map((doc) {
-        return ExpenseDay(
-          dateId: doc.id,
-          total: (doc.data()['total'] ?? 0).toDouble(),
-        );
-      }).toList();
-
-      // Sort by date (descending)
-      _yearExpenseDays.sort((a, b) => b.dateId.compareTo(a.dateId));
-
-      if (kDebugMode) {
-        print(
-          "✅ Fetched ${_yearExpenseDays.length} expense days for $selectedYear",
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("❌ Failed to fetch year expense days: $e");
-      }
-      _yearExpenseDays = [];
     }
   }
 
