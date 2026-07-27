@@ -19,7 +19,9 @@ class AddCreditExpenseForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<CreditExpenseProvider>();
-
+    final titleResetId = context.select<CreditExpenseProvider, int>(
+          (p) => p.titleResetId,
+    );
     return Container(
       color: isDesktop ? AppColor.creditSurface : AppColor.creditDark,
       padding: EdgeInsets.all(isDesktop ? 24 : 16),
@@ -54,7 +56,7 @@ class AddCreditExpenseForm extends StatelessWidget {
                     children: [
                       TitleAutoCompleteField(
                         initialValue: provider.title,
-
+                        key: ValueKey(titleResetId),
                         decoration: InputDecoration(
                           labelText: 'Title',
                           hintText: 'e.g., Groceries, Fuel',

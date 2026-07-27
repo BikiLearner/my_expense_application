@@ -50,6 +50,7 @@ class TitleAutoCompleteField extends StatefulWidget {
 
   final bool autofocus;
 
+
   @override
   State<TitleAutoCompleteField> createState() =>
       _TitleAutoCompleteFieldState();
@@ -81,7 +82,6 @@ class _TitleAutoCompleteFieldState extends State<TitleAutoCompleteField> {
   @override
   void didUpdateWidget(covariant TitleAutoCompleteField oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     if (oldWidget.initialValue != widget.initialValue &&
         widget.initialValue != _controller.text) {
       _controller.text = widget.initialValue;
@@ -89,6 +89,7 @@ class _TitleAutoCompleteFieldState extends State<TitleAutoCompleteField> {
       _controller.selection = TextSelection.collapsed(
         offset: _controller.text.length,
       );
+      setState(() {});
     }
   }
 

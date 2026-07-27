@@ -49,6 +49,9 @@ class CreditExpenseProvider extends ChangeNotifier {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
+  int _titleResetId = 0;
+
+  int get titleResetId => _titleResetId;
 
 
   //selected type
@@ -73,7 +76,10 @@ class CreditExpenseProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   double get totalExpense {
-    return _selectedBillingCycleModel?.totalAmount ?? 0;
+    return _cachedExpenses.fold(
+      0.0,
+          (sum, expense) => sum + expense.amount,
+    );
   }
 
   int get cardsUsedCount {
@@ -120,9 +126,13 @@ class CreditExpenseProvider extends ChangeNotifier {
   double usedAmountForCard(String creditCardId) {
     return _currentBillingCyclePerCreditCard[creditCardId]?.totalAmount ?? 0;
   }
-  void setSelectedDate(DateTime picked) {
-    _selectedDate = picked;
-    notifyListeners();
+  void setSelectedDate(DateTime date) {
+    if (_selectedDate != date) {
+      _selectedDate = date;
+      _cachedExpenses = [];
+      _listenToExpenses();
+      notifyListeners();
+    }
   }
   void setTitle(String value) {
     _title = value;
@@ -186,11 +196,18 @@ class CreditExpenseProvider extends ChangeNotifier {
     }
   }
 
+  void resetTitleField() {
+    _title = '';
+    _titleResetId++;
+    notifyListeners();
+  }
+
   void clearForm() {
     _title="";
     amountController.clear();
     descriptionController.clear();
     _selectedType = ExpenseType.luxury; // Reset to default
+    resetTitleField();
     notifyListeners();
   }
 

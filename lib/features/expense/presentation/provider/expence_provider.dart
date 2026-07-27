@@ -40,6 +40,10 @@ class ExpenseProvider extends ChangeNotifier {
   String get currentYear => DateFormat('yyyy').format(DateTime.now());
 
   static const _kTransactionTypeKey = 'selected_transaction_type';
+  int _titleResetId = 0;
+
+  int get titleResetId => _titleResetId;
+
 
   // 🔹 Auth UID (SAFE)
   String get uid => FirebaseAuth.instance.currentUser!.uid;
@@ -155,6 +159,13 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+
+
+  void resetTitleField() {
+    _title = '';
+    _titleResetId++;
+    notifyListeners();
+  }
   // 🔹 Select Date
   void setSelectedDate(DateTime date) {
     if (_selectedDate != date) {
@@ -349,6 +360,7 @@ class ExpenseProvider extends ChangeNotifier {
     amountController.clear();
     descriptionController.clear();
     _selectedType = ExpenseType.luxury; // Reset to default
+    resetTitleField();
     notifyListeners();
   }
 

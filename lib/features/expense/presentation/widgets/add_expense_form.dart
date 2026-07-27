@@ -18,6 +18,9 @@ class AddExpenseForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<ExpenseProvider>();
+    final titleResetId = context.select<ExpenseProvider, int>(
+          (p) => p.titleResetId,
+    );
 
     return Container(
       color: isDesktop ? const Color(0xFF1E1E1E) : const Color(0xFF1A1A1A),
@@ -52,8 +55,8 @@ class AddExpenseForm extends StatelessWidget {
                   child: Column(
                     children: [
                       TitleAutoCompleteField(
+                        key: ValueKey(titleResetId),
                         initialValue: provider.title,
-
                         decoration: InputDecoration(
                           labelText: 'Title',
                           hintText: 'e.g., Groceries, Fuel',
@@ -144,7 +147,8 @@ class AddExpenseForm extends StatelessWidget {
                       onChanged: provider.setExpenseType,
                     );
                   },
-                )
+                ),
+
                 /// RIGHT SIDE
               ],
             ),
