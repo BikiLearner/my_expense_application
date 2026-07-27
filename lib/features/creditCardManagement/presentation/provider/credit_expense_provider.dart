@@ -215,6 +215,7 @@ class CreditExpenseProvider extends ChangeNotifier {
     _title="";
     amountController.clear();
     descriptionController.clear();
+    _split = 0;
     _selectedType = ExpenseType.luxury; // Reset to default
     resetTitleField();
     notifyListeners();

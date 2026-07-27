@@ -99,6 +99,16 @@ class EditCreditExpenseForm extends StatelessWidget {
                   IndianNumberFormatter(),
                 ],
               ),
+
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: provider.descriptionController,
+                label: 'Description (Optional)',
+                hint: 'Add details...',
+                icon: Icons.notes,
+                maxLines: 3,
+              ),
+
               Selector<CreditExpenseProvider, int>(
                 selector: (_, p) => p.split,
                 builder: (_, split, __) {
@@ -168,14 +178,6 @@ class EditCreditExpenseForm extends StatelessWidget {
                     ),
                   );
                 },
-              ),
-              const SizedBox(height: 16),
-              AppTextField(
-                controller: provider.descriptionController,
-                label: 'Description (Optional)',
-                hint: 'Add details...',
-                icon: Icons.notes,
-                maxLines: 3,
               ),
             ],
           ),

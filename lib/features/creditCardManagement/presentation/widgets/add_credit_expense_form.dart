@@ -136,6 +136,26 @@ class AddCreditExpenseForm extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
+
+
+                      const SizedBox(height: 8),
+                      AppTextField(
+                        controller: provider.descriptionController,
+                        label: 'Description (Optional)',
+                        hint: 'Add details...',
+                        icon: Icons.notes,
+                        // Same colors as TitleAutoCompleteField
+                        iconColor: AppColor.creditAccent,
+                        fillColor: AppColor.creditCard,
+                        enabledBorderColor: AppColor.creditBorder,
+                        focusedBorderColor: AppColor.creditAccent,
+
+                        textColor: Colors.white,
+                        labelColor: Colors.grey,
+                        hintColor: const Color(0xFF616161),
+                      ),
+                      const SizedBox(height: 8),
+                      const CreditCardSelectorDropDown(),
                       Selector<CreditExpenseProvider, int>(
                         selector: (_, p) => p.split,
                         builder: (_, split, __) {
@@ -206,25 +226,6 @@ class AddCreditExpenseForm extends StatelessWidget {
                           );
                         },
                       ),
-
-                      const SizedBox(height: 8),
-                      AppTextField(
-                        controller: provider.descriptionController,
-                        label: 'Description (Optional)',
-                        hint: 'Add details...',
-                        icon: Icons.notes,
-                        // Same colors as TitleAutoCompleteField
-                        iconColor: AppColor.creditAccent,
-                        fillColor: AppColor.creditCard,
-                        enabledBorderColor: AppColor.creditBorder,
-                        focusedBorderColor: AppColor.creditAccent,
-
-                        textColor: Colors.white,
-                        labelColor: Colors.grey,
-                        hintColor: const Color(0xFF616161),
-                      ),
-                      const SizedBox(height: 8),
-                      const CreditCardSelectorDropDown(),
                     ],
                   ),
                 ),
