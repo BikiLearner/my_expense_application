@@ -31,6 +31,7 @@ class _EditCreditExpenseDialogState extends State<EditCreditExpenseDialog> {
       provider.amountController.text = widget.expense.amount.toString();
       provider.descriptionController.text = widget.expense.description;
       provider.setExpenseType(widget.expense.type);
+      provider.setSplit(widget.expense.split);
 
       setState(() {
         _isInitialized = true;

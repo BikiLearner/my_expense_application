@@ -55,6 +55,7 @@ class CreditFirestoreDatasource {
     required String description,
     required String expenseTypeName,
     required DateTime purchaseDate,
+    int split=0,
   }) async {
     final cardRef = _creditCardRef(creditCardId: card.creditCardId);
 
@@ -130,6 +131,7 @@ class CreditFirestoreDatasource {
         'amount': amount,
         'type': expenseTypeName,
         'description': description,
+        'split':split,
         'purchaseDate': Timestamp.fromDate(purchaseDate),
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -234,6 +236,7 @@ class CreditFirestoreDatasource {
     required double amount,
     required String description,
     required String expenseTypeName,
+    int split =0,
     required DateTime purchaseDate,
   }) async {
     final cardRef = _creditCardRef(creditCardId: creditCardId);
@@ -310,6 +313,7 @@ class CreditFirestoreDatasource {
         'amount': amount,
         'type': expenseTypeName,
         'description': description,
+        'split':split,
         'purchaseDate': Timestamp.fromDate(purchaseDate),
       });
 

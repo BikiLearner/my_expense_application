@@ -99,6 +99,76 @@ class EditCreditExpenseForm extends StatelessWidget {
                   IndianNumberFormatter(),
                 ],
               ),
+              Selector<CreditExpenseProvider, int>(
+                selector: (_, p) => p.split,
+                builder: (_, split, __) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColor.creditCard,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColor.creditBorder,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.call_split,
+                          color: AppColor.creditAccent,
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        const Expanded(
+                          child: Text(
+                            'Split expense',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+
+                        if (split > 0) ...[
+                          IconButton(
+                            onPressed: split > 2
+                                ? () => provider.setSplit(split - 1)
+                                : null,
+                            icon: const Icon(Icons.remove),
+                            color: Colors.white,
+                          ),
+
+                          Text(
+                            '$split',
+                            style: const TextStyle(
+                              color: AppColor.creditAccent,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          IconButton(
+                            onPressed: () => provider.setSplit(split + 1),
+                            icon: const Icon(Icons.add),
+                            color: Colors.white,
+                          ),
+                        ],
+
+                        Switch(
+                          value: split > 0,
+                          onChanged: (enabled) {
+                            provider.setSplit(enabled ? 2 : 0);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
               AppTextField(
                 controller: provider.descriptionController,

@@ -32,6 +32,7 @@ abstract class CreditRepository {
     required double amount,
     required String description,
     required String expenseTypeName,
+    int split=0,
     required DateTime purchaseDate,
   });
 
@@ -53,6 +54,7 @@ abstract class CreditRepository {
     required String title,
     required double amount,
     required String description,
+    int split=0,
     required String expenseTypeName,
     required DateTime purchaseDate,
   });

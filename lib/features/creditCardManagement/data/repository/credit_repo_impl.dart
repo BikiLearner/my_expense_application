@@ -18,6 +18,7 @@ class CreditRepositoryImpl implements CreditRepository {
     required double amount,
     required String description,
     required String expenseTypeName,
+    int split=0,
     required DateTime purchaseDate,
   }) {
     return _datasource.addCreditExpense(
@@ -25,6 +26,7 @@ class CreditRepositoryImpl implements CreditRepository {
       title: title,
       amount: amount,
       description: description,
+      split: split,
       expenseTypeName: expenseTypeName,
       purchaseDate: purchaseDate,
     );
@@ -110,6 +112,7 @@ class CreditRepositoryImpl implements CreditRepository {
     required double amount,
     required String description,
     required String expenseTypeName,
+    int split=0,
     required DateTime purchaseDate,
   }) {
     return _datasource.editCreditExpense(
@@ -119,6 +122,7 @@ class CreditRepositoryImpl implements CreditRepository {
       title: title,
       amount: amount,
       description: description,
+      split: split,
       expenseTypeName: expenseTypeName,
       purchaseDate: purchaseDate,
     );

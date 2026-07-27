@@ -52,6 +52,14 @@ class CreditExpenseProvider extends ChangeNotifier {
   int _titleResetId = 0;
 
   int get titleResetId => _titleResetId;
+  int _split = 0;
+
+  int get split => _split;
+
+  void setSplit(int value) {
+    _split = value;
+    notifyListeners();
+  }
 
 
   //selected type
@@ -174,6 +182,7 @@ class CreditExpenseProvider extends ChangeNotifier {
         amount: amount,
         description: desc,
         expenseTypeName: _selectedType.name,
+        split: _split,
         purchaseDate: DateTime(
           _selectedDate.year,
           _selectedDate.month,
@@ -361,6 +370,7 @@ class CreditExpenseProvider extends ChangeNotifier {
         title: title,
         amount: amount,
         description: description,
+        split: _split,
         expenseTypeName: _selectedType.name,
         purchaseDate: DateTime(
           _selectedDate.year,
