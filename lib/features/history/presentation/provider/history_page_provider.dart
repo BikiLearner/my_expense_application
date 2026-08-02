@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expence_app/core/services/session_maganger.dart';
+import 'package:expence_app/features/creditCardManagement/domain/repository/credit_repo.dart';
+import 'package:expence_app/features/expense/domain/repository/expense_repository.dart';
 import 'package:expence_app/features/history/domain/repository/history_repo.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,7 +9,6 @@ import '../../../../shared/models/year_stats.dart';
 import '../../../expense/data/model/expense_model.dart';
 
 class HistoryPageProvider extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String uid = SessionManager.instance.requireUid;
   late String _selectedYear;
   late int _selectedMonth;
@@ -17,6 +17,8 @@ class HistoryPageProvider extends ChangeNotifier {
 
   int get selectedMonth => _selectedMonth;
   final HistoryRepository _historyRepository;
+  final ExpenseRepository _expenseRepository;
+  final CreditRepository _creditRepository;
 
   // Cache data
   YearStats? _yearStats;
@@ -31,8 +33,13 @@ class HistoryPageProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  HistoryPageProvider({required HistoryRepository historyRepository})
-    : _historyRepository = historyRepository {
+  HistoryPageProvider({
+    required HistoryRepository historyRepository,
+    required ExpenseRepository expenseRepo,
+    required CreditRepository creditRepo,
+  }) : _historyRepository = historyRepository,
+       _expenseRepository = expenseRepo,
+       _creditRepository = creditRepo {
     final now = DateTime.now();
 
     _selectedYear = now.year.toString();
@@ -48,7 +55,6 @@ class HistoryPageProvider extends ChangeNotifier {
   YearStats? get creditYearStats => _creditYearStats;
 
   MonthStats? get creditMonthStats => _creditMonthStats;
-
 
   double get creditSavingPercent {
     final stats = _creditMonthStats;
@@ -136,7 +142,7 @@ class HistoryPageProvider extends ChangeNotifier {
           selectedYear: selectedYear,
           selectedMonth: selectedMonth,
         ),
-        _historyRepository.fetchYearExpenseDays(
+        _expenseRepository.fetchYearExpenseDays(
           uid: uid,
           selectedYear: selectedYear,
         ),

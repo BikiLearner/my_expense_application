@@ -14,6 +14,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
+import 'core/routes/app_pages.dart';
 import 'core/services/service_loader_getIt.dart';
 import 'core/services/session_maganger.dart';
 import 'features/expense/data/datasource/expense_firestore_datasource.dart';
@@ -58,20 +59,22 @@ class MyApp extends StatelessWidget
         ChangeNotifierProvider(create: (_) => sl<AuthProvider>()),
         ChangeNotifierProvider(create: (_) => sl<ExpenseProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CategoryProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<ExportProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<SettingsProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<MonthExpensesProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<AllExpensesProvider>()),
         ChangeNotifierProvider(create: (_) => sl<BankProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<YearStatsProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CreditExpenseProvider>()),
         ChangeNotifierProvider(create: (_) => sl<HomeNavigationProvider>()),
         ChangeNotifierProvider(create: (_) => sl<HistoryPageProvider>()),
 
+        //Not global
+        ChangeNotifierProvider(create: (_) => sl<ExportProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<SettingsProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<MonthExpensesProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<AllExpensesProvider>()),
+        ChangeNotifierProvider(create: (_) => sl<YearStatsProvider>()),
+
       ],
-      child: const MaterialApp(
+      child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
-        home: AuthWrapper(),
+        routerConfig: AppPages.router,
       ),
     );
   }

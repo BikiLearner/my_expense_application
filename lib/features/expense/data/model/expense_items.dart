@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../../../../shared/enums/expense_type.dart';
 
 class ExpenseItem {
@@ -11,6 +12,7 @@ class ExpenseItem {
   final String description;
   final DateTime createdAt;
   final String transactionType;
+  final Map<String, dynamic>? metadata;
 
   ExpenseItem({
     required this.id,
@@ -21,6 +23,7 @@ class ExpenseItem {
     required this.description,
     required this.createdAt,
     required this.transactionType,
+    this.metadata,
   });
 
   /// 🔥 Firestore → Model
@@ -41,7 +44,10 @@ class ExpenseItem {
         orElse: () => ExpenseType.needed,
       ),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
-      transactionType: data['transactionType'] ?? 'cash'
+      transactionType: data['transactionType'] ?? 'cash',
+      metadata: data['metadata'] == null
+          ? null
+          : Map<String, dynamic>.from(data['metadata']),
     );
   }
 
@@ -56,6 +62,7 @@ class ExpenseItem {
       'type': type.name,
       'createdAt': createdAt.toIso8601String(),
       'transactionType': transactionType,
+      'metadata': metadata,
     };
   }
 
@@ -73,6 +80,9 @@ class ExpenseItem {
       ),
       createdAt: DateTime.parse(json['createdAt']),
       transactionType: json['transactionType'],
+      metadata: json['metadata'] == null
+          ? null
+          : Map<String, dynamic>.from(json['metadata']),
     );
   }
 
@@ -84,6 +94,7 @@ class ExpenseItem {
     String? description,
     DateTime? createdAt,
     String? transactionType,
+    Map<String,dynamic>? metadata,
   }) {
     return ExpenseItem(
       id: id,
@@ -94,6 +105,7 @@ class ExpenseItem {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       transactionType: transactionType ?? this.transactionType,
+      metadata: metadata ?? this.metadata,
     );
   }
 }

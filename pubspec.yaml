@@ -59,6 +59,7 @@ dependencies:
   file_picker: ^10.3.10
   textify: ^0.5.1
   get_it:
+  go_router:
 
 
 dev_dependencies:

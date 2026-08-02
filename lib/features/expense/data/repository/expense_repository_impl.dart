@@ -4,6 +4,12 @@
 // happens in ExpenseFirestoreDatasource; this class only wires the domain
 // contract to that datasource.
 
+import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
+
+import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
+
+import 'package:expence_app/features/creditCardManagement/data/model/credit_payment.dart';
+
 import '../../domain/repository/expense_repository.dart';
 import '../../../../shared/models/month_stats.dart';
 import '../../../../shared/models/year_stats.dart';
@@ -155,5 +161,15 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       uid: uid,
       expenseTypeName: expenseTypeName,
     );
+  }
+
+  @override
+  Future<String> addCreditCardPaymentExpense({required CreditPaymentModel payment, required CreditCardModel card, required BillingCycleModel billingCycle}) {
+   return _datasource.addCreditCardPaymentExpense(payment: payment, card: card, billingCycle: billingCycle);
+  }
+
+  @override
+  Future<List<ExpenseDay>> fetchYearExpenseDays({required String uid, required String selectedYear}) {
+    return _datasource.fetchYearExpenseDays(uid: uid, selectedYear: selectedYear);
   }
 }

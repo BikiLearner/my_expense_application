@@ -102,52 +102,6 @@ class HistoryDataSource {
     }
   }
 
-  Future<List<ExpenseDay>> fetchYearExpenseDays({
-    required String uid,
-    required String selectedYear,
-  }) async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('expenses')
-          .where(
-        FieldPath.documentId,
-        isGreaterThanOrEqualTo: '$selectedYear-01-01',
-      )
-          .where(
-        FieldPath.documentId,
-        isLessThanOrEqualTo: '$selectedYear-12-31',
-      )
-          .get();
-
-      final expenseDays = snapshot.docs.map((doc) {
-        return ExpenseDay(
-          dateId: doc.id,
-          total: (doc.data()['total'] ?? 0).toDouble(),
-        );
-      }).toList();
-
-      // Descending by date
-      expenseDays.sort(
-            (a, b) => b.dateId.compareTo(a.dateId),
-      );
-
-      if (kDebugMode) {
-        print(
-          '✅ Fetched ${expenseDays.length} expense days for $selectedYear',
-        );
-      }
-
-      return expenseDays;
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Failed to fetch year expense days: $e');
-      }
-
-      return [];
-    }
-  }
   Future<MonthStats?> fetchCreditMonthStats({
     required String uid,
     required String selectedYear,

@@ -28,10 +28,6 @@ abstract class HistoryRepository {
     required int selectedMonth,
   });
 
-  Future<List<ExpenseDay>> fetchYearExpenseDays({
-    required String uid,
-    required String selectedYear,
-  });
 
   Future<MonthStats?> fetchCreditMonthStats({
     required String uid,

@@ -27,6 +27,9 @@ import 'package:expence_app/shared/providers/home_navigation_provider.dart';
 import 'package:expence_app/shared/providers/year_stat_provider.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../features/creditCardManagement/data/model/billing_cycle_model.dart';
+import '../../features/creditCardManagement/data/model/credit_card.dart';
+import '../../features/creditCardManagement/presentation/provider/credit_card_payment_provider.dart';
 import '../../features/history/data/repository/history_repo_impl.dart';
 
 // Global ServiceLocator instance
@@ -88,6 +91,23 @@ class ServiceLocator {
     sl.registerFactory(() => CreditExpenseProvider(repository: sl()));
     sl.registerFactory(() => YearStatsProvider());
     sl.registerFactory(() => HomeNavigationProvider());
-    sl.registerFactory(() => HistoryPageProvider(historyRepository: sl()));
+    sl.registerFactoryParam<
+        CreditCardDetailsProvider,
+        CreditCardModel,
+        void>(
+          (creditCard, _) => CreditCardDetailsProvider(
+        repository: sl(),
+        bankRepository: sl(),
+        expenseRepository: sl(),
+        creditCard: creditCard,
+      ),
+    );
+    sl.registerFactory(
+      () => HistoryPageProvider(
+        historyRepository: sl(),
+        expenseRepo: sl(),
+        creditRepo: sl(),
+      ),
+    );
   }
 }

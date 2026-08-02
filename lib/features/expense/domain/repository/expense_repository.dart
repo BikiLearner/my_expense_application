@@ -8,6 +8,9 @@
 // repository is a thin pass-through, it adds no business logic of its own
 // (per the refactor spec: "do not redesign, do not optimize").
 
+import '../../../creditCardManagement/data/model/billing_cycle_model.dart';
+import '../../../creditCardManagement/data/model/credit_card.dart';
+import '../../../creditCardManagement/data/model/credit_payment.dart';
 import '../../data/model/expense_items.dart';
 import '../../../../shared/models/month_stats.dart';
 import '../../../../shared/models/year_stats.dart';
@@ -82,5 +85,16 @@ abstract class ExpenseRepository {
   Future<Map<String, List<ExpenseDay>>> getExpensesGroupedByMonthForType({
     required String uid,
     required String expenseTypeName,
+  });
+
+  Future<String> addCreditCardPaymentExpense({
+    required CreditPaymentModel payment,
+    required CreditCardModel card,
+    required BillingCycleModel billingCycle,
+  });
+
+  Future<List<ExpenseDay>> fetchYearExpenseDays({
+    required String uid,
+    required String selectedYear,
   });
 }

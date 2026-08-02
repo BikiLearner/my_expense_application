@@ -1,5 +1,6 @@
 import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
+import 'package:expence_app/features/creditCardManagement/data/model/credit_payment.dart';
 
 import '../../domain/repository/credit_repo.dart';
 import '../datasource/credit_firestore_datasource.dart';
@@ -18,7 +19,7 @@ class CreditRepositoryImpl implements CreditRepository {
     required double amount,
     required String description,
     required String expenseTypeName,
-    int split=0,
+    int split = 0,
     required DateTime purchaseDate,
   }) {
     return _datasource.addCreditExpense(
@@ -112,7 +113,7 @@ class CreditRepositoryImpl implements CreditRepository {
     required double amount,
     required String description,
     required String expenseTypeName,
-    int split=0,
+    int split = 0,
     required DateTime purchaseDate,
   }) {
     return _datasource.editCreditExpense(
@@ -139,5 +140,26 @@ class CreditRepositoryImpl implements CreditRepository {
       billingCycleId: billingCycleId,
       expenseId: expenseId,
     );
+  }
+
+  @override
+  Future<void> payCreditCard({required CreditPaymentModel payment}) {
+    return _datasource.payCreditCard(payment: payment);
+  }
+
+  @override
+  Future<List<CreditExpenseItem>> fetchCreditExpensesByBillingCycleId({
+    required String creditCardId,
+    required String billingCycleId,
+  }) {
+    return _datasource.fetchCreditExpensesByBillingCycleId(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    );
+  }
+
+  @override
+  Future<List<BillingCycleModel>> fetchBillingCycles({required String creditCardId}) {
+    return _datasource.fetchBillingCycles(creditCardId: creditCardId);
   }
 }

@@ -2,6 +2,7 @@ import 'package:expence_app/features/creditCardManagement/data/model/credit_card
 
 import '../../data/model/billing_cycle_model.dart';
 import '../../data/model/credit_card_expense_item_model.dart';
+import '../../data/model/credit_payment.dart';
 
 abstract class CreditRepository {
   Future<void> createCreditCard({
@@ -63,5 +64,18 @@ abstract class CreditRepository {
     required String creditCardId,
     required String billingCycleId,
     required String expenseId,
+  });
+
+  Future<void> payCreditCard({
+    required CreditPaymentModel payment,
+  });
+
+  Future<List<CreditExpenseItem>> fetchCreditExpensesByBillingCycleId({
+    required String creditCardId,
+    required String billingCycleId,
+  });
+
+  Future<List<BillingCycleModel>> fetchBillingCycles({
+    required String creditCardId,
   });
 }

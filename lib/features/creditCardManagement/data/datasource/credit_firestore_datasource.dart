@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../../core/services/session_maganger.dart';
 import '../model/billing_cycle_model.dart';
 import '../model/credit_card_expense_item_model.dart';
+import '../model/credit_payment.dart';
 
 class CreditFirestoreDatasource {
   CreditFirestoreDatasource({FirebaseFirestore? firestore})
@@ -108,13 +109,13 @@ class CreditFirestoreDatasource {
         currentUsed = existingCycle.totalAmount;
       } else {
         transaction.set(billingCycleRef, billingCycle.toFirestore());
-        if (cardData.currentBillingCycleId != billingCycle.billingCycleId) {
-          transaction.update(cardRef, {
-            'currentBillingCycleId': billingCycle.billingCycleId,
-          });
-        }
       }
 
+      if (cardData.currentBillingCycleId != billingCycle.billingCycleId) {
+        transaction.update(cardRef, {
+          'currentBillingCycleId': billingCycle.billingCycleId,
+        });
+      }
       if (currentUsed + amount > creditLimit) {
         throw Exception('Credit limit exceeded.');
       }
@@ -122,7 +123,13 @@ class CreditFirestoreDatasource {
       final expenseRef = billingCycleRef
           .collection(CollectionName.creditExpenses)
           .doc();
-
+      debugPrint("================================");
+      debugPrint("statementDay : ${card.statementDay}");
+      debugPrint("purchaseDate : $purchaseDate");
+      debugPrint("billingCycleId : ${billingCycle.billingCycleId}");
+      debugPrint("startDate : ${billingCycle.startDate}");
+      debugPrint("endDate : ${billingCycle.endDate}");
+      debugPrint("================================");
 
 
       transaction.set(expenseRef, {
@@ -533,6 +540,24 @@ class CreditFirestoreDatasource {
     }
   }
 
+  Future<List<CreditExpenseItem>> fetchCreditExpensesByBillingCycleId({
+    required String creditCardId,
+    required String billingCycleId,
+  }) async {
+    debugPrint("The billing cycle id $billingCycleId");
+    final snapshot = await _billingCycleRef(
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    )
+        .collection(CollectionName.creditExpenses)
+        .orderBy('purchaseDate', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => CreditExpenseItem.fromFirestore(doc.id, doc.data()))
+        .toList();
+  }
+
   Future<void> updateCreditCard() {
     // TODO: implement updateCreditCard
     throw UnimplementedError();
@@ -594,5 +619,31 @@ class CreditFirestoreDatasource {
 
       return BillingCycleModel.fromFirestore(snapshot.id, snapshot.data()!);
     });
+  }
+
+
+  Future<List<BillingCycleModel>> fetchBillingCycles({
+    required String creditCardId,
+  }) async {
+    final snapshot = await _creditCardRef(
+      creditCardId: creditCardId,
+    ).collection(CollectionName.billingCycle)
+        .orderBy('startDate', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map(
+          (doc) => BillingCycleModel.fromFirestore(
+        doc.id,
+        doc.data(),
+      ),
+    )
+        .toList();
+  }
+
+  Future<void> payCreditCard({
+    required CreditPaymentModel payment,
+  }) async{
+
   }
 }

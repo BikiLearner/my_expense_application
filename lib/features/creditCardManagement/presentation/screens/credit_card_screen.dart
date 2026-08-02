@@ -1,9 +1,13 @@
 import 'package:expence_app/core/theme/app_color.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
+import 'package:expence_app/features/creditCardManagement/presentation/screens/credit_card_detials_screen.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/screens/credit_card_from_page.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../../../../core/routes/app_routes.dart';
 
 class CreditCardScreen extends StatefulWidget {
   const CreditCardScreen({super.key});
@@ -55,9 +59,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const CreditCardFromPage(),
-            ),
+            MaterialPageRoute(builder: (_) => const CreditCardFromPage()),
           );
         },
         icon: const Icon(Icons.add),
@@ -72,9 +74,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
         builder: (context, state, _) {
           if (state.isLoading) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: AppColor.creditAccent,
-              ),
+              child: CircularProgressIndicator(color: AppColor.creditAccent),
             );
           }
 
@@ -136,7 +136,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
   Widget _buildCreditCardList(List<CreditCardModel> creditCards) {
     final totalCreditLimit = creditCards.fold<double>(
       0,
-          (sum, card) => sum + card.creditLimit,
+      (sum, card) => sum + card.creditLimit,
     );
 
     return Column(
@@ -173,8 +173,11 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.account_balance_wallet_rounded,
-                          size: 14, color: AppColor.creditAccent.withOpacity(.9)),
+                      Icon(
+                        Icons.account_balance_wallet_rounded,
+                        size: 14,
+                        color: AppColor.creditAccent.withOpacity(.9),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'TOTAL CREDIT LIMIT',
@@ -231,8 +234,9 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
             itemCount: creditCards.length,
             itemBuilder: (_, index) {
               final card = creditCards[index];
-              final palette =
-              AppColor.paletteFor(card.bankName + card.cardName);
+              final palette = AppColor.paletteFor(
+                card.bankName + card.cardName,
+              );
               return _CreditCard(creditCard: card, palette: palette);
             },
           ),
@@ -251,10 +255,10 @@ class _BankListState {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is _BankListState &&
-              runtimeType == other.runtimeType &&
-              isLoading == other.isLoading &&
-              creditCards == other.creditCards;
+      other is _BankListState &&
+          runtimeType == other.runtimeType &&
+          isLoading == other.isLoading &&
+          creditCards == other.creditCards;
 
   @override
   int get hashCode => isLoading.hashCode ^ creditCards.hashCode;
@@ -265,10 +269,7 @@ class _CreditCard extends StatelessWidget {
   final CreditCardModel creditCard;
   final CreditCardPalette palette;
 
-  const _CreditCard({
-    required this.creditCard,
-    required this.palette,
-  });
+  const _CreditCard({required this.creditCard, required this.palette});
 
   @override
   Widget build(BuildContext context) {
@@ -281,10 +282,7 @@ class _CreditCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: palette.gradient,
         ),
-        border: Border.all(
-          color: Colors.white.withOpacity(.08),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(.08), width: 1),
         boxShadow: [
           BoxShadow(
             color: palette.glow.withOpacity(.45),
@@ -298,7 +296,10 @@ class _CreditCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: () {
-            // TODO: Navigate to details
+            context.push(
+              AppRoutes.creditDetails,
+              extra: (creditCard),
+            );
           },
           child: Stack(
             children: [
@@ -437,6 +438,7 @@ class _CreditCard extends StatelessWidget {
 // 🟢 Active / Inactive pill
 class _StatusPill extends StatelessWidget {
   final bool isActive;
+
   const _StatusPill({required this.isActive});
 
   @override
@@ -489,16 +491,11 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.12),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,11 +503,7 @@ class _InfoChip extends StatelessWidget {
           Row(
             children: [
               if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 13,
-                  color: accent.withOpacity(.85),
-                ),
+                Icon(icon, size: 13, color: accent.withOpacity(.85)),
                 const SizedBox(width: 5),
               ],
               Text(

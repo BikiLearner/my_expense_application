@@ -67,15 +67,4 @@ class HistoryRepositoryImpl implements HistoryRepository {
       selectedMonth: selectedMonth,
     );
   }
-
-  @override
-  Future<List<ExpenseDay>> fetchYearExpenseDays({
-    required String uid,
-    required String selectedYear,
-  }) {
-    return _datasource.fetchYearExpenseDays(
-      uid: uid,
-      selectedYear: selectedYear,
-    );
-  }
 }

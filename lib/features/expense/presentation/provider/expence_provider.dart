@@ -80,25 +80,6 @@ class ExpenseProvider extends ChangeNotifier {
 
   List<ExpenseItem> get cachedExpenses => _cachedExpenses;
 
-  String monthFromInt(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    if (month < 1 || month > 12) return 'Invalid month';
-    return months[month - 1];
-  }
 
   // Stream subscription
   StreamSubscription<List<ExpenseItem>>? _expenseSubscription;
