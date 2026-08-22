@@ -7,6 +7,7 @@ class BillingCycleModel {
   final String status;
   final double totalAmount;
   final DateTime createdAt;
+  final bool? isPaid;
 
   // Expense type totals
   final double? saving;
@@ -23,6 +24,7 @@ class BillingCycleModel {
     this.saving,
     this.needed,
     this.luxury,
+    this.isPaid,
   });
 
   factory BillingCycleModel.fromFirestore(
@@ -39,6 +41,7 @@ class BillingCycleModel {
       saving: (data['saving'] as num?)?.toDouble() ?? 0,
       needed: (data['needed'] as num?)?.toDouble() ?? 0,
       luxury: (data['luxury'] as num?)?.toDouble() ?? 0,
+      isPaid: data['isPaid'] as bool? ?? false,
     );
   }
 
@@ -53,6 +56,7 @@ class BillingCycleModel {
       'saving': saving ?? 0,
       'needed': needed ?? 0,
       'luxury': luxury ?? 0,
+      'isPaid': isPaid ?? false,
     };
   }
 
@@ -98,6 +102,7 @@ class BillingCycleModel {
       status: 'active',
       totalAmount: 0,
       createdAt: DateTime.now(),
+      isPaid: false,
     );
   }
 }

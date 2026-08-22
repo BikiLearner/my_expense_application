@@ -143,8 +143,12 @@ class CreditRepositoryImpl implements CreditRepository {
   }
 
   @override
-  Future<void> payCreditCard({required CreditPaymentModel payment}) {
-    return _datasource.payCreditCard(payment: payment);
+  Future<bool> payCreditCard({
+    required CreditPaymentModel payment,
+    required String creditCardId,
+    required String billingCycleId,
+  }) {
+    return _datasource.payCreditCard(payment: payment,creditCardId: creditCardId,billingCycleId: billingCycleId);
   }
 
   @override

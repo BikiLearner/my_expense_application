@@ -66,8 +66,10 @@ abstract class CreditRepository {
     required String expenseId,
   });
 
-  Future<void> payCreditCard({
+  Future<bool> payCreditCard({
     required CreditPaymentModel payment,
+    required String creditCardId,
+    required String billingCycleId,
   });
 
   Future<List<CreditExpenseItem>> fetchCreditExpensesByBillingCycleId({

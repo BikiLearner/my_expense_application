@@ -22,6 +22,7 @@ import '../../features/creditCardManagement/presentation/screens/credit_card_fro
 import '../../features/creditCardManagement/presentation/screens/credit_card_screen.dart';
 import '../../features/creditCardManagement/presentation/screens/credit_expense_overview_screen.dart';
 import '../../features/creditCardManagement/presentation/screens/credit_expense_screen.dart';
+import '../../features/creditCardManagement/presentation/screens/credit_payment_screen.dart';
 import '../../features/expense/presentation/screens/expense_particular_day_overView.dart';
 import '../../features/export/presentation/screens/export_data_page.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
@@ -175,6 +176,20 @@ class AppPages {
               billingCycle: billingCycle,
               isCurrentCycle: isCurrentCycle,
             ),
+          );
+        },
+      ),
+
+      // app_pages.dart
+      GoRoute(
+        path: AppRoutes.creditPayment,
+        builder: (context, state) {
+          final (provider, billingCycle) =
+          state.extra! as (CreditCardDetailsProvider, BillingCycleModel);
+          provider.setBillingCycleId(billingCycle); // sync provider to tapped cycle
+          return ChangeNotifierProvider.value(
+            value: provider,
+            child: const CreditPaymentScreen(),
           );
         },
       ),

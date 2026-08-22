@@ -109,6 +109,7 @@ class CreditPaymentModel {
   }
 
   CreditPaymentModel copyWith({
+    String? id,
     String? creditCardId,
     String? creditCardName,
     String? billingCycleId,
@@ -125,7 +126,7 @@ class CreditPaymentModel {
     DateTime? createdAt,
   }) {
     return CreditPaymentModel(
-      id: id,
+      id: id ?? this.id,
       billingCycleId: billingCycleId ?? this.billingCycleId,
       bankId: bankId ?? this.bankId,
       bankName: bankName ?? this.bankName,

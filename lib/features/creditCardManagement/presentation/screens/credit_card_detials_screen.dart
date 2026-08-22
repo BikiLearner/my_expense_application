@@ -2,14 +2,12 @@ import 'package:expence_app/core/constants/date_constant.dart';
 import 'package:expence_app/core/theme/app_color.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
-import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../provider/credit_card_payment_provider.dart';
-import 'billing_detials_screen.dart';
 
 /// Full details screen for a single credit card.
 ///
@@ -20,15 +18,14 @@ import 'billing_detials_screen.dart';
 ///  - The current billing cycle summary with a button to drill into it.
 ///  - A scrollable history of past billing cycles, each tappable.
 class CreditCardDetailsScreen extends StatelessWidget {
-
-
-  const CreditCardDetailsScreen({super.key,});
+  const CreditCardDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final creditCard = context.select<CreditCardDetailsProvider, CreditCardModel>(
+    final creditCard = context
+        .select<CreditCardDetailsProvider, CreditCardModel>(
           (provider) => provider.creditCard,
-    );
+        );
 
     final palette = AppColor.paletteFor(
       creditCard.bankName + creditCard.cardName,
@@ -78,10 +75,10 @@ class CreditCardDetailsScreen extends StatelessWidget {
                         context.push(
                           AppRoutes.billingDetails,
                           extra: (
-                          context.read<CreditCardDetailsProvider>(),
-                          creditCard,
-                          currentCycle,
-                          true, // or false
+                            context.read<CreditCardDetailsProvider>(),
+                            creditCard,
+                            currentCycle,
+                            true, // or false
                           ),
                         );
                       },
@@ -851,10 +848,10 @@ class _BillingCycleHistoryList extends StatelessWidget {
                       context.push(
                         AppRoutes.billingDetails,
                         extra: (
-                        context.read<CreditCardDetailsProvider>(),
-                        creditCard,
-                        cycle,
-                        cycle.billingCycleId == currentCycleId,
+                          context.read<CreditCardDetailsProvider>(),
+                          creditCard,
+                          cycle,
+                          cycle.billingCycleId == currentCycleId,
                         ),
                       );
                     },

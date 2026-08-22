@@ -49,6 +49,15 @@ class CreditFirestoreDatasource {
       .collection(CollectionName.billingCycle)
       .doc(billingCycleId);
 
+  DocumentReference<Map<String, dynamic>> _paymentRef({
+    String? creditCardId,
+    String? billingCycleId,
+  }) => userReference
+      .collection(CollectionName.creditCards)
+      .doc(creditCardId)
+      .collection(CollectionName.creditCardPayment)
+      .doc(billingCycleId);
+
   Future<void> addCreditExpense({
     required CreditCardModel card,
     required String title,
@@ -641,9 +650,57 @@ class CreditFirestoreDatasource {
         .toList();
   }
 
-  Future<void> payCreditCard({
+  Future<bool> payCreditCard({
     required CreditPaymentModel payment,
-  }) async{
+    required String creditCardId,
+    required String billingCycleId,
+  }) async {
+    try {
+      final paymentRef = _paymentRef(
+        creditCardId: creditCardId,
+        billingCycleId: billingCycleId,
+      );
 
+      final billingCycleRef = _billingCycleRef(
+        creditCardId: creditCardId,
+        billingCycleId: billingCycleId,
+      );
+
+      final paymentWithId = payment.copyWith(
+        id: paymentRef.id,
+      );
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // Check payment inside the transaction.
+        final paymentSnapshot = await transaction.get(paymentRef);
+
+        if (paymentSnapshot.exists) {
+          throw Exception(
+            'Payment already exists for this billing cycle.',
+          );
+        }
+
+        // Create payment.
+        transaction.set(
+          paymentRef,
+          paymentWithId.toFirestore(),
+        );
+
+        // Mark billing cycle as paid.
+        transaction.update(
+          billingCycleRef,
+          {
+            'isPaid': true,
+          },
+        );
+      });
+
+      return true;
+    } catch (e, stackTrace) {
+      debugPrint('Error paying credit card: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      return false;
+    }
   }
 }

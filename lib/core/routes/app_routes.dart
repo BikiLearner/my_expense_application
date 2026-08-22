@@ -41,4 +41,5 @@ class AppRoutes {
   static const savings = '/savings';
   static const behaviour = '/behaviour';
   static const heatmap = '/heatmap';
+  static const creditPayment = '/credit-payment';
 }

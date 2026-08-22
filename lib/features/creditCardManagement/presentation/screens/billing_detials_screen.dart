@@ -3,8 +3,10 @@ import 'package:expence_app/core/theme/app_color.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/routes/app_routes.dart';
 import '../../data/model/credit_card_expense_item_model.dart';
 import '../provider/credit_card_payment_provider.dart';
 import '../widgets/credit_expense_item_tile.dart';
@@ -46,7 +48,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          _header(),
+          _header(context),
 
           const SizedBox(height: 16),
 
@@ -86,7 +88,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _header() {
+  Widget _header(BuildContext context) {
     final statusColor = switch (billingCycle.status.toLowerCase()) {
       "paid" => AppColor.creditPaid,
       "active" => AppColor.creditEMI,
@@ -120,9 +122,11 @@ class BillingCycleDetailsScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   "${DateConstants.ddMMMyyyy(billingCycle.startDate)}"
-                      " - "
-                      "${DateConstants.ddMMMyyyy(billingCycle.endDate)}",
-                  style: TextStyle(color: AppColor.creditAccent.withOpacity(.7)),
+                  " - "
+                  "${DateConstants.ddMMMyyyy(billingCycle.endDate)}",
+                  style: TextStyle(
+                    color: AppColor.creditAccent.withOpacity(.7),
+                  ),
                 ),
               ),
               Container(
@@ -196,7 +200,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          _paymentButton(),
+          _paymentButton(context),
         ],
       ),
     );
@@ -229,13 +233,16 @@ class BillingCycleDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _paymentButton() {
+  Widget _paymentButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
         onPressed: () {
-          // TODO: Payment
+          context.push(
+            AppRoutes.creditPayment,
+            extra: (context.read<CreditCardDetailsProvider>(), billingCycle),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColor.creditAccent,
@@ -245,14 +252,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: Text(
-          "Pay ₹${billingCycle.totalAmount.toStringAsFixed(0)}",
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: .3,
-          ),
-        ),
+        child: Text("Pay ₹${billingCycle.totalAmount.toStringAsFixed(0)}"),
       ),
     );
   }

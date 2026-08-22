@@ -1,579 +1,558 @@
-// import 'package:expence_app/core/theme/app_color.dart';
-// import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
-// import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
-// import 'package:provider/provider.dart';
-//
-// import '../../../bank/data/model/bank_model.dart';
-// import '../../../bank/presentation/provider/bank_provider.dart';
-// import '../provider/credit_card_payment_provider.dart';
-//
-// /// Screen to record a payment against the *current* billing cycle.
-// ///
-// /// Every field of [CreditPaymentModel] is shown as an editable input,
-// /// prefilled from [CreditCardDetailsProvider]:
-// ///   - `billingCycleId`, `expenseAmount` -> current billing cycle (Selector)
-// ///   - `bankId` / `bankName`             -> bank dropdown (BankProvider)
-// ///   - `interest`, `lateFee`, `gst`, `otherCharges` -> default 0, editable
-// ///   - `totalPaid`                        -> auto-computed, but overridable
-// ///   - `paymentDate`                      -> defaults to today, editable
-// ///
-// /// NOTE: getter/method names marked `// ASSUMPTION:` below are guesses
-// /// based on what was visible in your other files. Rename to match your
-// /// actual `CreditCardDetailsProvider` API.
-// class CreditPaymentScreen extends StatefulWidget {
-//   const CreditPaymentScreen({super.key});
-//
-//   @override
-//   State<CreditPaymentScreen> createState() => _CreditPaymentScreenState();
-// }
-//
-// class _CreditPaymentScreenState extends State<CreditPaymentScreen> {
-//
-//
-//
-//   String? _billingCycleId;
-//   BankModel? _selectedBank;
-//   DateTime _paymentDate = DateTime.now();
-//   bool _isSubmitting = false;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//
-//     // Seed everything ONCE from the provider so the fields start
-//     // pre-filled, then live as local editable state afterwards.
-//     final detailsProvider = context.read<CreditCardDetailsProvider>();
-//     final bankProvider = context.read<BankProvider>();
-//
-//     // ASSUMPTION: provider exposes the currently open billing cycle here.
-//     final BillingCycleModel? cycle = detailsProvider.currentBillingCycle;
-//     // ASSUMPTION: provider exposes the currently selected credit card here.
-//     final CreditCardModel? card = detailsProvider.creditCard;
-//
-//     _billingCycleId = cycle?.id;
-//
-//     _expenseAmountCtrl = TextEditingController(
-//       text: (cycle?.totalAmount ?? 0).toStringAsFixed(2),
-//     );
-//     _interestCtrl = TextEditingController(text: '0.00');
-//     _lateFeeCtrl = TextEditingController(text: '0.00');
-//     _gstCtrl = TextEditingController(text: '0.00');
-//     _otherChargesCtrl = TextEditingController(text: '0.00');
-//     _totalPaidCtrl = TextEditingController(
-//       text: (cycle?.totalAmount ?? 0).toStringAsFixed(2),
-//     );
-//
-//     // Recompute total whenever any component changes, unless the user
-//     // has manually overridden the total field themselves.
-//     for (final c in [
-//       _expenseAmountCtrl,
-//       _interestCtrl,
-//       _lateFeeCtrl,
-//       _gstCtrl,
-//       _otherChargesCtrl,
-//     ]) {
-//       c.addListener(_recomputeTotal);
-//     }
-//
-//     // Default the bank to the card's linked bank if you track that on
-//     // CreditCardModel; otherwise fall back to the first available bank.
-//     // ASSUMPTION: CreditCardModel has a `bankId` field to match against.
-//     if (bankProvider.banks.isNotEmpty) {
-//       _selectedBank = bankProvider.banks.firstWhere(
-//             (b) => b.id == ?.bankId,
-//         orElse: () => bankProvider.banks.first,
-//       );
-//     }
-//   }
-//
-//   void _recomputeTotal() {
-//     final total = _parsed(_expenseAmountCtrl) +
-//         _parsed(_interestCtrl) +
-//         _parsed(_lateFeeCtrl) +
-//         _parsed(_gstCtrl) +
-//         _parsed(_otherChargesCtrl);
-//     _totalPaidCtrl.text = total.toStringAsFixed(2);
-//   }
-//
-//   double _parsed(TextEditingController c) => double.tryParse(c.text) ?? 0;
-//
-//   @override
-//   void dispose() {
-//     _expenseAmountCtrl.dispose();
-//     _interestCtrl.dispose();
-//     _lateFeeCtrl.dispose();
-//     _gstCtrl.dispose();
-//     _otherChargesCtrl.dispose();
-//     _totalPaidCtrl.dispose();
-//     super.dispose();
-//   }
-//
-//   Future<void> _pickDate() async {
-//     final picked = await showDatePicker(
-//       context: context,
-//       initialDate: _paymentDate,
-//       firstDate: DateTime(2020),
-//       lastDate: DateTime(2100),
-//       builder: (context, child) {
-//         return Theme(
-//           data: Theme.of(context).copyWith(
-//             colorScheme: const ColorScheme.dark(
-//               primary: AppColor.creditAccent,
-//               onPrimary: AppColor.creditDark,
-//               surface: AppColor.creditCard,
-//               onSurface: AppColor.creditAccent,
-//             ),
-//           ),
-//           child: child!,
-//         );
-//       },
-//     );
-//     if (picked != null) {
-//       setState(() => _paymentDate = picked);
-//     }
-//   }
-//
-//   Future<void> _submit() async {
-//     if (!_formKey.currentState!.validate()) return;
-//     if (_selectedBank == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(content: Text('Please select a payment bank')),
-//       );
-//       return;
-//     }
-//     if (_billingCycleId == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(content: Text('No active billing cycle found')),
-//       );
-//       return;
-//     }
-//
-//     setState(() => _isSubmitting = true);
-//     //
-//     // final payment = CreditPaymentModel(
-//     //   id: '', // ASSUMPTION: id is assigned by Firestore / repository layer.
-//     //   billingCycleId: _billingCycleId!,
-//     //   bankId: _selectedBank!.id,
-//     //   bankName: _selectedBank!.bankName,
-//     //   expenseAmount: _parsed(_expenseAmountCtrl),
-//     //   interest: _parsed(_interestCtrl),
-//     //   lateFee: _parsed(_lateFeeCtrl),
-//     //   gst: _parsed(_gstCtrl),
-//     //   otherCharges: _parsed(_otherChargesCtrl),
-//     //   totalPaid: _parsed(_totalPaidCtrl),
-//     //   expenseId: '', // ASSUMPTION: generated server-side / by repository.
-//     //   paymentDate: _paymentDate,
-//     //   createdAt: DateTime.now(),
-//     // );
-//
-//     try {
-//       // ASSUMPTION: CreditCardDetailsProvider exposes this method.
-//       // await context.read<CreditCardDetailsProvider>().makePayment(payment);
-//       if (mounted) Navigator.of(context).pop(true);
-//     } catch (e) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(content: Text('Payment failed: $e')),
-//         );
-//       }
-//     } finally {
-//       if (mounted) setState(() => _isSubmitting = false);
-//     }
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: AppColor.creditSurface,
-//       appBar: AppBar(
-//         backgroundColor: AppColor.creditSurface,
-//         elevation: 0,
-//         foregroundColor: AppColor.creditAccent,
-//         title: const Text(
-//           'Make Payment',
-//           style: TextStyle(
-//             color: AppColor.creditAccent,
-//             fontWeight: FontWeight.w600,
-//           ),
-//         ),
-//       ),
-//       body: Form(
-//         key: _formKey,
-//         child: ListView(
-//           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-//           children: [
-//             _summaryCard(),
-//             const SizedBox(height: 20),
-//             _sectionLabel('Payment Method'),
-//             const SizedBox(height: 10),
-//             _bankDropdown(),
-//             const SizedBox(height: 20),
-//             _sectionLabel('Payment Date'),
-//             const SizedBox(height: 10),
-//             _dateTile(),
-//             const SizedBox(height: 20),
-//             _sectionLabel('Amount Breakdown'),
-//             const SizedBox(height: 10),
-//             _amountField(
-//               controller: _expenseAmountCtrl,
-//               label: 'Expense Amount',
-//               icon: Icons.receipt_long_rounded,
-//             ),
-//             const SizedBox(height: 12),
-//             _amountField(
-//               controller: _interestCtrl,
-//               label: 'Interest',
-//               icon: Icons.percent_rounded,
-//             ),
-//             const SizedBox(height: 12),
-//             _amountField(
-//               controller: _lateFeeCtrl,
-//               label: 'Late Fee',
-//               icon: Icons.warning_amber_rounded,
-//             ),
-//             const SizedBox(height: 12),
-//             _amountField(
-//               controller: _gstCtrl,
-//               label: 'GST',
-//               icon: Icons.request_quote_rounded,
-//             ),
-//             const SizedBox(height: 12),
-//             _amountField(
-//               controller: _otherChargesCtrl,
-//               label: 'Other Charges',
-//               icon: Icons.more_horiz_rounded,
-//             ),
-//             const SizedBox(height: 20),
-//             _sectionLabel('Total Paid'),
-//             const SizedBox(height: 10),
-//             _amountField(
-//               controller: _totalPaidCtrl,
-//               label: 'Total Paid',
-//               icon: Icons.account_balance_wallet_rounded,
-//               highlight: true,
-//             ),
-//             const SizedBox(height: 28),
-//             _confirmButton(),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-//
-//   Widget _sectionLabel(String text) {
-//     return Text(
-//       text,
-//       style: TextStyle(
-//         color: AppColor.creditAccent.withOpacity(.6),
-//         fontSize: 13,
-//         fontWeight: FontWeight.w600,
-//         letterSpacing: .4,
-//       ),
-//     );
-//   }
-//
-//   /// Live provider-driven summary — this is the piece that genuinely
-//   /// benefits from Selector, since it just displays state rather than
-//   /// feeding an editable controller.
-//   Widget _summaryCard() {
-//     return Selector<CreditCardDetailsProvider, _SummaryView>(
-//       selector: (_, provider) => _SummaryView(
-//         cardName: provider.creditCard.cardName, // ASSUMPTION
-//         outstanding: provider.currentBillingCycle?.totalAmount ?? 0,
-//         status: provider.currentBillingCycle?.status ?? 'active',
-//       ),
-//       builder: (context, summary, _) {
-//         final statusColor = switch (summary.status.toLowerCase()) {
-//           'paid' => AppColor.creditPaid,
-//           'active' => AppColor.creditEMI,
-//           _ => AppColor.creditLimit,
-//         };
-//
-//         return Container(
-//           padding: const EdgeInsets.all(20),
-//           decoration: BoxDecoration(
-//             gradient: const LinearGradient(
-//               begin: Alignment.topLeft,
-//               end: Alignment.bottomRight,
-//               colors: [AppColor.creditGradientStart, AppColor.creditGradientEnd],
-//             ),
-//             borderRadius: BorderRadius.circular(22),
-//             border: Border.all(color: AppColor.creditBorder),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.black.withOpacity(.4),
-//                 blurRadius: 20,
-//                 offset: const Offset(0, 10),
-//               ),
-//             ],
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Row(
-//                 children: [
-//                   Expanded(
-//                     child: Text(
-//                       summary.cardName,
-//                       style: TextStyle(
-//                         color: AppColor.creditAccent.withOpacity(.7),
-//                         fontSize: 15,
-//                       ),
-//                     ),
-//                   ),
-//                   Container(
-//                     padding: const EdgeInsets.symmetric(
-//                       horizontal: 12,
-//                       vertical: 6,
-//                     ),
-//                     decoration: BoxDecoration(
-//                       color: statusColor.withOpacity(.15),
-//                       borderRadius: BorderRadius.circular(30),
-//                       border: Border.all(color: statusColor.withOpacity(.4)),
-//                     ),
-//                     child: Text(
-//                       summary.status.toUpperCase(),
-//                       style: TextStyle(
-//                         color: statusColor,
-//                         fontWeight: FontWeight.bold,
-//                         fontSize: 12,
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 16),
-//               Text(
-//                 '₹${summary.outstanding.toStringAsFixed(0)}',
-//                 style: const TextStyle(
-//                   color: AppColor.creditAccent,
-//                   fontSize: 30,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               Text(
-//                 'Outstanding for this cycle',
-//                 style: TextStyle(
-//                   color: AppColor.creditAccent.withOpacity(.5),
-//                   fontSize: 12,
-//                 ),
-//               ),
-//             ],
-//           ),
-//         );
-//       },
-//     );
-//   }
-//
-//   Widget _bankDropdown() {
-//     return Selector<BankProvider, List<BankModel>>(
-//       selector: (_, provider) => provider.banks,
-//       builder: (context, banks, _) {
-//         return DropdownButtonFormField<BankModel>(
-//           initialValue: _selectedBank,
-//           isExpanded: true,
-//           dropdownColor: AppColor.cardBg,
-//           decoration: InputDecoration(
-//             labelText: 'Paid From',
-//             labelStyle: TextStyle(color: AppColor.creditAccent.withOpacity(.5)),
-//             prefixIcon: const Icon(
-//               Icons.account_balance_wallet_rounded,
-//               color: AppColor.creditAccent,
-//             ),
-//             filled: true,
-//             fillColor: AppColor.cardBg,
-//             contentPadding:
-//             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-//             border: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(12),
-//               borderSide: BorderSide.none,
-//             ),
-//             enabledBorder: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(12),
-//               borderSide: const BorderSide(color: AppColor.cardBorder),
-//             ),
-//             focusedBorder: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(12),
-//               borderSide:
-//               const BorderSide(color: AppColor.creditAccent, width: 2),
-//             ),
-//           ),
-//           icon: Icon(
-//             Icons.keyboard_arrow_down_rounded,
-//             color: AppColor.creditAccent.withOpacity(.7),
-//           ),
-//           items: banks.map((bank) {
-//             return DropdownMenuItem<BankModel>(
-//               value: bank,
-//               child: Row(
-//                 children: [
-//                   Icon(
-//                     bank.id == 'cash'
-//                         ? Icons.money_rounded
-//                         : Icons.account_balance_rounded,
-//                     size: 20,
-//                     color: AppColor.creditAccent,
-//                   ),
-//                   const SizedBox(width: 12),
-//                   Text(
-//                     bank.bankName,
-//                     style: const TextStyle(
-//                       color: Colors.white,
-//                       fontSize: 15,
-//                       fontWeight: FontWeight.w500,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             );
-//           }).toList(),
-//           validator: (value) => value == null ? 'Select a bank' : null,
-//           onChanged: (bank) => setState(() => _selectedBank = bank),
-//         );
-//       },
-//     );
-//   }
-//
-//   Widget _dateTile() {
-//     return InkWell(
-//       onTap: _pickDate,
-//       borderRadius: BorderRadius.circular(12),
-//       child: Container(
-//         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-//         decoration: BoxDecoration(
-//           color: AppColor.cardBg,
-//           borderRadius: BorderRadius.circular(12),
-//           border: Border.all(color: AppColor.cardBorder),
-//         ),
-//         child: Row(
-//           children: [
-//             const Icon(Icons.calendar_month_rounded, color: AppColor.creditAccent),
-//             const SizedBox(width: 12),
-//             Text(
-//               '${_paymentDate.day.toString().padLeft(2, '0')}/'
-//                   '${_paymentDate.month.toString().padLeft(2, '0')}/'
-//                   '${_paymentDate.year}',
-//               style: const TextStyle(color: Colors.white, fontSize: 15),
-//             ),
-//             const Spacer(),
-//             Icon(Icons.edit_rounded,
-//                 size: 18, color: AppColor.creditAccent.withOpacity(.6)),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-//
-//   Widget _amountField({
-//     required TextEditingController controller,
-//     required String label,
-//     required IconData icon,
-//     bool highlight = false,
-//   }) {
-//     return TextFormField(
-//       controller: controller,
-//       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-//       inputFormatters: [
-//         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-//       ],
-//       style: TextStyle(
-//         color: highlight ? AppColor.creditAccent : Colors.white,
-//         fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-//         fontSize: highlight ? 18 : 15,
-//       ),
-//       decoration: InputDecoration(
-//         labelText: label,
-//         labelStyle: TextStyle(color: AppColor.creditAccent.withOpacity(.5)),
-//         prefixText: '₹ ',
-//         prefixStyle: TextStyle(color: AppColor.creditAccent.withOpacity(.7)),
-//         prefixIcon: Icon(icon, color: AppColor.creditAccent, size: 20),
-//         filled: true,
-//         fillColor: highlight
-//             ? AppColor.creditAccent.withOpacity(.08)
-//             : AppColor.cardBg,
-//         contentPadding:
-//         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-//         border: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           borderSide: BorderSide.none,
-//         ),
-//         enabledBorder: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           borderSide: BorderSide(
-//             color: highlight
-//                 ? AppColor.creditAccent.withOpacity(.4)
-//                 : AppColor.cardBorder,
-//           ),
-//         ),
-//         focusedBorder: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           borderSide: const BorderSide(color: AppColor.creditAccent, width: 2),
-//         ),
-//       ),
-//       validator: (value) {
-//         if (value == null || value.isEmpty) return 'Required';
-//         if (double.tryParse(value) == null) return 'Invalid amount';
-//         return null;
-//       },
-//     );
-//   }
-//
-//   Widget _confirmButton() {
-//     return SizedBox(
-//       width: double.infinity,
-//       height: 54,
-//       child: ElevatedButton(
-//         onPressed: _isSubmitting ? null : _submit,
-//         style: ElevatedButton.styleFrom(
-//           backgroundColor: AppColor.creditAccent,
-//           foregroundColor: AppColor.creditDark,
-//           elevation: 0,
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(14),
-//           ),
-//         ),
-//         child: _isSubmitting
-//             ? const SizedBox(
-//           height: 22,
-//           width: 22,
-//           child: CircularProgressIndicator(
-//             strokeWidth: 2.4,
-//             color: AppColor.creditDark,
-//           ),
-//         )
-//             : Text(
-//           'Confirm Payment · ₹${_totalPaidCtrl.text}',
-//           style: const TextStyle(
-//             fontSize: 16,
-//             fontWeight: FontWeight.bold,
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-// class _SummaryView {
-//   final String cardName;
-//   final double outstanding;
-//   final String status;
-//
-//   const _SummaryView({
-//     required this.cardName,
-//     required this.outstanding,
-//     required this.status,
-//   });
-//
-//   @override
-//   bool operator ==(Object other) =>
-//       identical(this, other) ||
-//           other is _SummaryView &&
-//               cardName == other.cardName &&
-//               outstanding == other.outstanding &&
-//               status == other.status;
-//
-//   @override
-//   int get hashCode => Object.hash(cardName, outstanding, status);
-// }
+// lib/features/creditCardManagement/presentation/screen/credit_payment_screen.dart
+import 'package:expence_app/core/theme/app_color.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../shared/widgets/bank_selector_field.dart';
+import '../../../bank/data/model/bank_model.dart';
+import '../../data/model/billing_cycle_model.dart';
+import '../provider/credit_card_payment_provider.dart';
+
+const double _kDesktopBreakpoint = 900;
+const double _kMaxContentWidth = 980;
+
+class CreditPaymentScreen extends StatelessWidget {
+  const CreditPaymentScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.read<CreditCardDetailsProvider>();
+    provider.paymentScreenFieldInit();
+
+    return Scaffold(
+      backgroundColor: AppColor.creditSurface,
+      appBar: AppBar(
+        backgroundColor: AppColor.creditSurface,
+        elevation: 0,
+        foregroundColor: AppColor.creditAccent,
+        title: const Text(
+          'Make Payment',
+          style: TextStyle(color: AppColor.creditAccent, fontWeight: FontWeight.w600),
+        ),
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= _kDesktopBreakpoint;
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+                child: Form(
+                  key: provider.formKey,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 32 : 16,
+                      vertical: 20,
+                    ),
+                    child: isDesktop
+                        ? _DesktopLayout(provider: provider)
+                        : _MobileLayout(provider: provider),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Mobile: single column, stacked sections
+// ─────────────────────────────────────────────────────────────────────────
+class _MobileLayout extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _MobileLayout({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SummaryCard(),
+        const SizedBox(height: 20),
+        _SectionCard(
+          title: 'Payment Method',
+          icon: Icons.account_balance_wallet_rounded,
+          child: _BankDropdown(provider: provider),
+        ),
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Payment Date',
+          icon: Icons.calendar_month_rounded,
+          child: _DateTile(provider: provider),
+        ),
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Amount Breakdown',
+          icon: Icons.receipt_long_rounded,
+          child: _AmountFields(provider: provider),
+        ),
+        const SizedBox(height: 16),
+        _TotalCard(provider: provider),
+        const _ErrorText(),
+        const SizedBox(height: 24),
+        _ConfirmButton(provider: provider),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Desktop: two-column — left rail (summary + method + date),
+// right column (amount breakdown + total + confirm)
+// ─────────────────────────────────────────────────────────────────────────
+class _DesktopLayout extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _DesktopLayout({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SummaryCard(),
+              const SizedBox(height: 20),
+              _SectionCard(
+                title: 'Payment Method',
+                icon: Icons.account_balance_wallet_rounded,
+                child: _BankDropdown(provider: provider),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'Payment Date',
+                icon: Icons.calendar_month_rounded,
+                child: _DateTile(provider: provider),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionCard(
+                title: 'Amount Breakdown',
+                icon: Icons.receipt_long_rounded,
+                child: _AmountFields(provider: provider),
+              ),
+              const SizedBox(height: 16),
+              _TotalCard(provider: provider),
+              const _ErrorText(),
+              const SizedBox(height: 24),
+              _ConfirmButton(provider: provider),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Shared section wrapper — consistent card chrome across mobile/desktop
+// ─────────────────────────────────────────────────────────────────────────
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const _SectionCard({required this.title, required this.icon, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColor.cardBg.withOpacity(.5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColor.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColor.creditAccent.withOpacity(.85)),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppColor.creditAccent.withOpacity(.75),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: .4,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Summary card — outstanding balance for the cycle
+// ─────────────────────────────────────────────────────────────────────────
+class _SummaryCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Selector<CreditCardDetailsProvider, BillingCycleModel?>(
+      selector: (_, p) => p.currentBillingCycle,
+      builder: (context, cycle, __) {
+        final provider = context.read<CreditCardDetailsProvider>();
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColor.creditGradientStart, AppColor.creditGradientEnd],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColor.creditBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.35),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColor.creditAccent.withOpacity(.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.credit_card_rounded, size: 16, color: AppColor.creditAccent),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      provider.creditCard.cardName,
+                      style: TextStyle(color: AppColor.creditAccent.withOpacity(.8), fontSize: 14, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'AMOUNT DUE',
+                style: TextStyle(color: AppColor.creditAccent.withOpacity(.5), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.1),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '₹${(cycle?.totalAmount ?? 0).toStringAsFixed(0)}',
+                style: const TextStyle(color: AppColor.creditAccent, fontSize: 36, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Outstanding for this cycle',
+                style: TextStyle(color: AppColor.creditAccent.withOpacity(.5), fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Bank dropdown
+// ─────────────────────────────────────────────────────────────────────────
+class _BankDropdown extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _BankDropdown({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<CreditCardDetailsProvider, BankModel?>(
+      selector: (_, p) => p.selectedBank,
+      builder: (_, selectedBank, __) {
+        return BankSelectorField(
+          selectedBankId: selectedBank?.id,
+          includeCash: false,
+          label: 'Paid From',
+          onChanged: provider.setSelectedBank,
+          validator: (bank) => bank == null ? 'Select a bank' : null,
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Date tile
+// ─────────────────────────────────────────────────────────────────────────
+class _DateTile extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _DateTile({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<CreditCardDetailsProvider, DateTime>(
+      selector: (_, p) => p.paymentDate,
+      builder: (context, paymentDate, __) {
+        return InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: paymentDate,
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) provider.setPaymentDate(picked);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColor.cardBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColor.cardBorder),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month_rounded, color: AppColor.creditAccent, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  '${paymentDate.day.toString().padLeft(2, '0')}/'
+                      '${paymentDate.month.toString().padLeft(2, '0')}/'
+                      '${paymentDate.year}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+                const Spacer(),
+                Icon(Icons.edit_rounded, size: 16, color: AppColor.creditAccent.withOpacity(.6)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Amount fields — 2-column grid on wide screens, stacked on narrow
+// ─────────────────────────────────────────────────────────────────────────
+class _AmountFields extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _AmountFields({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = [
+      (provider.expenseAmountCtrl, 'Expense Amount', Icons.receipt_long_rounded),
+      (provider.interestCtrl, 'Interest', Icons.percent_rounded),
+      (provider.lateFeeCtrl, 'Late Fee', Icons.warning_amber_rounded),
+      (provider.gstCtrl, 'GST', Icons.request_quote_rounded),
+      (provider.otherChargesCtrl, 'Other Charges', Icons.more_horiz_rounded),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoCol = constraints.maxWidth >= 420;
+        if (!twoCol) {
+          return Column(
+            children: [
+              for (final f in fields) ...[
+                _AmountField(controller: f.$1, label: f.$2, icon: f.$3),
+                const SizedBox(height: 12),
+              ],
+            ],
+          );
+        }
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final f in fields)
+              SizedBox(
+                width: (constraints.maxWidth - 12) / 2,
+                child: _AmountField(controller: f.$1, label: f.$2, icon: f.$3),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AmountField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final bool highlight;
+
+  const _AmountField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      style: TextStyle(
+        color: highlight ? AppColor.creditAccent : Colors.white,
+        fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+        fontSize: highlight ? 18 : 15,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: AppColor.creditAccent.withOpacity(.5), fontSize: 13),
+        prefixText: '₹ ',
+        prefixStyle: TextStyle(color: AppColor.creditAccent.withOpacity(.7)),
+        prefixIcon: Icon(icon, color: AppColor.creditAccent, size: 18),
+        filled: true,
+        fillColor: highlight ? AppColor.creditAccent.withOpacity(.08) : AppColor.cardBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: highlight ? AppColor.creditAccent.withOpacity(.4) : AppColor.cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColor.creditAccent, width: 2),
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Required';
+        if (double.tryParse(value) == null) return 'Invalid amount';
+        return null;
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Total card — visually distinct footer summary before confirm
+// ─────────────────────────────────────────────────────────────────────────
+class _TotalCard extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _TotalCard({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColor.creditAccent.withOpacity(.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColor.creditAccent.withOpacity(.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Total Paid',
+            style: TextStyle(color: AppColor.creditAccent.withOpacity(.75), fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _AmountField(
+                controller: provider.totalPaidCtrl,
+                label: 'Total Paid',
+                icon: Icons.account_balance_wallet_rounded,
+                highlight: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  const _ErrorText();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<CreditCardDetailsProvider, String?>(
+      selector: (_, p) => p.errorMessage,
+      builder: (_, errorMessage, __) {
+        if (errorMessage == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 16, color: Colors.redAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(errorMessage, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ConfirmButton extends StatelessWidget {
+  final CreditCardDetailsProvider provider;
+  const _ConfirmButton({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<CreditCardDetailsProvider, bool>(
+      selector: (_, p) => p.isSubmitting,
+      builder: (context, isSubmitting, __) {
+        return SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed: isSubmitting
+                ? null
+                : () async {
+              final success = await provider.submit();
+              if (success && context.mounted) Navigator.of(context).pop(true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColor.creditAccent,
+              foregroundColor: AppColor.creditDark,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: isSubmitting
+                ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColor.creditDark))
+                : Text(
+              'Confirm Payment · ₹${provider.totalPaidCtrl.text}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
