@@ -179,7 +179,7 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
     try {
       final payment = CreditPaymentModel(
-        id: '',
+        id: cycle.billingCycleId,
         billingCycleId: cycle.billingCycleId,
         bankId: _selectedBank!.id,
         bankName: _selectedBank!.bankName,
@@ -196,15 +196,17 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
       // 1. Log it as a normal expense entry (you'll fill in the datasource
       //    implementation later).
-      await _expenseRepository.addCreditCardPaymentExpense(
+      String expenseId = await _expenseRepository.addCreditCardPaymentExpense(
         payment: payment,
         card: creditCard,
         billingCycle: cycle,
       );
 
+      final updatedPayment = payment.copyWith(expenseId: expenseId);
+
       // 2. Record the payment against the credit card / billing cycle.
       final success = await _creditRepository.payCreditCard(
-        payment: payment,
+        payment: updatedPayment,
         creditCardId: creditCard.creditCardId,
         billingCycleId: cycle.billingCycleId,
       );

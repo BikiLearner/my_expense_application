@@ -199,8 +199,8 @@ class BillingCycleDetailsScreen extends StatelessWidget {
           Divider(color: AppColor.creditBorder, height: 1),
 
           const SizedBox(height: 16),
-
-          _paymentButton(context),
+          if (!(billingCycle.isPaid ?? false))
+            _paymentButton(context),
         ],
       ),
     );

@@ -54,7 +54,7 @@ class CreditPaymentModel {
 
   Map<String, dynamic> toFirestore() {
     return {
-
+      'id': id,
       'billingCycleId': billingCycleId,
       'bankId': bankId,
       'bankName': bankName,

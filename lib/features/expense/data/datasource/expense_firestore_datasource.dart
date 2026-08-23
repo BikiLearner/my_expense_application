@@ -21,7 +21,10 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expence_app/core/constants/collection_name_constant.dart';
+import 'package:expence_app/core/services/session_maganger.dart';
+import 'package:expence_app/shared/enums/expense_type.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../shared/models/month_stats.dart';
 import '../../../../shared/models/year_stats.dart';
@@ -34,7 +37,7 @@ import '../model/expense_model.dart';
 
 class ExpenseFirestoreDatasource {
   ExpenseFirestoreDatasource({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -66,10 +69,10 @@ class ExpenseFirestoreDatasource {
     final bankMonthRef = isCash
         ? null
         : _bankMonthRef(
-      uid: uid,
-      bankId: transactionTypeId!,
-      monthId: bankMonthId,
-    );
+            uid: uid,
+            bankId: transactionTypeId!,
+            monthId: bankMonthId,
+          );
 
     await _firestore.runTransaction((tx) async {
       // 1️⃣ Validate bank (reads must happen before any writes)
@@ -102,7 +105,12 @@ class ExpenseFirestoreDatasource {
       );
 
       // 4️⃣ Update the daily total
-      _updateDailyTotal(tx: tx, dateRef: refs.dateRef, delta: amount, dateId: dateId);
+      _updateDailyTotal(
+        tx: tx,
+        dateRef: refs.dateRef,
+        delta: amount,
+        dateId: dateId,
+      );
 
       // 5️⃣ Update month type totals + month grand total
       _updateMonthStatsForAdd(
@@ -153,8 +161,8 @@ class ExpenseFirestoreDatasource {
 
     final sameBank =
         oldTransactionTypeId == newTransactionTypeId &&
-            oldTransactionTypeId != null &&
-            oldTransactionTypeId != 'cash';
+        oldTransactionTypeId != null &&
+        oldTransactionTypeId != 'cash';
 
     await _firestore.runTransaction((tx) async {
       // ---------------- READS (must all happen before writes) ----------------
@@ -337,16 +345,13 @@ class ExpenseFirestoreDatasource {
     });
   }
 
-
   Stream<DailyExpenseSummary?> watchDailySummary({
     required String uid,
     required String dateId,
   }) {
-    return _userRef(uid)
-        .collection('expenses')
-        .doc(dateId)
-        .snapshots()
-        .map((snapshot) {
+    return _userRef(uid).collection('expenses').doc(dateId).snapshots().map((
+      snapshot,
+    ) {
       if (!snapshot.exists) return null;
       return DailyExpenseSummary.fromFirestore(snapshot);
     });
@@ -364,17 +369,21 @@ class ExpenseFirestoreDatasource {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-          .map(
-            (doc) => ExpenseItem.fromFirestore(doc.id, doc.data(), dateId),
-      )
-          .toList(),
-    );
+              .map(
+                (doc) => ExpenseItem.fromFirestore(doc.id, doc.data(), dateId),
+              )
+              .toList(),
+        );
   }
 
   /// Returns every expense-day document (dateId + total) for the user.
-  Future<List<ExpenseDay>> getAllExpenseForEveryMonth({required String uid}) async {
+  Future<List<ExpenseDay>> getAllExpenseForEveryMonth({
+    required String uid,
+  }) async {
     try {
-      final snapshot = await _userRef(uid).collection(CollectionName.expenses).get();
+      final snapshot = await _userRef(
+        uid,
+      ).collection(CollectionName.expenses).get();
 
       return snapshot.docs.map((doc) {
         return ExpenseDay(
@@ -429,16 +438,14 @@ class ExpenseFirestoreDatasource {
     required String dateId,
   }) async {
     try {
-      final doc = await _userRef(uid)
-          .collection('expenses')
-          .doc(dateId)
-          .get();
+      final doc = await _userRef(uid).collection('expenses').doc(dateId).get();
 
       return (doc.data()?['total'] ?? 0).toDouble();
     } catch (e) {
       return 0;
     }
   }
+
   // ===========================================================================
   // EXTENDED READ METHODS
   // ---------------------------------------------------------------------------
@@ -454,10 +461,7 @@ class ExpenseFirestoreDatasource {
     required String year,
   }) async {
     try {
-      final doc = await _userRef(uid)
-          .collection('year_stats')
-          .doc(year)
-          .get();
+      final doc = await _userRef(uid).collection('year_stats').doc(year).get();
 
       if (!doc.exists) return null;
 
@@ -531,7 +535,7 @@ class ExpenseFirestoreDatasource {
 
       final total = itemsSnapshot.docs.fold<double>(
         0,
-            (s, d) => s + (d.data()['amount'] as num).toDouble(),
+        (s, d) => s + (d.data()['amount'] as num).toDouble(),
       );
 
       final day = ExpenseDay(dateId: dateId, total: total);
@@ -541,8 +545,6 @@ class ExpenseFirestoreDatasource {
 
     return grouped;
   }
-
-
 
   bool _isCash(String? transactionTypeId) =>
       transactionTypeId == null || transactionTypeId == 'cash';
@@ -569,7 +571,8 @@ class ExpenseFirestoreDatasource {
     required String uid,
     required String bankId,
     required String monthId,
-  }) => _bankRef(uid: uid, bankId: bankId).collection('monthAmount').doc(monthId);
+  }) =>
+      _bankRef(uid: uid, bankId: bankId).collection('monthAmount').doc(monthId);
 
   /// Groups the references needed by addExpense() so they aren't rebuilt
   /// repeatedly across helper methods.
@@ -597,8 +600,99 @@ class ExpenseFirestoreDatasource {
     required CreditPaymentModel payment,
     required CreditCardModel card,
     required BillingCycleModel billingCycle,
-  })async {
-    return "will do later";
+  }) async {
+    final uid = SessionManager.instance.uid ?? '';
+
+    final paymentDate = payment.paymentDate;
+    final dateId = DateFormat('yyyy-MM-dd').format(paymentDate);
+    final amount = payment.totalPaid;
+
+    final refs = _buildExpenseReferences(uid: uid, dateId: dateId);
+
+    final bankRef = _bankRef(uid: uid, bankId: payment.bankId);
+
+    final bankMonthId = dateId.substring(0, 7);
+
+    final bankMonthRef = _bankMonthRef(
+      uid: uid,
+      bankId: payment.bankId,
+      monthId: bankMonthId,
+    );
+
+    final expenseId = await _firestore.runTransaction<String>((tx) async {
+      // 1️⃣ Validate bank
+      // Reads must happen before any writes.
+      await _validateBank(
+        tx: tx,
+        bankRef: bankRef,
+        bankMonthRef: bankMonthRef,
+        amount: amount,
+        isCash: false,
+      );
+
+      // 2️⃣ Deduct bank balance
+      _updateBankBalance(
+        tx: tx,
+        bankMonthRef: bankMonthRef,
+        isCash: false,
+        delta: -amount,
+      );
+
+      // 3️⃣ Create expense document
+      final expenseId = _createExpenseDocument(
+        tx: tx,
+        dateRef: refs.dateRef,
+        title: "CREDIT CARD PAYMENT",
+        amount: amount,
+        description:
+            'Payment on ${DateFormat('dd-MM-yyyy').format(payment.paymentDate)} '
+            'from ${payment.bankName} - '
+            '₹${payment.totalPaid.toStringAsFixed(2)}',
+        expenseTypeName: ExpenseType.needed.name,
+        transactionTypeId: payment.bankId,
+        createdAt: payment.createdAt,
+        metadata: {
+          'type': 'credit_card_payment',
+
+          // Payment
+          'paymentId': billingCycle.billingCycleId,
+
+          // Credit card
+          'cardId': card.creditCardId,
+
+          // Billing cycle
+          'billingCycleId': billingCycle.billingCycleId,
+        },
+      );
+
+      // 4️⃣ Update daily total
+      _updateDailyTotal(
+        tx: tx,
+        dateRef: refs.dateRef,
+        delta: amount,
+        dateId: dateId,
+      );
+
+      // 5️⃣ Update month type totals + month grand total
+      _updateMonthStatsForAdd(
+        tx: tx,
+        monthRef: refs.monthRef,
+        monthId: refs.month,
+        expenseTypeName: ExpenseType.needed.name,
+        amount: amount,
+      );
+
+      // 6️⃣ Update year grand total
+      _updateYearGrandTotal(tx: tx, yearRef: refs.yearRef, delta: amount);
+
+      // 7️⃣ Update user grand total
+      _updateGrandTotal(tx: tx, userRef: refs.userRef, delta: amount);
+
+      // Return the newly created expense ID
+      return expenseId;
+    });
+
+    return expenseId;
   }
 
   Future<List<ExpenseDay>> fetchYearExpenseDays({
@@ -611,13 +705,13 @@ class ExpenseFirestoreDatasource {
           .doc(uid)
           .collection(CollectionName.expenses)
           .where(
-        FieldPath.documentId,
-        isGreaterThanOrEqualTo: '$selectedYear-01-01',
-      )
+            FieldPath.documentId,
+            isGreaterThanOrEqualTo: '$selectedYear-01-01',
+          )
           .where(
-        FieldPath.documentId,
-        isLessThanOrEqualTo: '$selectedYear-12-31',
-      )
+            FieldPath.documentId,
+            isLessThanOrEqualTo: '$selectedYear-12-31',
+          )
           .get();
 
       final expenseDays = snapshot.docs.map((doc) {
@@ -628,14 +722,10 @@ class ExpenseFirestoreDatasource {
       }).toList();
 
       // Descending by date
-      expenseDays.sort(
-            (a, b) => b.dateId.compareTo(a.dateId),
-      );
+      expenseDays.sort((a, b) => b.dateId.compareTo(a.dateId));
 
       if (kDebugMode) {
-        print(
-          '✅ Fetched ${expenseDays.length} expense days for $selectedYear',
-        );
+        print('✅ Fetched ${expenseDays.length} expense days for $selectedYear');
       }
 
       return expenseDays;
@@ -690,7 +780,7 @@ class ExpenseFirestoreDatasource {
     _updateBankMonthAmount(tx: tx, bankMonthRef: bankMonthRef!, delta: delta);
   }
 
-  void _createExpenseDocument({
+  String _createExpenseDocument({
     required Transaction tx,
     required DocumentReference<Map<String, dynamic>> dateRef,
     required String title,
@@ -699,6 +789,7 @@ class ExpenseFirestoreDatasource {
     required String expenseTypeName,
     required String? transactionTypeId,
     required DateTime createdAt,
+    Map<String, dynamic>? metadata,
   }) {
     final itemRef = dateRef.collection('items').doc();
     tx.set(itemRef, {
@@ -708,7 +799,9 @@ class ExpenseFirestoreDatasource {
       'type': expenseTypeName,
       'transactionType': transactionTypeId,
       'createdAt': Timestamp.fromDate(createdAt),
+      'metadata': metadata,
     });
+    return itemRef.id;
   }
 
   void _updateMonthStatsForAdd({
