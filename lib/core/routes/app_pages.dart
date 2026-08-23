@@ -180,16 +180,30 @@ class AppPages {
         },
       ),
 
-      // app_pages.dart
+      // payment screen.dart
       GoRoute(
         path: AppRoutes.creditPayment,
         builder: (context, state) {
-          final (provider, billingCycle) =
-          state.extra! as (CreditCardDetailsProvider, BillingCycleModel);
-          provider.setBillingCycleId(billingCycle); // sync provider to tapped cycle
+          final (
+          provider,
+          creditCard,
+          billingCycle,
+          isCurrentCycle,
+          ) = state.extra!
+          as (
+          CreditCardDetailsProvider,
+          CreditCardModel,
+          BillingCycleModel,
+          bool,
+          );
+
           return ChangeNotifierProvider.value(
             value: provider,
-            child: const CreditPaymentScreen(),
+            child: CreditPaymentScreen(
+              creditCard: creditCard,
+              billingCycle: billingCycle,
+              isCurrentCycle: isCurrentCycle,
+            ),
           );
         },
       ),

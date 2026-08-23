@@ -241,7 +241,12 @@ class BillingCycleDetailsScreen extends StatelessWidget {
         onPressed: () {
           context.push(
             AppRoutes.creditPayment,
-            extra: (context.read<CreditCardDetailsProvider>(), billingCycle),
+            extra: (
+            context.read<CreditCardDetailsProvider>(),
+            creditCard,
+            billingCycle,
+            isCurrentCycle,
+            ),
           );
         },
         style: ElevatedButton.styleFrom(
