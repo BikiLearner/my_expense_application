@@ -60,7 +60,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
 
   Widget _expenseList() {
     return Selector<CreditCardDetailsProvider, List<CreditExpenseItem>>(
-      selector: (_, provider) => provider.creditCardExpenseByBillingCycle,
+      selector: (_, provider) => provider.getBillingCycleItemsById(billingCycle.billingCycleId),
       builder: (context, expenses, _) {
         if (expenses.isEmpty) {
           return Center(
@@ -81,7 +81,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
           itemBuilder: (context, index) {
             final expense = expenses[index];
 
-            return CreditExpenseItemTile(expenseItem: expense, toShow: false);
+            return CreditExpenseItemTile(expenseItem: expense, toShow: true);
           },
         );
       },

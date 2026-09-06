@@ -386,7 +386,7 @@ class _StatsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Selector<CreditCardDetailsProvider, double>(
-            selector: (_, provider) => provider.highestCurrentMonth,
+            selector: (_, provider) => provider.highestCurrentMonth(currentCycle?.billingCycleId ?? ''),
             builder: (context, highest, _) {
               return _StatCard(
                 icon: Icons.trending_up_rounded,

@@ -14,7 +14,8 @@ import '../../data/model/credit_payment.dart';
 enum AmountInputMode { amount, percentage }
 
 class CreditCardDetailsProvider extends ChangeNotifier {
-  List<CreditExpenseItem> _creditCardExpenseByBillingCycle = [];
+  final Map<String, List<CreditExpenseItem>> _creditCardExpenseByBillingCycle =
+      {};
   List<BillingCycleModel> _billingCyclesPerCreditCard = [];
 
   List<BillingCycleModel> get billingCyclesPerCreditCard =>
@@ -25,7 +26,7 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
   BillingCycleModel? _billingCycleModel;
 
-  List<CreditExpenseItem> get creditCardExpenseByBillingCycle =>
+  Map<String, List<CreditExpenseItem>> get creditCardExpenseByBillingCycle =>
       _creditCardExpenseByBillingCycle;
 
   final CreditRepository _creditRepository;
@@ -37,8 +38,8 @@ class CreditCardDetailsProvider extends ChangeNotifier {
     required ExpenseRepository expenseRepository,
     required CreditCardModel creditCard,
   }) : _creditRepository = repository,
-        _expenseRepository = expenseRepository,
-        _creditCard = creditCard {
+       _expenseRepository = expenseRepository,
+       _creditCard = creditCard {
     fetchCreditCardDetails(creditCard.creditCardId);
 
     // Expense amount is the base for percentage-mode fields, so it needs
@@ -51,13 +52,14 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
     // Percentage inputs recompute their corresponding amount field.
     interestPercentCtrl.addListener(
-          () => _recalcPercentField(_interestMode, interestPercentCtrl, interestCtrl),
+      () =>
+          _recalcPercentField(_interestMode, interestPercentCtrl, interestCtrl),
     );
     gstPercentCtrl.addListener(
-          () => _recalcPercentField(_gstMode, gstPercentCtrl, gstCtrl),
+      () => _recalcPercentField(_gstMode, gstPercentCtrl, gstCtrl),
     );
     otherChargesPercentCtrl.addListener(
-          () => _recalcPercentField(
+      () => _recalcPercentField(
         _otherChargesMode,
         otherChargesPercentCtrl,
         otherChargesCtrl,
@@ -74,43 +76,55 @@ class CreditCardDetailsProvider extends ChangeNotifier {
   final TextEditingController totalPaidCtrl = TextEditingController();
 
   // ── Percentage-mode support ─────────────────────────────────────────
-  final TextEditingController interestPercentCtrl =
-  TextEditingController(text: '0');
-  final TextEditingController gstPercentCtrl =
-  TextEditingController(text: '0');
-  final TextEditingController otherChargesPercentCtrl =
-  TextEditingController(text: '0');
+  final TextEditingController interestPercentCtrl = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController gstPercentCtrl = TextEditingController(text: '0');
+  final TextEditingController otherChargesPercentCtrl = TextEditingController(
+    text: '0',
+  );
 
   AmountInputMode _interestMode = AmountInputMode.amount;
   AmountInputMode _gstMode = AmountInputMode.amount;
   AmountInputMode _otherChargesMode = AmountInputMode.amount;
 
   AmountInputMode get interestMode => _interestMode;
+
   AmountInputMode get gstMode => _gstMode;
+
   AmountInputMode get otherChargesMode => _otherChargesMode;
 
-  void setInterestMode(AmountInputMode mode) =>
-      _setMode(mode, () => _interestMode, (m) => _interestMode = m,
-          interestPercentCtrl, interestCtrl);
+  void setInterestMode(AmountInputMode mode) => _setMode(
+    mode,
+    () => _interestMode,
+    (m) => _interestMode = m,
+    interestPercentCtrl,
+    interestCtrl,
+  );
 
-  void setGstMode(AmountInputMode mode) =>
-      _setMode(mode, () => _gstMode, (m) => _gstMode = m, gstPercentCtrl,
-          gstCtrl);
+  void setGstMode(AmountInputMode mode) => _setMode(
+    mode,
+    () => _gstMode,
+    (m) => _gstMode = m,
+    gstPercentCtrl,
+    gstCtrl,
+  );
 
   void setOtherChargesMode(AmountInputMode mode) => _setMode(
-      mode,
-          () => _otherChargesMode,
-          (m) => _otherChargesMode = m,
-      otherChargesPercentCtrl,
-      otherChargesCtrl);
+    mode,
+    () => _otherChargesMode,
+    (m) => _otherChargesMode = m,
+    otherChargesPercentCtrl,
+    otherChargesCtrl,
+  );
 
   void _setMode(
-      AmountInputMode mode,
-      AmountInputMode Function() currentMode,
-      void Function(AmountInputMode) apply,
-      TextEditingController percentCtrl,
-      TextEditingController amountCtrl,
-      ) {
+    AmountInputMode mode,
+    AmountInputMode Function() currentMode,
+    void Function(AmountInputMode) apply,
+    TextEditingController percentCtrl,
+    TextEditingController amountCtrl,
+  ) {
     if (currentMode() == mode) return;
 
     if (mode == AmountInputMode.percentage) {
@@ -135,28 +149,32 @@ class CreditCardDetailsProvider extends ChangeNotifier {
     _recalcPercentField(_interestMode, interestPercentCtrl, interestCtrl);
     _recalcPercentField(_gstMode, gstPercentCtrl, gstCtrl);
     _recalcPercentField(
-        _otherChargesMode, otherChargesPercentCtrl, otherChargesCtrl);
+      _otherChargesMode,
+      otherChargesPercentCtrl,
+      otherChargesCtrl,
+    );
     updateTheTotalAmountIfOtherValueChange();
   }
 
   void _recalcPercentField(
-      AmountInputMode mode,
-      TextEditingController percentCtrl,
-      TextEditingController amountCtrl,
-      ) {
+    AmountInputMode mode,
+    TextEditingController percentCtrl,
+    TextEditingController amountCtrl,
+  ) {
     if (mode != AmountInputMode.percentage) return;
     _recalcPercentFieldRaw(percentCtrl, amountCtrl);
   }
 
   void _recalcPercentFieldRaw(
-      TextEditingController percentCtrl,
-      TextEditingController amountCtrl,
-      ) {
+    TextEditingController percentCtrl,
+    TextEditingController amountCtrl,
+  ) {
     final base = _parsed(expenseAmountCtrl);
     final percent = _parsed(percentCtrl);
     final amount = base * percent / 100;
     amountCtrl.text = amount.toStringAsFixed(2);
   }
+
   // ─────────────────────────────────────────────────────────────────────
 
   BankModel? _selectedBank;
@@ -182,22 +200,37 @@ class CreditCardDetailsProvider extends ChangeNotifier {
   bool _isCurrentCycle = true;
 
   CreditCardModel get paymentCreditCard => _paymentCreditCard ?? _creditCard!;
+
   BillingCycleModel? get paymentBillingCycle => _paymentBillingCycle;
+
   bool get isCurrentCycle => _isCurrentCycle;
 
-  double get highestCurrentMonth {
-    if (_creditCardExpenseByBillingCycle.isEmpty) return 0.0;
-    return _creditCardExpenseByBillingCycle
-        .map((d) => d.amount)
-        .reduce((a, b) => a > b ? a : b);
+  double highestCurrentMonth(String billingCycleId) =>
+      _creditCardExpenseByBillingCycle[billingCycleId]
+          ?.map((expenseItem) => expenseItem.amount)
+          .reduce((a, b) => a > b ? a : b) ??
+      0.0;
+
+  List<CreditExpenseItem> getBillingCycleItemsById(String billingCycleId) {
+    final items = _creditCardExpenseByBillingCycle[billingCycleId];
+
+    if (items == null) {
+      fetchCreditCardExpenseByBillingCycleId(
+        billingCycleId,
+        creditCard.creditCardId,
+      );
+      return [];
+    }
+
+    return items;
   }
 
   void paymentScreenFieldInit(
-      CreditCardModel creditCard,
-      BillingCycleModel billingCycle, {
-        required BankModel bank,
-        bool isCurrentCycle = true,
-      }) {
+    CreditCardModel creditCard,
+    BillingCycleModel billingCycle, {
+    required BankModel bank,
+    bool isCurrentCycle = true,
+  }) {
     _paymentCreditCard = creditCard;
     _paymentBillingCycle = billingCycle;
     _isCurrentCycle = isCurrentCycle;
@@ -226,7 +259,7 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
     try {
       return _billingCyclesPerCreditCard.firstWhere(
-            (e) => e.billingCycleId == _creditCard!.currentBillingCycleId,
+        (e) => e.billingCycleId == _creditCard.currentBillingCycleId,
       );
     } catch (_) {
       return null;
@@ -236,7 +269,7 @@ class CreditCardDetailsProvider extends ChangeNotifier {
   void setBillingCycleId(BillingCycleModel billingCycleModel) {
     _billingCycleModel = billingCycleModel;
     if (_creditCard != null) {
-      fetchCreditCardDetails(_creditCard!.creditCardId);
+      fetchCreditCardDetails(_creditCard.creditCardId);
     } else {
       notifyListeners();
     }
@@ -252,6 +285,27 @@ class CreditCardDetailsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<CreditExpenseItem>> fetchCreditCardExpenseByBillingCycleId(
+    String? billingCycleId,
+    String? cardId,
+  ) async {
+    if (billingCycleId == null || cardId == null) {
+      return [];
+    }
+
+    final creditExpenseItems = await _creditRepository
+        .fetchCreditExpensesByBillingCycleId(
+          creditCardId: cardId,
+          billingCycleId: billingCycleId,
+        );
+
+    _creditCardExpenseByBillingCycle[billingCycleId] = creditExpenseItems;
+
+    notifyListeners();
+
+    return creditExpenseItems;
+  }
+
   Future<void> fetchCreditCardDetails(String? cardId) async {
     if (cardId == null) return;
 
@@ -262,13 +316,11 @@ class CreditCardDetailsProvider extends ChangeNotifier {
 
       _billingCycleModel = currentBillingCycle;
 
-      if (_billingCycleModel != null) {
-        _creditCardExpenseByBillingCycle = await _creditRepository
-            .fetchCreditExpensesByBillingCycleId(
-          creditCardId: cardId,
-          billingCycleId: _billingCycleModel!.billingCycleId,
-        );
-      }
+      _creditCardExpenseByBillingCycle[currentBillingCycle?.billingCycleId ??
+          ''] = await fetchCreditCardExpenseByBillingCycleId(
+        currentBillingCycle?.billingCycleId,
+        cardId,
+      );
     } catch (e) {
       debugPrint("Cannot fetch credit details $e");
     } finally {
@@ -317,8 +369,10 @@ class CreditCardDetailsProvider extends ChangeNotifier {
         bankId: _selectedBank!.id,
         bankName: _selectedBank!.bankName,
         expenseAmount: _parsed(expenseAmountCtrl),
-        interest: _parsed(interestCtrl), // always the resolved amount,
-        lateFee: _parsed(lateFeeCtrl),   // whether it came from % or ₹ entry
+        interest: _parsed(interestCtrl),
+        // always the resolved amount,
+        lateFee: _parsed(lateFeeCtrl),
+        // whether it came from % or ₹ entry
         gst: _parsed(gstCtrl),
         otherCharges: _parsed(otherChargesCtrl),
         totalPaid: _parsed(totalPaidCtrl),
