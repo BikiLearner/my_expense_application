@@ -342,7 +342,9 @@ class GrandTotalCreditCardOne extends StatelessWidget {
                 label: "Expenses",
                 value: "₹${yearStats.grandTotal.toStringAsFixed(0)}",
                 color: AppColor.creditDue,
-                onTap: () {},
+                onTap: () {
+
+                },
               ),
 
               _buildDivider(),
@@ -404,7 +406,6 @@ class GrandTotalCreditCardOne extends StatelessWidget {
           builder: (context, stats, child) {
             final double creditNeededPercentage = stats.$1 ?? 0;
             final double creditLuxuryPercent = stats.$2 ?? 0;
-            final double creditSavingPercent = stats.$3 ?? 0;
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -415,32 +416,6 @@ class GrandTotalCreditCardOne extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  HistoryStatItem(
-                    icon: Icons.savings_outlined,
-                    label: "Saving",
-                    value: "₹${monthStats.saving.toStringAsFixed(0)}",
-                    extraWidget: HistoryQuickStatCard(
-                      icon: Icons.trending_up,
-                      label: 'Avg = ',
-                      value: '${creditSavingPercent.toStringAsFixed(0)}%',
-                      color: AppColor.creditPaid,
-                    ),
-                    color: AppColor.creditPaid,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ExpenseTypeBreakdownScreen(
-                            type: ExpenseType.saving,
-                            monthKey: monthKey,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  _buildDivider(),
-
                   HistoryStatItem(
                     icon: Icons.auto_awesome_outlined,
                     label: "Luxury",

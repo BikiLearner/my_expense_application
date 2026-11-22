@@ -139,6 +139,8 @@ class AppPages {
         path: AppRoutes.creditForm,
         builder: (_, __) => const CreditCardFromPage(),
       ),
+
+
       GoRoute(
         path: AppRoutes.creditDetails,
         builder: (context, state) {

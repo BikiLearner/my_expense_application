@@ -60,7 +60,8 @@ class BillingCycleDetailsScreen extends StatelessWidget {
 
   Widget _expenseList() {
     return Selector<CreditCardDetailsProvider, List<CreditExpenseItem>>(
-      selector: (_, provider) => provider.getBillingCycleItemsById(billingCycle.billingCycleId),
+      selector: (_, provider) =>
+          provider.getBillingCycleItemsById(billingCycle.billingCycleId),
       builder: (context, expenses, _) {
         if (expenses.isEmpty) {
           return Center(
@@ -81,7 +82,12 @@ class BillingCycleDetailsScreen extends StatelessWidget {
           itemBuilder: (context, index) {
             final expense = expenses[index];
 
-            return CreditExpenseItemTile(expenseItem: expense, toShow: true);
+            return CreditExpenseItemTile(
+              expenseItem: expense,
+              toShow: true,
+              creditCardId: creditCard.creditCardId,
+              billingCycleId: billingCycle.billingCycleId,
+            );
           },
         );
       },
@@ -199,8 +205,7 @@ class BillingCycleDetailsScreen extends StatelessWidget {
           Divider(color: AppColor.creditBorder, height: 1),
 
           const SizedBox(height: 16),
-          if (!(billingCycle.isPaid ?? false))
-            _paymentButton(context),
+          if (!(billingCycle.isPaid ?? false)) _paymentButton(context),
         ],
       ),
     );
@@ -242,10 +247,10 @@ class BillingCycleDetailsScreen extends StatelessWidget {
           context.push(
             AppRoutes.creditPayment,
             extra: (
-            context.read<CreditCardDetailsProvider>(),
-            creditCard,
-            billingCycle,
-            isCurrentCycle,
+              context.read<CreditCardDetailsProvider>(),
+              creditCard,
+              billingCycle,
+              isCurrentCycle,
             ),
           );
         },

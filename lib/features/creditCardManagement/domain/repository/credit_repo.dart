@@ -21,6 +21,7 @@ abstract class CreditRepository {
     CreditCardModel card,
     DateTime expenseDate,
   );
+  Future<void> reconcileBillingCycles(CreditCardModel card, DateTime now);
 
   Stream<BillingCycleModel?> watchBillingCycle({
     required String creditCardId,

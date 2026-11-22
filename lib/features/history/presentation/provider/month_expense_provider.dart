@@ -18,7 +18,7 @@ class MonthExpensesProvider extends ChangeNotifier {
   String get currentMonth => _currentMonth;
 
   // 🔹 Cached expenses grouped by date
-  Map<String, List<ExpenseItem>> _cachedExpenses = {};
+  final Map<String, List<ExpenseItem>> _cachedExpenses = {};
   Map<String, List<ExpenseItem>> get groupedExpenses => _cachedExpenses;
 
   // 🔹 Stream subscriptions for each date in the month

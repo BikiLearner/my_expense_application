@@ -9,12 +9,16 @@ import 'edit_credit_expense_dialog.dart';
 
 class CreditExpenseItemTile extends StatelessWidget {
   final CreditExpenseItem expenseItem;
+  final String? creditCardId;
+  final String? billingCycleId;
   final bool toShow;
 
   const CreditExpenseItemTile({
     super.key,
     required this.expenseItem,
     required this.toShow,
+    this.creditCardId,
+    this.billingCycleId,
   });
 
   @override
@@ -99,7 +103,11 @@ class CreditExpenseItemTile extends StatelessWidget {
             color: AppColor.twRed,
             onPressed: () => showDialog(
               context: context,
-              builder: (_) => DeleteCreditExpenseDialog(expense: expenseItem),
+              builder: (_) => DeleteCreditExpenseDialog(
+                expense: expenseItem,
+                creditCardId: creditCardId,
+                billingCycleId: billingCycleId,
+              ),
             ),
           ),
         ],

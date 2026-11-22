@@ -113,6 +113,11 @@ class CreditExpenseProvider extends ChangeNotifier {
   double get totalAvailableCredit {
     return totalCreditLimit - totalOutstanding;
   }
+
+  double? getCycleAmountById(String billingCycleId) {
+    return _currentBillingCyclePerCreditCard[billingCycleId]?.totalAmount;
+  }
+
   CreditExpenseProvider({required CreditRepository repository})
     : _repository = repository {
     _init();
@@ -396,6 +401,9 @@ class CreditExpenseProvider extends ChangeNotifier {
   Future<void> deleteExpense({
     required BuildContext context,
     required String expenseId,
+    String creditCardId='',
+    String billingCycleId='',
+
   }) async {
     AppLoader.show(context, message: 'Deleting expense...');
 
@@ -408,11 +416,24 @@ class CreditExpenseProvider extends ChangeNotifier {
         throw Exception('No billing cycle selected.');
       }
 
+      final targetCardId = creditCardId.isNotEmpty
+          ? creditCardId
+          : _selectedCreditCard?.creditCardId;
+      final targetCycleId = billingCycleId.isNotEmpty
+          ? billingCycleId
+          : _selectedBillingCycleModel?.billingCycleId;
+
+      if (targetCardId == null || targetCycleId == null) {
+        throw Exception('Missing credit card or billing cycle information.');
+      }
+
       await _repository.deleteCreditExpense(
-        creditCardId: _selectedCreditCard!.creditCardId,
-        billingCycleId: _selectedBillingCycleModel!.billingCycleId,
+        creditCardId: targetCardId,
+        billingCycleId: targetCycleId,
         expenseId: expenseId,
       );
+
+
 
       if (kDebugMode) {
         print('🗑️ Credit expense deleted successfully');

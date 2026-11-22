@@ -148,7 +148,11 @@ class CreditRepositoryImpl implements CreditRepository {
     required String creditCardId,
     required String billingCycleId,
   }) {
-    return _datasource.payCreditCard(payment: payment,creditCardId: creditCardId,billingCycleId: billingCycleId);
+    return _datasource.payCreditCard(
+      payment: payment,
+      creditCardId: creditCardId,
+      billingCycleId: billingCycleId,
+    );
   }
 
   @override
@@ -163,7 +167,14 @@ class CreditRepositoryImpl implements CreditRepository {
   }
 
   @override
-  Future<List<BillingCycleModel>> fetchBillingCycles({required String creditCardId}) {
+  Future<List<BillingCycleModel>> fetchBillingCycles({
+    required String creditCardId,
+  }) {
     return _datasource.fetchBillingCycles(creditCardId: creditCardId);
+  }
+
+  @override
+  Future<void> reconcileBillingCycles(CreditCardModel card, DateTime now) {
+    return _datasource.reconcileBillingCycles(card, now);
   }
 }

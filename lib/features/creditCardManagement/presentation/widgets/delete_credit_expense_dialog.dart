@@ -7,8 +7,15 @@ import '../../../../core/theme/app_color.dart';
 
 class DeleteCreditExpenseDialog extends StatelessWidget {
   final CreditExpenseItem expense;
+  final String? creditCardId;
+  final String? billingCycleId;
 
-  const DeleteCreditExpenseDialog({super.key, required this.expense});
+  const DeleteCreditExpenseDialog({
+    super.key,
+    required this.expense,
+    this.creditCardId,
+    this.billingCycleId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +48,12 @@ class DeleteCreditExpenseDialog extends StatelessWidget {
         ),
         ElevatedButton(
           onPressed: () {
-            provider.deleteExpense(context: context, expenseId: expense.id);
+            provider.deleteExpense(
+              context: context,
+              expenseId: expense.id,
+              creditCardId: creditCardId ?? '',
+              billingCycleId: billingCycleId ?? '',
+            );
             Navigator.pop(context);
           },
           style: ElevatedButton.styleFrom(backgroundColor: AppColor.twRed),
