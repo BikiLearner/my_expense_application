@@ -11,6 +11,9 @@ class CreditCardModel {
   final String? currentBillingCycleId;
   final DateTime createdAt;
 
+  final Map<DateTime, double>?
+  oldLimits; // key: when it changed, value: old limit
+
   const CreditCardModel({
     required this.creditCardId,
     required this.cardName,
@@ -21,6 +24,7 @@ class CreditCardModel {
     required this.isActive,
     required this.createdAt,
     this.currentBillingCycleId,
+    this.oldLimits,
   });
 
   factory CreditCardModel.fromFirestore(
@@ -37,6 +41,12 @@ class CreditCardModel {
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       currentBillingCycleId: data['currentBillingCycleId'] ?? '',
+      oldLimits: (data['oldLimits'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(
+          DateTime.fromMillisecondsSinceEpoch(int.parse(k)),
+          (v as num).toDouble(),
+        ),
+      ),
     );
   }
 
@@ -50,10 +60,13 @@ class CreditCardModel {
       'dueDay': dueDay,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
-      'currentBillingCycleId':currentBillingCycleId ?? '',
+      'currentBillingCycleId': currentBillingCycleId ?? '',
+      if (oldLimits != null)
+        'oldLimits': oldLimits!.map(
+          (k, v) => MapEntry(k.millisecondsSinceEpoch.toString(), v),
+        ),
     };
   }
-
 
   CreditCardModel copyWith({
     String? creditCardId,
@@ -66,6 +79,7 @@ class CreditCardModel {
     bool? isActive,
     DateTime? createdAt,
     String? currentBillingCycleId,
+    Map<DateTime, double>? oldLimits,
   }) {
     return CreditCardModel(
       creditCardId: creditCardId ?? this.creditCardId,
@@ -76,7 +90,9 @@ class CreditCardModel {
       dueDay: dueDay ?? this.dueDay,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
-      currentBillingCycleId: currentBillingCycleId ?? this.currentBillingCycleId,
+      currentBillingCycleId:
+          currentBillingCycleId ?? this.currentBillingCycleId,
+      oldLimits: oldLimits ?? this.oldLimits,
     );
   }
 }

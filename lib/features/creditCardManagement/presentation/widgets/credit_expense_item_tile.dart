@@ -27,11 +27,18 @@ class CreditExpenseItemTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
       decoration: BoxDecoration(
         color: AppColor.cardBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: type.color.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: type.color.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -42,6 +49,7 @@ class CreditExpenseItemTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: type.color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: type.color.withOpacity(0.25)),
             ),
             child: Icon(type.icon, color: type.color),
           ),
@@ -51,47 +59,72 @@ class CreditExpenseItemTile extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   expenseItem.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColor.textPrimary,
                   ),
                 ),
-                if (expenseItem.description.isNotEmpty && toShow)
+                if (expenseItem.description.isNotEmpty && toShow) ...[
+                  const SizedBox(height: 2),
                   Text(
                     expenseItem.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColor.textGrey,
                     ),
                   ),
-                if (toShow)
+                ],
+                if (toShow) ...[
+                  const SizedBox(height: 4),
                   Text(
                     DateConstants.ddMMyyyy(expenseItem.purchaseDate),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColor.textGrey,
                     ),
                   ),
+                ],
               ],
             ),
           ),
+          const SizedBox(width: 8),
 
           // AMOUNT
-          Text(
-            "₹${expenseItem.amount.toStringAsFixed(2)}",
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColor.textPrimary,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 100),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                "₹${expenseItem.amount.toStringAsFixed(2)}",
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColor.textPrimary,
+                ),
+              ),
             ),
           ),
 
+          // ACTIONS
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.edit_outlined, size: 20),
             color: AppColor.paletteAmber,
             onPressed: () => showDialog(
               context: context,
@@ -99,7 +132,11 @@ class CreditExpenseItemTile extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Delete',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.delete_outline, size: 20),
             color: AppColor.twRed,
             onPressed: () => showDialog(
               context: context,

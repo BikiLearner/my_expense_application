@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:expence_app/features/creditCardManagement/data/model/billing_cycle_model.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card_expense_item_model.dart';
-import 'package:expence_app/shared/providers/expense_type_selector_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
@@ -16,7 +15,6 @@ class CreditExpenseProvider extends ChangeNotifier {
   List<CreditCardModel> _creditCards = [];
 
   List<CreditCardModel> get creditCards => _creditCards;
-
 
   CreditCardModel? _selectedCreditCard;
 
@@ -46,6 +44,7 @@ class CreditExpenseProvider extends ChangeNotifier {
   }
 
   String _title = "";
+
   String get title => _title;
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -62,6 +61,14 @@ class CreditExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _toggleUtilisationBox = false;
+
+  bool get toggleUtilisationBox => _toggleUtilisationBox;
+
+  void setToggleUtilisationBox() {
+    _toggleUtilisationBox = !_toggleUtilisationBox;
+    notifyListeners();
+  }
 
   //selected type
   ExpenseType _selectedType = ExpenseType.luxury;
@@ -85,10 +92,7 @@ class CreditExpenseProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   double get totalExpense {
-    return _cachedExpenses.fold(
-      0.0,
-          (sum, expense) => sum + expense.amount,
-    );
+    return _cachedExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
   }
 
   int get cardsUsedCount {
@@ -97,21 +101,24 @@ class CreditExpenseProvider extends ChangeNotifier {
         .length;
   }
 
-
   double get totalCreditLimit {
-    return creditCards.fold(
-      0.0,
-          (sum, card) => sum + card.creditLimit,
-    );
+    return creditCards.fold(0.0, (sum, card) => sum + card.creditLimit);
   }
+
   double get totalOutstanding {
     return _currentBillingCyclePerCreditCard.values.fold(
       0.0,
-          (sum, cycle) => sum + cycle.totalAmount,
+      (sum, cycle) => sum + cycle.totalAmount,
     );
   }
+
   double get totalAvailableCredit {
     return totalCreditLimit - totalOutstanding;
+  }
+
+
+  BillingCycleModel? getCycleById(String billingCycleId) {
+    return _currentBillingCyclePerCreditCard[billingCycleId];
   }
 
   double? getCycleAmountById(String billingCycleId) {
@@ -123,8 +130,9 @@ class CreditExpenseProvider extends ChangeNotifier {
     _init();
   }
 
-  void setLoading() {
-    _isLoading = !_isLoading;
+  void setLoading(bool value) {
+    if (_isLoading == value) return;
+    _isLoading = value;
     notifyListeners();
   }
 
@@ -136,10 +144,12 @@ class CreditExpenseProvider extends ChangeNotifier {
 
     notifyListeners();
   }
+
   /// Amount already used on this card in its current billing cycle.
   double usedAmountForCard(String creditCardId) {
     return _currentBillingCyclePerCreditCard[creditCardId]?.totalAmount ?? 0;
   }
+
   void setSelectedDate(DateTime date) {
     if (_selectedDate != date) {
       _selectedDate = date;
@@ -148,10 +158,12 @@ class CreditExpenseProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   void setTitle(String value) {
     _title = value;
     notifyListeners();
   }
+
   Future<void> addCreditExpense(BuildContext context) async {
     debugPrint("Started expense process");
     AppLoader.show(context, message: 'Saving expense...');
@@ -218,7 +230,7 @@ class CreditExpenseProvider extends ChangeNotifier {
   }
 
   void clearForm() {
-    _title="";
+    _title = "";
     amountController.clear();
     descriptionController.clear();
     _split = 0;
@@ -235,17 +247,64 @@ class CreditExpenseProvider extends ChangeNotifier {
     required int dueDay,
     required BuildContext context,
   }) async {
-    setLoading();
-    await _repository.createCreditCard(
-      cardName: cardName,
-      bankName: bankName,
-      creditLimit: creditLimit,
-      statementDay: statementDay,
-      dueDay: dueDay,
-    );
+    setLoading(true);
+    try {
+      await _repository.createCreditCard(
+        cardName: cardName,
+        bankName: bankName,
+        creditLimit: creditLimit,
+        statementDay: statementDay,
+        dueDay: dueDay,
+      );
+      await _refreshCardsAndCycles();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> editCreditCard({
+    required CreditCardModel oldCard,
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+  }) async {
+    setLoading(true);
+    try {
+      await _repository.updateCreditCard(
+        creditCardId: oldCard.creditCardId,
+        cardName: cardName,
+        bankName: bankName,
+        creditLimit: creditLimit,
+        statementDay: statementDay,
+        dueDay: dueDay,
+      );
+      await _refreshCardsAndCycles();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /// Fetch cards, give any card without a current cycle one, then fetch again.
+  Future<void> _refreshCardsAndCycles() async {
+    final cards = await _repository.fetchCreditCards();
+    final now = DateTime.now();
+
+    for (final card in cards) {
+      final needsCycle = card.currentBillingCycleId == null ||
+          card.currentBillingCycleId!.isEmpty;
+      final statementDayChanged = _creditCards.any(
+            (old) =>
+        old.creditCardId == card.creditCardId &&
+            old.statementDay != card.statementDay,
+      );
+      if (needsCycle || statementDayChanged) {
+        await _repository.reconcileBillingCycles(card, now);
+      }
+    }
+
     await fetchCreditCards();
-    setLoading();
-    notifyListeners();
   }
 
   Future<void> fetchCreditCards() async {
@@ -401,9 +460,8 @@ class CreditExpenseProvider extends ChangeNotifier {
   Future<void> deleteExpense({
     required BuildContext context,
     required String expenseId,
-    String creditCardId='',
-    String billingCycleId='',
-
+    String creditCardId = '',
+    String billingCycleId = '',
   }) async {
     AppLoader.show(context, message: 'Deleting expense...');
 
@@ -432,8 +490,6 @@ class CreditExpenseProvider extends ChangeNotifier {
         billingCycleId: targetCycleId,
         expenseId: expenseId,
       );
-
-
 
       if (kDebugMode) {
         print('🗑️ Credit expense deleted successfully');

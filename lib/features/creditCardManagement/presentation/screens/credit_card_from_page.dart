@@ -4,16 +4,21 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/utils/indian_number_formatter.dart';
+import '../../data/model/credit_card.dart';
 import '../provider/credit_expense_provider.dart';
 
 class CreditCardFromPage extends StatefulWidget {
-  const CreditCardFromPage({super.key});
+  final CreditCardModel? card;
+
+  const CreditCardFromPage({super.key, this.card});
 
   @override
   State<CreditCardFromPage> createState() => _CreditCardFromPageState();
 }
 
 class _CreditCardFromPageState extends State<CreditCardFromPage> {
+  bool get _isEdit => widget.card != null;
+
   final _formKey = GlobalKey<FormState>();
   final _cardNameController = TextEditingController();
   final _bankNameController = TextEditingController();
@@ -22,6 +27,24 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
   final _dueDayController = TextEditingController(text: '15');
 
   bool isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.card;
+    if (c != null) {
+      _cardNameController.text = c.cardName;
+      _bankNameController.text = c.bankName;
+      _creditLimitController.text = IndianNumberFormatter()
+          .formatEditUpdate(
+            TextEditingValue.empty,
+            TextEditingValue(text: c.creditLimit.toInt().toString()),
+          )
+          .text;
+      _statementDayController.text = c.statementDay.toString();
+      _dueDayController.text = c.dueDay.toString();
+    }
+  }
 
   @override
   void dispose() {
@@ -42,16 +65,30 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
 
     try {
       final cleanLimit = _creditLimitController.text.replaceAll(',', '');
+      final limit = double.parse(cleanLimit);
+      final statementDay = int.parse(_statementDayController.text.trim());
+      final dueDay = int.parse(_dueDayController.text.trim());
 
       // TODO: wire up provider.addCreditCard() once implemented
-      await provider.addCreditCard(
-        cardName: _cardNameController.text.trim(),
-        bankName: _bankNameController.text.trim(),
-        creditLimit: double.parse(cleanLimit),
-        statementDay: int.parse(_statementDayController.text.trim()),
-        dueDay: int.parse(_dueDayController.text.trim()),
-        context: context,
-      );
+      if (_isEdit) {
+        await provider.editCreditCard(
+          oldCard: widget.card!,
+          cardName: _cardNameController.text.trim(),
+          bankName: _bankNameController.text.trim(),
+          creditLimit: limit,
+          statementDay: statementDay,
+          dueDay: dueDay,
+        );
+      } else {
+        await provider.addCreditCard(
+          cardName: _cardNameController.text.trim(),
+          bankName: _bankNameController.text.trim(),
+          creditLimit: limit,
+          statementDay: statementDay,
+          dueDay: dueDay,
+          context: context,
+        );
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -93,11 +130,11 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
         ),
         title: Row(
           children: [
-            const Icon(Icons.credit_card, color: AppColor.creditPrimary),
+            const Icon(Icons.credit_card, color: AppColor.creditLight),
             const SizedBox(width: 12),
-            const Text(
-              'Add Credit Card',
-              style: TextStyle(
+            Text(
+              _isEdit?'Edit credit card':'Add Credit Card',
+              style: const TextStyle(
                 color: AppColor.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -120,7 +157,10 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppColor.creditGradientStart, AppColor.creditGradientEnd],
+                      colors: [
+                        AppColor.creditGradientStart,
+                        AppColor.creditGradientEnd,
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -178,7 +218,8 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                   controller: _cardNameController,
                   hint: 'e.g., HDFC Millennia',
                   icon: Icons.badge_outlined,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter card name' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter card name' : null,
                 ),
 
                 const SizedBox(height: 20),
@@ -190,7 +231,8 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                   controller: _bankNameController,
                   hint: 'e.g., HDFC Bank',
                   icon: Icons.account_balance_outlined,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter bank name' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter bank name' : null,
                 ),
 
                 const SizedBox(height: 20),
@@ -210,8 +252,12 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Enter credit limit';
                     final clean = v.replaceAll(',', '');
-                    if (double.tryParse(clean) == null) return 'Enter valid amount';
-                    if (double.parse(clean) <= 0) return 'Limit must be greater than 0';
+                    if (double.tryParse(clean) == null) {
+                      return 'Enter valid amount';
+                    }
+                    if (double.parse(clean) <= 0) {
+                      return 'Limit must be greater than 0';
+                    }
                     return null;
                   },
                 ),
@@ -232,11 +278,14 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                             hint: '1-31',
                             icon: Icons.calendar_today,
                             keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Required';
                               final day = int.tryParse(v);
-                              if (day == null || day < 1 || day > 31) return '1-31';
+                              if (day == null || day < 1 || day > 31)
+                                return '1-31';
                               return null;
                             },
                           ),
@@ -255,11 +304,14 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                             hint: '1-31',
                             icon: Icons.event_busy,
                             keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Required';
                               final day = int.tryParse(v);
-                              if (day == null || day < 1 || day > 31) return '1-31';
+                              if (day == null || day < 1 || day > 31)
+                                return '1-31';
                               return null;
                             },
                           ),
@@ -326,17 +378,19 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation(AppColor.textPrimary),
+                              valueColor: AlwaysStoppedAnimation(
+                                AppColor.textPrimary,
+                              ),
                             ),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.add_circle_outline),
-                              SizedBox(width: 12),
+                              const Icon(Icons.add_circle_outline),
+                              const SizedBox(width: 12),
                               Text(
-                                'Add Credit Card',
-                                style: TextStyle(
+                                _isEdit?'Edit credit card':'Add Credit Card',
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -386,19 +440,18 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      style: const TextStyle(
-        color: AppColor.textPrimary,
-        fontSize: 16,
-      ),
+      style: const TextStyle(color: AppColor.textPrimary, fontSize: 16),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: AppColor.grey600),
-        prefixIcon: Icon(icon, color: AppColor.creditPrimary),
+        prefixIcon: Icon(icon, color: AppColor.creditLight),
         filled: true,
         fillColor: AppColor.surface,
         border: OutlineInputBorder(
@@ -421,7 +474,10 @@ class _CreditCardFromPageState extends State<CreditCardFromPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColor.creditDue, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
       validator: validator,
     );

@@ -45,14 +45,27 @@ class CreditRepositoryImpl implements CreditRepository {
   }
 
   @override
-  Future<List<CreditCardModel>> fetchCreditCards() {
-    return _datasource.fetchCreditCards();
+  Future<void> updateCreditCard({
+    required String creditCardId,
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+  }) {
+    return _datasource.updateCreditCard(
+      creditCardId: creditCardId,
+      cardName: cardName,
+      bankName: bankName,
+      creditLimit: creditLimit,
+      statementDay: statementDay,
+      dueDay: dueDay,
+    );
   }
 
   @override
-  Future<void> updateCreditCard() {
-    // TODO: implement updateCreditCard
-    throw UnimplementedError();
+  Future<List<CreditCardModel>> fetchCreditCards() {
+    return _datasource.fetchCreditCards();
   }
 
   @override

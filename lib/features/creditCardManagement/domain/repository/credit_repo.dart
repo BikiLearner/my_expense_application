@@ -13,7 +13,14 @@ abstract class CreditRepository {
     required int dueDay,
   });
 
-  Future<void> updateCreditCard();
+  Future<void> updateCreditCard({
+    required String creditCardId,
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+  });
 
   Future<List<CreditCardModel>> fetchCreditCards();
 

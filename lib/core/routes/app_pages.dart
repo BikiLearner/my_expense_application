@@ -137,7 +137,10 @@ class AppPages {
       ),
       GoRoute(
         path: AppRoutes.creditForm,
-        builder: (_, __) => const CreditCardFromPage(),
+        builder: (context, state) {
+          final card = state.extra as CreditCardModel?; // null = add mode
+          return CreditCardFromPage(card: card);
+        },
       ),
 
 
@@ -175,7 +178,6 @@ class AppPages {
             value: provider,
             child: BillingCycleDetailsScreen(
               creditCard: creditCard,
-              billingCycle: billingCycle,
               isCurrentCycle: isCurrentCycle,
             ),
           );
@@ -216,7 +218,6 @@ class AppPages {
               state.extra! as (CreditCardModel, BillingCycleModel, bool);
           return BillingCycleDetailsScreen(
             creditCard: creditCard,
-            billingCycle: billingCycle,
             isCurrentCycle: isCurrentCycle,
           );
         },

@@ -1,9 +1,13 @@
 import 'package:expence_app/core/theme/app_color.dart';
 import 'package:expence_app/core/utils/compact_number_formatter.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
+import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/widgets/credit_card_status_pill.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/widgets/long_press_message.dart';
 import 'credit_card_info_chip.dart';
 
@@ -96,8 +100,32 @@ class CreditCardWidget extends StatelessWidget {
                           color: Colors.white.withOpacity(.55),
                           size: 20,
                         ),
+
                         const Spacer(),
-                        CreditCardStatusPill(isActive: creditCard.isActive),
+                        Row(
+                          spacing: 8,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                context.push(AppRoutes.creditForm, extra: creditCard);
+                              },
+                              icon: const Icon(Icons.edit_rounded),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.06),
+                                foregroundColor: const Color(0xFF1AB6FF),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: Colors.white.withOpacity(0.08),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            CreditCardStatusPill(
+                              value: creditCard.isActive ? 'Active' : 'Inactive',
+                            ),
+                          ],
+                        ),
                       ],
                     ),
 
@@ -140,7 +168,7 @@ class CreditCardWidget extends StatelessWidget {
                     const SizedBox(height: 6),
 
                     Text(
-                      "₹ ${creditCard.creditLimit.toStringAsFixed(0)}",
+                      "₹ ${CompactNumberFormatter.format(creditCard.creditLimit)}",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
@@ -166,13 +194,18 @@ class CreditCardWidget extends StatelessWidget {
                             message: hasBillingCycle
                                 ? "Total amount used is ₹${currentUsage?.toStringAsFixed(2)}"
                                 : "No active billing cycle. No expenses are currently recorded.",
-                            child: CreditCardInfoChip(
-                              icon: Icons.payments_rounded,
-                              label: "Current Use",
-                              value: CompactNumberFormatter.format(
-                                currentUsage ?? 0,
+                            child: InkWell(
+                              onTap: () => context
+                                  .read<CreditExpenseProvider>()
+                                  .setToggleUtilisationBox(),
+                              child: CreditCardInfoChip(
+                                icon: Icons.payments_rounded,
+                                label: "Current Use",
+                                value: CompactNumberFormatter.format(
+                                  currentUsage ?? 0,
+                                ),
+                                color: palette.accent,
                               ),
-                              color: palette.accent,
                             ),
                           ),
                         ),
@@ -187,9 +220,17 @@ class CreditCardWidget extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _UsageCard(
-                      creditCard: creditCard,
-                      currentUsage: currentUsage,
+
+                    Selector<CreditExpenseProvider, bool>(
+                      selector: (_, provider) => provider.toggleUtilisationBox,
+                      builder: (context, showUtilisation, child) {
+                        return showUtilisation
+                            ? _UsageCard(
+                                creditCard: creditCard,
+                                currentUsage: currentUsage,
+                              )
+                            : const SizedBox.shrink();
+                      },
                     ),
                   ],
                 ),

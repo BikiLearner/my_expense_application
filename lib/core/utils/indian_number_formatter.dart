@@ -2,8 +2,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class IndianNumberFormatter extends TextInputFormatter {
-  final NumberFormat _formatter = NumberFormat.decimalPattern('en_IN');
 
+  static final NumberFormat _formatter = NumberFormat.decimalPattern('en_IN');
+  /// For display: 150000 -> "1,50,000"
+  static String format(num value) => _formatter.format(value);
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,

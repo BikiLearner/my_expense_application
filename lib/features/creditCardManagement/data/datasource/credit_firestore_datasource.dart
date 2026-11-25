@@ -512,10 +512,69 @@ class CreditFirestoreDatasource {
         .toList();
   }
 
-  Future<void> updateCreditCard() {
-    // TODO: implement updateCreditCard
-    throw UnimplementedError();
+  Future<void> updateCreditCard({
+    required String creditCardId,
+    required String cardName,
+    required String bankName,
+    required double creditLimit,
+    required int statementDay,
+    required int dueDay,
+  }) async {
+    final cardRef = _creditCardRef(creditCardId: creditCardId);
+
+    // Queries can't run inside a transaction, so read the cycles first.
+    final cycleSnap =
+    await cardRef.collection(CollectionName.billingCycle).get();
+
+    double maxUnpaid = 0;
+    bool hasSpending = false;
+    for (final d in cycleSnap.docs) {
+      final data = d.data();
+      final total = (data['totalAmount'] as num?)?.toDouble() ?? 0;
+      if (total > 0) hasSpending = true;
+      if (data['isPaid'] != true && total > maxUnpaid) maxUnpaid = total;
+    }
+
+    await _firestore.runTransaction((tx) async {
+      final snap = await tx.get(cardRef);
+      if (!snap.exists) throw Exception('Credit card not found.');
+
+      final data = snap.data()!;
+      final oldLimit = (data['creditLimit'] as num).toDouble();
+      final oldStatementDay = data['statementDay'] as int;
+
+      // 1. Limit must not be below the unpaid amount.
+      if (creditLimit < maxUnpaid) {
+        throw Exception(
+          'Limit cannot be lower than the unpaid amount ($maxUnpaid).',
+        );
+      }
+
+      // 2. Statement day can change only when no cycle has spending.
+      if (statementDay != oldStatementDay && hasSpending) {
+        throw Exception(
+          'Statement day cannot be changed after expenses were added.',
+        );
+      }
+
+      final updates = <String, dynamic>{
+        'cardName': cardName,
+        'bankName': bankName,
+        'creditLimit': creditLimit,
+        'statementDay': statementDay,
+        'dueDay': dueDay,
+      };
+
+      // 3. Record the previous limit only when it actually changed.
+      if (oldLimit != creditLimit) {
+        final key = DateTime.now().millisecondsSinceEpoch.toString();
+        updates['oldLimits.$key'] = oldLimit;
+      }
+
+      tx.update(cardRef, updates);
+    });
   }
+
 
   Future<BillingCycleModel> createBillingCycleIfNeeded(
       CreditCardModel card,

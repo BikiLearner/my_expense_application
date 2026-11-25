@@ -4,13 +4,17 @@ import 'package:flutter/cupertino.dart';
 import '../../../../core/theme/app_color.dart';
 
 class CreditCardStatusPill extends StatelessWidget {
-  final bool isActive;
+  final String value;
+  final Color color;
 
-  const CreditCardStatusPill({super.key, required this.isActive});
+  const CreditCardStatusPill({
+    super.key,
+    required this.value,
+    this.color = AppColor.creditSoft,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? AppColor.creditSoft : AppColor.creditDue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -28,7 +32,7 @@ class CreditCardStatusPill extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isActive ? 'Active' : 'Inactive',
+            value,
             style: TextStyle(
               color: color,
               fontSize: 11,

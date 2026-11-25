@@ -1,4 +1,5 @@
 import 'package:expence_app/core/theme/app_color.dart';
+import 'package:expence_app/core/utils/compact_number_formatter.dart';
 import 'package:expence_app/features/creditCardManagement/data/model/credit_card.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/screens/credit_card_from_page.dart';
@@ -187,7 +188,7 @@ class CreditCardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '₹${totalCreditLimit.toStringAsFixed(2)}',
+                    '₹${CompactNumberFormatter.format(totalCreditLimit)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,

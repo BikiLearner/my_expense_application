@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../enums/expense_type.dart';
 import '../../features/history/presentation/provider/month_expense_provider.dart';
+import '../enums/expense_type.dart';
 
 class SimpleMonthSummaryBanner extends StatefulWidget {
   final String monthKey;
@@ -50,7 +50,7 @@ class _SimpleMonthSummaryBannerState extends State<SimpleMonthSummaryBanner>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -143,7 +143,7 @@ class _MiniStat extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(compact ? 10 : 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
         ),
         child: compact
@@ -291,7 +291,7 @@ class _ExpandedSummary extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
+            color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
@@ -343,7 +343,7 @@ class _TypeStat extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 22),

@@ -50,7 +50,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => sl<AuthProvider>()),
         ChangeNotifierProvider(create: (_) => sl<ExpenseProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CategoryProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<BankProvider>()),
+        ChangeNotifierProvider(lazy: false, create: (_) => sl<BankProvider>()),
         ChangeNotifierProvider(create: (_) => sl<CreditExpenseProvider>()),
         ChangeNotifierProvider(create: (_) => sl<HomeNavigationProvider>()),
         ChangeNotifierProvider(create: (_) => sl<HistoryPageProvider>()),
