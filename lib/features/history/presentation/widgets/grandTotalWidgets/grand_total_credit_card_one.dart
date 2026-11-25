@@ -1,4 +1,5 @@
 import 'package:expence_app/core/constants/date_constant.dart';
+import 'package:expence_app/core/utils/compact_number_formatter.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/provider/credit_expense_provider.dart';
 import 'package:expence_app/features/creditCardManagement/presentation/screens/credit_card_screen.dart';
 import 'package:expence_app/features/history/presentation/provider/history_page_provider.dart';
@@ -297,7 +298,7 @@ class GrandTotalCreditCardOne extends StatelessWidget {
                   colors: [AppColor.creditAccent, AppColor.creditLight],
                 ).createShader(bounds),
                 child: Text(
-                  "₹${monthStats.grandTotal.toStringAsFixed(0)}",
+                  "₹${CompactNumberFormatter.format(monthStats.grandTotal)}",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 40,
@@ -337,13 +338,26 @@ class GrandTotalCreditCardOne extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              HistoryStatItem(
-                icon: Icons.trending_down,
-                label: "Expenses",
-                value: "₹${yearStats.grandTotal.toStringAsFixed(0)}",
-                color: AppColor.creditDue,
-                onTap: () {
+              Selector<CreditExpenseProvider, double>(
+                selector: (_, p) => p.totalCreditLimit,
+                builder: (context, limit, _) {
+                  final spent = yearStats.grandTotal;
+                  final percent = limit > 0 ? (spent / limit * 100) : 0.0;
 
+                  // Warn as usage gets closer to the limit
+                  final color = percent >= 80
+                      ? Colors.redAccent
+                      : percent >= 50
+                      ? Colors.orangeAccent
+                      : AppColor.creditPaid;
+
+                  return HistoryStatItem(
+                    icon: Icons.speed_rounded,
+                    label: "Of Limit",
+                    value: limit > 0 ? "${percent.toStringAsFixed(1)}%" : "—",
+                    color: color,
+                    onTap: () {},
+                  );
                 },
               ),
 
@@ -355,7 +369,7 @@ class GrandTotalCreditCardOne extends StatelessWidget {
                   return HistoryStatItem(
                     icon: Icons.credit_card,
                     label: "Available Credit",
-                    value: "₹${available.toStringAsFixed(0)}",
+                    value: "₹${CompactNumberFormatter.format(available)}",
                     color: AppColor.creditPaid,
                     onTap: () {
                       Navigator.push(
@@ -419,7 +433,7 @@ class GrandTotalCreditCardOne extends StatelessWidget {
                   HistoryStatItem(
                     icon: Icons.auto_awesome_outlined,
                     label: "Luxury",
-                    value: "₹${monthStats.luxury.toStringAsFixed(0)}",
+                    value: "₹${CompactNumberFormatter.format(monthStats.luxury)}",
                     extraWidget: HistoryQuickStatCard(
                       icon: Icons.trending_up,
                       label: 'Avg = ',
@@ -445,7 +459,7 @@ class GrandTotalCreditCardOne extends StatelessWidget {
                   HistoryStatItem(
                     icon: Icons.shopping_cart_outlined,
                     label: "Needed",
-                    value: "₹${monthStats.needed.toStringAsFixed(0)}",
+                    value: "₹${CompactNumberFormatter.format(monthStats.needed)}",
                     extraWidget: HistoryQuickStatCard(
                       icon: Icons.trending_up,
                       label: 'Avg = ',
